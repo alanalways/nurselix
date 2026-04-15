@@ -3,20 +3,43 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sun, Moon, Bell, CalendarDays, User, Shield, LogOut } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
 import Button from "@/components/ui/Button";
 import { useThemeStore } from "@/store/themeStore";
 
 export default function SettingsPage() {
+  const { data: session } = useSession();
   const { theme, fontSize, setTheme, setFontSize } = useThemeStore();
   const [dailyGoal, setDailyGoal] = useState(10);
   const [notification, setNotification] = useState(true);
   const [examDate, setExamDate] = useState("");
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await fetch("/api/user/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dailyGoal, notification, theme, fontSize }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await signOut({ callbackUrl: "/login" });
+  };
+
+  const initials = session?.user?.name
+    ? session.user.name.slice(0, 1).toUpperCase()
+    : "護";
 
   return (
     <motion.div
@@ -33,13 +56,25 @@ export default function SettingsPage() {
           <h2 className="font-semibold text-[var(--text-primary)]">個人資料</h2>
         </div>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center text-2xl font-bold text-[#080E1A]">
-            護
-          </div>
+          {session?.user?.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={session.user.image}
+              alt="avatar"
+              className="w-16 h-16 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center text-2xl font-bold text-[#080E1A]">
+              {initials}
+            </div>
+          )}
           <div>
-            <div className="font-semibold text-[var(--text-primary)]">護理師小明</div>
-            <div className="text-sm text-[var(--text-muted)]">student@example.com</div>
-            <button className="text-sm text-[var(--gold)] hover:underline mt-1">更改頭像</button>
+            <div className="font-semibold text-[var(--text-primary)]">
+              {session?.user?.name || "用戶"}
+            </div>
+            <div className="text-sm text-[var(--text-muted)]">
+              {session?.user?.email || ""}
+            </div>
           </div>
         </div>
       </section>
@@ -155,10 +190,15 @@ export default function SettingsPage() {
       </section>
 
       <div className="flex gap-3">
-        <Button fullWidth onClick={handleSave}>
+        <Button fullWidth loading={saving} onClick={handleSave}>
           {saved ? "已儲存 ✓" : "儲存設定"}
         </Button>
-        <Button variant="ghost" className="flex items-center gap-2 text-[var(--error)] hover:text-[var(--error)]">
+        <Button
+          variant="ghost"
+          loading={loggingOut}
+          onClick={handleLogout}
+          className="flex items-center gap-2 text-[var(--error)] hover:text-[var(--error)]"
+        >
           <LogOut size={16} /> 登出
         </Button>
       </div>

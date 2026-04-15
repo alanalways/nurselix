@@ -11,6 +11,12 @@ interface ThemeState {
   toggleTheme: () => void;
 }
 
+function applyToDOM(theme: "dark" | "light", fontSize: "small" | "medium" | "large") {
+  if (typeof document === "undefined") return;
+  document.documentElement.setAttribute("data-theme", theme);
+  document.documentElement.setAttribute("data-fontsize", fontSize);
+}
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
@@ -18,21 +24,24 @@ export const useThemeStore = create<ThemeState>()(
       fontSize: "medium",
       setTheme: (theme) => {
         set({ theme });
-        if (typeof document !== "undefined") {
-          document.documentElement.setAttribute("data-theme", theme);
-        }
+        applyToDOM(theme, get().fontSize);
       },
       setFontSize: (fontSize) => {
         set({ fontSize });
-        if (typeof document !== "undefined") {
-          document.documentElement.setAttribute("data-fontsize", fontSize);
-        }
+        applyToDOM(get().theme, fontSize);
       },
       toggleTheme: () => {
         const next = get().theme === "dark" ? "light" : "dark";
         get().setTheme(next);
       },
     }),
-    { name: "nurslix-theme" }
+    {
+      name: "nurslix-theme",
+      // After Zustand rehydrates from localStorage, immediately apply to DOM
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        applyToDOM(state.theme, state.fontSize);
+      },
+    }
   )
 );

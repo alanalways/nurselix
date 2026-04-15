@@ -30,7 +30,10 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-mono text-[var(--text-muted)]">
+          <span
+            className="font-mono text-[var(--text-muted)]"
+            style={{ fontSize: "calc(0.75rem * var(--font-scale))" }}
+          >
             第 {questionNumber}{totalQuestions ? ` / ${totalQuestions}` : ""} 題
           </span>
           {question.domain && (
@@ -43,8 +46,11 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
         </div>
       </div>
 
-      {/* Stem */}
-      <p className="text-[var(--text-primary)] leading-relaxed font-sora text-base">
+      {/* Stem — font scales with --font-scale */}
+      <p
+        className="text-[var(--text-primary)] leading-relaxed font-sora"
+        style={{ fontSize: "calc(1rem * var(--font-scale))" }}
+      >
         {question.stem}
       </p>
 
@@ -52,7 +58,11 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
       {question.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-3">
           {question.tags.map((t) => (
-            <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">
+            <span
+              key={t}
+              className="px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+              style={{ fontSize: "calc(0.75rem * var(--font-scale))" }}
+            >
               {t}
             </span>
           ))}

@@ -3,8 +3,6 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 
-const LABELS = ["A", "B", "C", "D"];
-
 interface OptionButtonProps {
   label: string;
   text: string;
@@ -36,10 +34,20 @@ export default function OptionButton({ label, text, state = "default", disabled,
       whileTap={disabled ? {} : { scale: 0.99 }}
       layout
     >
-      <span className={cn("w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 transition-colors", labelBg)}>
+      {/* Label badge — scales with font */}
+      <span
+        className={cn("w-7 h-7 rounded-lg font-bold flex items-center justify-center flex-shrink-0 transition-colors", labelBg)}
+        style={{ fontSize: "calc(0.75rem * var(--font-scale))" }}
+      >
         {label}
       </span>
-      <span className="text-sm leading-relaxed font-sora">{text}</span>
+      {/* Option text — scales with font */}
+      <span
+        className="leading-relaxed font-sora"
+        style={{ fontSize: "calc(0.9375rem * var(--font-scale))" }}
+      >
+        {text}
+      </span>
     </motion.button>
   );
 }

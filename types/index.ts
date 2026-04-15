@@ -11,11 +11,11 @@ export type SessionMode = "CAT" | "PRACTICE" | "TUTOR" | "MOCK" | "REVIEW" | "AS
 export interface User {
   id: string;
   email: string;
-  displayName?: string;
-  avatarUrl?: string;
+  name?: string;          // display name (NextAuth compatible, was displayName)
+  image?: string;         // avatar URL  (NextAuth compatible, was avatarUrl)
+  emailVerified?: string; // ISO date string
   role: Role;
   plan: Plan;
-  isVerified: boolean;
   examDate?: string;
   trialUsed: boolean;
   trialEndsAt?: string;

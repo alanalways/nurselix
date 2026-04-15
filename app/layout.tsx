@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ToastContainer } from "@/components/ui/Toast";
+import { Providers } from "@/components/providers/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,10 +22,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Restore persisted theme/fontSize before first paint to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=JSON.parse(localStorage.getItem('nurslix-theme')||'{}');var s=t.state||{};if(s.theme)document.documentElement.setAttribute('data-theme',s.theme);if(s.fontSize)document.documentElement.setAttribute('data-fontsize',s.fontSize);}catch(e){}`,
+          }}
+        />
       </head>
       <body className="antialiased">
-        {children}
-        <ToastContainer />
+        <Providers>
+          {children}
+          <ToastContainer />
+        </Providers>
       </body>
     </html>
   );
