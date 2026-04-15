@@ -59,4 +59,5 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Apply schema to DB (safe push) then start server
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node server.js"]
+# Skip db push if DATABASE_URL is not set to avoid crash-loop on missing env
+CMD ["sh", "-c", "if [ -n \"$DATABASE_URL\" ]; then npx prisma db push --accept-data-loss; fi && node server.js"]
