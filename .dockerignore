@@ -1,0 +1,35 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies (will be installed in container)
+node_modules
+
+# Next.js build output
+.next
+
+# Environment files (secrets should come from Zeabur env vars)
+.env
+.env.local
+.env.*.local
+
+# Dev tools
+.eslintrc*
+*.test.*
+*.spec.*
+coverage
+.nyc_output
+
+# Documentation
+README.md
+CHANGELOG.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
