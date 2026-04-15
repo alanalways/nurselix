@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===== 用戶系統 =====
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  password     String?
+  displayName  String?
+  avatarUrl    String?
+  role         Role      @default(STUDENT)
+  plan         Plan      @default(FREE)
+  isVerified   Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  lastLogin    DateTime?
+  referredBy   String?
+  examDate     DateTime?
+  trialUsed    Boolean   @default(false)
+  trialEndsAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  accounts         Account[]
+  settings         UserSettings?
+  sessions         UserSession[]
+  answers          UserAnswer[]
+  bookmarks        Bookmark[]
+  errorQuestions   ErrorQuestion[]
+  dailyStats       UserDailyStats[]
+  questionReports  QuestionReport[]
+  feedbacks        Feedback[]
+  achievements     UserAchievement[]
+  questionNotes    QuestionNote[]
+  betaSubscribers  BetaSubscriber[]
+}
+
+model Account {
+  id                String @id @default(uuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model UserSettings {
+  userId        String   @id
+  dailyGoal     Int      @default(10)
+  notification  Boolean  @default(true)
+  theme         String   @default("dark")
+  fontSize      String   @default("medium")
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  STUDENT
+  MODERATOR
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  BASIC
+  PRO
+  ELITE
+}
+
+// ===== 題庫系統 =====
+
+model Question {
+  id            String         @id @default(uuid())
+  module        Module         @default(NCLEX)
+  questionType  QuestionType   @default(MCQ)
+  stem          String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String
+  explanationZh String
+  explanationEn String?
+  usTwDifference String?
+  domain        String?
+  subDomain     String?
+  tags          String[]       @default([])
+  irtA          Float?
+  irtB          Float?
+  irtC          Float?
+  difficulty    Difficulty     @default(MEDIUM)
+  attemptCount  Int            @default(0)
+  correctCount  Int            @default(0)
+  errorRate     Float          @default(0)
+  status        QuestionStatus @default(DRAFT)
+  createdBy     String         @default("system")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  answers        UserAnswer[]
+  bookmarks      Bookmark[]
+  errorQuestions ErrorQuestion[]
+  reports        QuestionReport[]
+  notes          QuestionNote[]
+}
+
+enum Module {
+  NCLEX
+  TOEIC
+  IELTS
+}
+
+enum QuestionType {
+  MCQ
+  SATA
+  ORDERED
+  MATRIX
+  BOWTIE
+  DROPDOWN
+  HIGHLIGHT
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionStatus {
+  DRAFT
+  APPROVED
+  ARCHIVED
+}
+
+// ===== 答題系統 =====
+
+model UserSession {
+  id             String      @id @default(uuid())
+  userId         String
+  module         Module      @default(NCLEX)
+  mode           SessionMode
+  isAssessment   Boolean     @default(false)
+  theta          Float       @default(0)
+  se             Float       @default(1)
+  questionIds    String[]    @default([])
+  totalQuestions Int         @default(0)
+  correctCount   Int         @default(0)
+  score          Float?
+  passFail       String?
+  totalTimeSec   Int         @default(0)
+  isPaused       Boolean     @default(false)
+  pausedAt       DateTime?
+  startedAt      DateTime    @default(now())
+  endedAt        DateTime?
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers UserAnswer[]
+}
+
+enum SessionMode {
+  CAT
+  PRACTICE
+  TUTOR
+  MOCK
+  REVIEW
+  ASSESSMENT
+  MINI_CAT
+  ERROR_CHALLENGE
+}
+
+model UserAnswer {
+  id             String      @id @default(uuid())
+  sessionId      String
+  userId         String
+  questionId     String
+  selectedAnswer String?
+  isCorrect      Boolean?
+  timeSpentSec   Int?
+  thetaBefore    Float?
+  thetaAfter     Float?
+  answeredAt     DateTime    @default(now())
+
+  session  UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+}
+
+model Bookmark {
+  id         String   @id @default(uuid())
+  userId     String
+  questionId String
+  note       String?
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+}
+
+model QuestionNote {
+  id         String   @id @default(uuid())
+  userId     String
+  questionId String
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+}
+
+// ===== 錯題系統（SM-2）=====
+
+model ErrorQuestion {
+  id          String   @id @default(uuid())
+  userId      String
+  questionId  String
+  repetition  Int      @default(0)
+  easiness    Float    @default(2.5)
+  interval    Int      @default(1)
+  nextReview  DateTime @default(now())
+  lastWrongAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+}
+
+// ===== 統計系統 =====
+
+model UserDailyStats {
+  id            String   @id @default(uuid())
+  userId        String
+  statDate      DateTime @db.Date
+  questionsDone Int      @default(0)
+  correctCount  Int      @default(0)
+  timeSpentMin  Int      @default(0)
+  sessionsCount Int      @default(0)
+  domainStats   Json     @default("{}")
+  streakDay     Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, statDate])
+}
+
+// ===== 成就系統 =====
+
+model Achievement {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  name        String
+  description String
+  icon        String
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+}
+
+// ===== 每日挑戰 =====
+
+model DailyChallenge {
+  id            String   @id @default(uuid())
+  questionId    String
+  date          DateTime @db.Date @unique
+  totalAttempts Int      @default(0)
+  correctCount  Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+// ===== 回報與回饋 =====
+
+model QuestionReport {
+  id         String   @id @default(uuid())
+  userId     String
+  questionId String
+  reason     String
+  detail     String?
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String?
+  sessionId String?
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ===== Beta 訂閱 =====
+
+model BetaSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  userId    String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ===== 訂單（預留）=====
+
+model Order {
+  id          String   @id @default(uuid())
+  userId      String
+  plan        Plan
+  billing     String   // monthly | quarterly | yearly
+  amount      Int      // NT$
+  currency    String   @default("TWD")
+  status      String   @default("pending") // pending | paid | failed | cancelled
+  paymentRef  String?  // 藍新交易序號
+  createdAt   DateTime @default(now())
+  paidAt      DateTime?
+}

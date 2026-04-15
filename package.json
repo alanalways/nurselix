@@ -1,0 +1,50 @@
+{
+  "name": "nurselix",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
+    "@prisma/client": "^7.7.0",
+    "@react-pdf/renderer": "^4.4.1",
+    "@tanstack/react-query": "^5.99.0",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.73.5",
+    "canvas-confetti": "^1.9.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "ioredis": "^5.10.1",
+    "lucide-react": "^1.8.0",
+    "next": "14.2.35",
+    "next-auth": "^5.0.0-beta.30",
+    "next-pwa": "^5.6.0",
+    "nodemailer": "^8.0.5",
+    "prisma": "^7.7.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-hook-form": "^7.72.1",
+    "recharts": "^3.8.1",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.35",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
