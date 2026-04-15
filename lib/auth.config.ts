@@ -5,6 +5,7 @@ import type { NextAuthConfig } from "next-auth";
  * Used by middleware.ts for route protection.
  */
 export const authConfig = {
+  trustHost: true,
   pages: {
     signIn: "/login",
     error: "/login",

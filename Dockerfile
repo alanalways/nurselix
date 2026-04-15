@@ -41,10 +41,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma schema + generated client + CLI (all chowned to nextjs)
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+# Copy Prisma generated client + SQL init script
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma/init.sql ./prisma/init.sql
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/init-db.js ./scripts/init-db.js
 
 # Copy pg driver + its runtime dependencies (chowned to nextjs)
 RUN --mount=type=bind,from=builder,source=/app/node_modules,target=/builder-nm \
@@ -63,6 +64,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# No Prisma CLI needed at runtime — @prisma/client is sufficient.
-# Run schema migrations from local: npx prisma db push
-CMD ["node", "server.js"]
+# Init DB schema (idempotent, ignores already-exists errors) then start server
+CMD ["sh", "-c", "node scripts/init-db.js && node server.js"]
