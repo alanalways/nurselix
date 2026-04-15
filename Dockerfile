@@ -12,8 +12,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client (schema-only, no DB connection needed at build time)
+# Generate Prisma client
 RUN npx prisma generate
+
+# Push schema to DB (builder stage has full node_modules + Zeabur internal network access)
+# Skip silently if DATABASE_URL is not provided as a build arg
+ARG DATABASE_URL
+RUN if [ -n "$DATABASE_URL" ]; then DATABASE_URL="$DATABASE_URL" npx prisma db push --accept-data-loss; else echo "DATABASE_URL not set — skipping prisma db push"; fi
 
 # Build Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
