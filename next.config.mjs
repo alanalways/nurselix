@@ -1,4 +1,8 @@
 import withPWAInit from "next-pwa";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -13,6 +17,19 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ["@prisma/client", "prisma"],
+  },
+  /**
+   * Explicitly wire up the "@/" path alias in webpack so it resolves
+   * correctly in ALL build environments (Zeabur Nixpacks, Docker, Vercel,
+   * local) even when tsconfig.json path resolution is not picked up first.
+   */
+  webpack(config, { buildId: _buildId, ...options }) {
+    // Preserve any aliases already registered (e.g. by next-pwa)
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@": path.resolve(__dirname),
+    };
+    return config;
   },
 };
 
