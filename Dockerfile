@@ -40,7 +40,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 
 # Copy pg driver + its runtime dependencies (chowned to nextjs)
 RUN --mount=type=bind,from=builder,source=/app/node_modules,target=/builder-nm \
@@ -59,7 +58,6 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Apply schema to DB then start server.
-# Uses local prisma CLI to avoid npx downloading it from registry.
-# Skips db push if DATABASE_URL is not configured.
-CMD ["sh", "-c", "if [ -n \"$DATABASE_URL\" ]; then node node_modules/prisma/build/index.js db push --accept-data-loss; fi && node server.js"]
+# No Prisma CLI needed at runtime — @prisma/client is sufficient.
+# Run schema migrations from local: npx prisma db push
+CMD ["node", "server.js"]
