@@ -40,14 +40,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-# Copy pg driver for runtime
-COPY --from=builder /app/node_modules/pg ./node_modules/pg
-COPY --from=builder /app/node_modules/pg-cloudflare ./node_modules/pg-cloudflare 2>/dev/null || true
-COPY --from=builder /app/node_modules/pg-connection-string ./node_modules/pg-connection-string 2>/dev/null || true
-COPY --from=builder /app/node_modules/pg-pool ./node_modules/pg-pool 2>/dev/null || true
-COPY --from=builder /app/node_modules/pg-protocol ./node_modules/pg-protocol 2>/dev/null || true
-COPY --from=builder /app/node_modules/pg-types ./node_modules/pg-types 2>/dev/null || true
-COPY --from=builder /app/node_modules/pgpass ./node_modules/pgpass 2>/dev/null || true
+
+# Copy pg driver + its runtime dependencies
+# Use RUN+mount so optional packages (pg-cloudflare) don't fail the build
+RUN --mount=type=bind,from=builder,source=/app/node_modules,target=/builder-nm \
+    cp -r /builder-nm/pg                  ./node_modules/pg && \
+    cp -r /builder-nm/pg-connection-string ./node_modules/pg-connection-string && \
+    cp -r /builder-nm/pg-pool             ./node_modules/pg-pool && \
+    cp -r /builder-nm/pg-protocol         ./node_modules/pg-protocol && \
+    cp -r /builder-nm/pg-types            ./node_modules/pg-types && \
+    cp -r /builder-nm/pgpass              ./node_modules/pgpass && \
+    cp -r /builder-nm/pg-cloudflare       ./node_modules/pg-cloudflare 2>/dev/null || true
 
 USER nextjs
 
