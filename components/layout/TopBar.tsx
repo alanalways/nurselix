@@ -4,15 +4,24 @@ import { Bell, Search } from "lucide-react";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import FontSizeControl from "@/components/ui/FontSizeControl";
 import Badge from "@/components/ui/Badge";
+import { useSession } from "next-auth/react";
+import Image from "next/image";
+import type { BadgeVariant } from "@/components/ui/Badge";
 
-// Mock user data for Phase 1
-const mockUser = {
-  displayName: "護理師小明",
-  plan: "PRO" as const,
-  avatarUrl: null as string | null,
+const planVariant: Record<string, BadgeVariant> = {
+  FREE: "muted",
+  BASIC: "blue",
+  PRO: "gold",
+  ELITE: "elite",
 };
 
 export default function TopBar({ title }: { title?: string }) {
+  const { data: session } = useSession();
+  const user = session?.user;
+  const displayName = user?.name ?? "使用者";
+  const plan = (user as any)?.plan ?? "FREE";
+  const initial = displayName[0]?.toUpperCase() ?? "U";
+
   return (
     <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex-shrink-0">
       {/* Left */}
@@ -41,12 +50,22 @@ export default function TopBar({ title }: { title?: string }) {
         </button>
         {/* Avatar */}
         <div className="flex items-center gap-2 pl-1">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center text-xs font-bold text-[#080E1A]">
-            {mockUser.displayName[0]}
-          </div>
+          {user?.image ? (
+            <Image
+              src={user.image}
+              alt={displayName}
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center text-xs font-bold text-[#080E1A]">
+              {initial}
+            </div>
+          )}
           <div className="hidden md:flex flex-col">
-            <span className="text-sm font-medium text-[var(--text-primary)] leading-tight">{mockUser.displayName}</span>
-            <Badge variant="gold" className="text-[10px]">{mockUser.plan}</Badge>
+            <span className="text-sm font-medium text-[var(--text-primary)] leading-tight">{displayName}</span>
+            <Badge variant={planVariant[plan] ?? "muted"} className="text-[10px]">{plan}</Badge>
           </div>
         </div>
       </div>

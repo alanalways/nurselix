@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 import Badge from "@/components/ui/Badge";
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "儀表板" },
@@ -136,7 +137,10 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
             {!collapsed && <span>設定</span>}
           </div>
         </Link>
-        <button className={cn("sidebar-link w-full hover:text-[var(--error)]", collapsed && "justify-center px-0")}>
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className={cn("sidebar-link w-full hover:text-[var(--error)]", collapsed && "justify-center px-0")}
+        >
           <LogOut size={18} />
           {!collapsed && <span>登出</span>}
         </button>

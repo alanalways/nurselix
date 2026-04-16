@@ -4,6 +4,7 @@ import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import MobileNav from "@/components/layout/MobileNav";
+import OnboardingModal from "@/components/onboarding/OnboardingModal";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -23,6 +24,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Mobile Bottom Nav */}
       <MobileNav />
+
+      {/* First-time onboarding */}
+      <OnboardingModal />
     </div>
   );
 }

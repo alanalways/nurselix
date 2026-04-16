@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import StatsOverview from "@/components/dashboard/StatsOverview";
 import QuickStart from "@/components/dashboard/QuickStart";
 import DailyProgress from "@/components/dashboard/DailyProgress";
@@ -10,6 +11,13 @@ import StreakCard from "@/components/dashboard/StreakCard";
 import DomainRadarChart from "@/components/dashboard/RadarChart";
 import HeatMap from "@/components/dashboard/HeatMap";
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return "早安";
+  if (hour >= 12 && hour < 18) return "午安";
+  return "晚安";
+}
+
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
@@ -17,6 +25,10 @@ const pageVariants = {
 };
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
+  const name = session?.user?.name ?? "同學";
+  const greeting = getGreeting();
+
   return (
     <motion.div
       {...pageVariants}
@@ -25,10 +37,10 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div>
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-          早安，護理師小明 👋
+          {greeting}，{name} 👋
         </h1>
         <p className="text-[var(--text-secondary)] mt-1">
-          今天是你備考的第 <span className="text-[var(--gold)] font-semibold">7</span> 天，繼續加油！
+          歡迎回來，繼續你的備考之旅！
         </p>
       </div>
 

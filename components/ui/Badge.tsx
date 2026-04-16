@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils/cn";
 
-type BadgeVariant = "gold" | "blue" | "success" | "error" | "warning" | "muted" | "pro" | "elite";
+export type BadgeVariant = "gold" | "blue" | "success" | "error" | "warning" | "muted" | "pro" | "elite";
 
 interface BadgeProps {
   children: React.ReactNode;
