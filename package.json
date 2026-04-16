@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:init": "node scripts/init-db.js",
+    "db:seed-admin": "node scripts/seed-admin.js",
+    "db:seed-questions": "node scripts/seed-questions.js",
+    "db:seed-all": "npm run db:init && npm run db:seed-admin && npm run db:seed-questions"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

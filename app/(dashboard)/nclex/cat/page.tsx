@@ -1,12 +1,12 @@
-import ExamShell from "@/components/nclex/ExamShell";
+import SessionStarter from "@/components/nclex/SessionStarter";
 
 export default function CatPage() {
   return (
-    <ExamShell
+    <SessionStarter
       mode="CAT"
       title="CAT 智能考試"
       showTheta
-      showExplanationAfterAnswer={false}
+      showCountdown
     />
   );
 }

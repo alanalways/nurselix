@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import ExamShell from "@/components/nclex/ExamShell";
+import SessionStarter from "@/components/nclex/SessionStarter";
 
 export default function TutorPage() {
   const [started, setStarted] = useState(false);
@@ -12,10 +12,10 @@ export default function TutorPage() {
 
   if (started) {
     return (
-      <ExamShell
+      <SessionStarter
         mode="TUTOR"
         title="Tutor 模式"
-        totalQuestions={count}
+        targetCount={count}
         showExplanationAfterAnswer
       />
     );

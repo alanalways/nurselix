@@ -4,20 +4,17 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ClipboardList, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
-import ExamShell from "@/components/nclex/ExamShell";
+import SessionStarter from "@/components/nclex/SessionStarter";
 
 export default function AssessmentPage() {
   const [started, setStarted] = useState(false);
 
   if (started) {
     return (
-      <ExamShell
+      <SessionStarter
         mode="ASSESSMENT"
         title="初始評估"
         showCountdown
-        countdownSec={600}
-        showTheta={false}
-        showExplanationAfterAnswer={false}
       />
     );
   }

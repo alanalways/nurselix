@@ -97,25 +97,57 @@ model Question {
   id            String         @id @default(uuid())
   module        Module         @default(NCLEX)
   questionType  QuestionType   @default(MCQ)
+
+  // Stem (EN) and optional clinical scenario (EN + ZH)
   stem          String
+  stemZh        String?
+  scenarioEn    String?
+  scenarioZh    String?
+
+  // Up to 6 options (SATA needs 5–6, SBA/MCQ uses 4)
   optionA       String
   optionB       String
   optionC       String
   optionD       String
-  correctAnswer String
-  explanationZh String
-  explanationEn String?
+  optionE       String?
+  optionF       String?
+
+  // For SBA/MCQ: single letter ("A"|"B"|"C"|"D")
+  // For SATA:   comma-joined letters (e.g. "B,C,E")
+  correctAnswer  String
+  // Canonical multi-answer form (for SATA and future types)
+  correctAnswers String[]       @default([])
+
+  explanationZh  String
+  explanationEn  String?
   usTwDifference String?
+
+  // Per-option rationales (JSON: { "A": { "en": "...", "zh": "..." }, ... })
+  optionRationales Json?
+
+  // Categorisation
   domain        String?
   subDomain     String?
   tags          String[]       @default([])
+
+  // Optional metadata from source pools (CJMM, Bloom's, setting, etc.)
+  cjmmStep      String?
+  bloomsLevel   String?
+  caseStudySetId String?
+  caseStudyPosition Int?
+
+  // IRT parameters
   irtA          Float?
   irtB          Float?
   irtC          Float?
   difficulty    Difficulty     @default(MEDIUM)
+
+  // Statistics
   attemptCount  Int            @default(0)
   correctCount  Int            @default(0)
   errorRate     Float          @default(0)
+
+  // Management
   status        QuestionStatus @default(DRAFT)
   createdBy     String         @default("system")
   createdAt     DateTime       @default(now())
@@ -126,6 +158,11 @@ model Question {
   errorQuestions ErrorQuestion[]
   reports        QuestionReport[]
   notes          QuestionNote[]
+
+  @@index([module, status])
+  @@index([domain])
+  @@index([difficulty])
+  @@index([caseStudySetId])
 }
 
 enum Module {
@@ -164,21 +201,38 @@ model UserSession {
   module         Module      @default(NCLEX)
   mode           SessionMode
   isAssessment   Boolean     @default(false)
+
+  // CAT state
   theta          Float       @default(0)
   se             Float       @default(1)
-  questionIds    String[]    @default([])
+  questionIds    String[]    @default([])  // Questions that were *served* so far (used to avoid repeats)
+
+  // Config (set on create)
+  targetCount    Int?        // Target total questions (Practice/Tutor/Mock)
+  timeLimitSec   Int?        // Max duration (Mock/Assessment)
+  domainFilter   String[]    @default([])  // Optional list of domain names
+  difficultyFilter String[]  @default([])  // "EASY" | "MEDIUM" | "HARD"
+
+  // Statistics
   totalQuestions Int         @default(0)
   correctCount   Int         @default(0)
   score          Float?
   passFail       String?
   totalTimeSec   Int         @default(0)
+  stopReason     String?     // 95_confidence | max_questions | time_limit | se_reached | user_end | etc.
+
+  // Pause state
   isPaused       Boolean     @default(false)
   pausedAt       DateTime?
+
   startedAt      DateTime    @default(now())
   endedAt        DateTime?
 
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers UserAnswer[]
+
+  @@index([userId, mode])
+  @@index([userId, endedAt])
 }
 
 enum SessionMode {
@@ -197,16 +251,20 @@ model UserAnswer {
   sessionId      String
   userId         String
   questionId     String
-  selectedAnswer String?
+  selectedAnswer String?     // For SBA: "A"; For SATA: "B,C,E"
   isCorrect      Boolean?
   timeSpentSec   Int?
   thetaBefore    Float?
   thetaAfter     Float?
+  seAfter        Float?
   answeredAt     DateTime    @default(now())
 
   session  UserSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   question Question    @relation(fields: [questionId], references: [id])
+
+  @@index([sessionId, answeredAt])
+  @@index([userId, answeredAt])
 }
 
 model Bookmark {
@@ -305,6 +363,22 @@ model DailyChallenge {
   totalAttempts Int      @default(0)
   correctCount  Int      @default(0)
   createdAt     DateTime @default(now())
+
+  attempts      DailyChallengeAttempt[]
+}
+
+model DailyChallengeAttempt {
+  id             String   @id @default(uuid())
+  challengeId    String
+  userId         String
+  selectedAnswer String
+  isCorrect      Boolean
+  createdAt      DateTime @default(now())
+
+  challenge DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@index([userId])
 }
 
 // ===== 回報與回饋 =====

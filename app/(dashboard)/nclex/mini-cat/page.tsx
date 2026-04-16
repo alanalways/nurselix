@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Target, CalendarDays } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import ExamShell from "@/components/nclex/ExamShell";
+import SessionStarter from "@/components/nclex/SessionStarter";
 
 export default function MiniCatPage() {
   const [started, setStarted] = useState(false);
@@ -14,12 +14,9 @@ export default function MiniCatPage() {
 
   if (started) {
     return (
-      <ExamShell
+      <SessionStarter
         mode="MINI_CAT"
         title="Mini CAT 體驗"
-        totalQuestions={15}
-        showTheta={false}
-        showExplanationAfterAnswer={false}
       />
     );
   }

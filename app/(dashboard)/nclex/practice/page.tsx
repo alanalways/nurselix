@@ -1,36 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import ExamShell from "@/components/nclex/ExamShell";
+import SessionStarter from "@/components/nclex/SessionStarter";
 
-const domains = [
-  "全部 Domain",
-  "Management of Care",
-  "Safety & Infection Control",
-  "Health Promotion & Maintenance",
-  "Psychosocial Integrity",
-  "Basic Care & Comfort",
-  "Pharmacological & Parenteral",
-  "Reduction of Risk Potential",
-  "Physiological Adaptation",
+const DOMAIN_OPTIONS: { key: string; label: string }[] = [
+  { key: "__ALL__", label: "全部 Domain" },
+  { key: "Management of Care", label: "Management of Care" },
+  { key: "Safety & Infection Control", label: "Safety & Infection Control" },
+  { key: "Health Promotion & Maintenance", label: "Health Promotion & Maintenance" },
+  { key: "Psychosocial Integrity", label: "Psychosocial Integrity" },
+  { key: "Basic Care & Comfort", label: "Basic Care & Comfort" },
+  { key: "Pharmacological & Parenteral", label: "Pharmacological & Parenteral" },
+  { key: "Reduction of Risk Potential", label: "Reduction of Risk Potential" },
+  { key: "Physiological Adaptation", label: "Physiological Adaptation" },
 ];
 
 export default function PracticePage() {
   const [started, setStarted] = useState(false);
-  const [selectedDomain, setSelectedDomain] = useState("全部 Domain");
+  const [selectedDomain, setSelectedDomain] = useState("__ALL__");
   const [count, setCount] = useState(10);
-  const [difficulty, setDifficulty] = useState<string[]>([]);
+  const [difficulty, setDifficulty] = useState<("EASY" | "MEDIUM" | "HARD")[]>([]);
 
   if (started) {
     return (
-      <ExamShell
+      <SessionStarter
         mode="PRACTICE"
         title="練習模式"
-        totalQuestions={count}
+        targetCount={count}
+        domainFilter={selectedDomain === "__ALL__" ? undefined : [selectedDomain]}
+        difficultyFilter={difficulty.length > 0 ? difficulty : undefined}
         showExplanationAfterAnswer
       />
     );
@@ -47,27 +48,25 @@ export default function PracticePage() {
         <p className="text-[var(--text-secondary)] mt-1">答題後立即顯示解析，快速累積答題技巧</p>
       </div>
 
-      {/* Domain Selection */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-3">
         <h2 className="font-semibold text-[var(--text-primary)]">選擇 Domain</h2>
         <div className="flex flex-wrap gap-2">
-          {domains.map((d) => (
+          {DOMAIN_OPTIONS.map((d) => (
             <button
-              key={d}
-              onClick={() => setSelectedDomain(d)}
+              key={d.key}
+              onClick={() => setSelectedDomain(d.key)}
               className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                selectedDomain === d
+                selectedDomain === d.key
                   ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]"
                   : "border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--gold)]"
               }`}
             >
-              {d}
+              {d.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Question Count */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-3">
         <h2 className="font-semibold text-[var(--text-primary)]">題數設定</h2>
         <div className="flex gap-2">
@@ -87,14 +86,13 @@ export default function PracticePage() {
         </div>
       </div>
 
-      {/* Difficulty */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-3">
         <h2 className="font-semibold text-[var(--text-primary)]">難易度</h2>
         <div className="flex gap-2">
           {[
-            { key: "EASY", label: "Easy", variant: "success" as const },
-            { key: "MEDIUM", label: "Medium", variant: "gold" as const },
-            { key: "HARD", label: "Hard", variant: "error" as const },
+            { key: "EASY" as const, label: "Easy", variant: "success" as const },
+            { key: "MEDIUM" as const, label: "Medium", variant: "gold" as const },
+            { key: "HARD" as const, label: "Hard", variant: "error" as const },
           ].map((d) => (
             <button
               key={d.key}

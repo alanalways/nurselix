@@ -36,26 +36,56 @@ export interface Question {
   module: Module;
   questionType: QuestionType;
   stem: string;
+  stemZh?: string | null;
+  scenarioEn?: string | null;
+  scenarioZh?: string | null;
   optionA: string;
   optionB: string;
   optionC: string;
   optionD: string;
+  optionE?: string | null;
+  optionF?: string | null;
   correctAnswer: string;
+  correctAnswers?: string[];
   explanationZh: string;
-  explanationEn?: string;
-  usTwDifference?: string;
-  domain?: string;
-  subDomain?: string;
+  explanationEn?: string | null;
+  usTwDifference?: string | null;
+  optionRationales?: Record<string, { en?: string; zh?: string }> | null;
+  domain?: string | null;
+  subDomain?: string | null;
   tags: string[];
-  irtA?: number;
-  irtB?: number;
-  irtC?: number;
+  cjmmStep?: string | null;
+  bloomsLevel?: string | null;
+  caseStudySetId?: string | null;
+  caseStudyPosition?: number | null;
+  irtA?: number | null;
+  irtB?: number | null;
+  irtC?: number | null;
   difficulty: Difficulty;
   attemptCount: number;
   correctCount: number;
   errorRate: number;
   status: QuestionStatus;
   createdAt: string;
+}
+
+/** Safe version delivered to the client during an active exam (no answer leak). */
+export interface QuestionPayload {
+  id: string;
+  questionType: QuestionType;
+  stem: string;
+  stemZh?: string | null;
+  scenarioEn?: string | null;
+  scenarioZh?: string | null;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  optionE?: string | null;
+  optionF?: string | null;
+  domain?: string | null;
+  difficulty: Difficulty;
+  tags: string[];
 }
 
 // ===== Session =====

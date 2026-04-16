@@ -4,21 +4,17 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, Clock } from "lucide-react";
 import Button from "@/components/ui/Button";
-import ExamShell from "@/components/nclex/ExamShell";
+import SessionStarter from "@/components/nclex/SessionStarter";
 
 export default function MockPage() {
   const [started, setStarted] = useState(false);
 
   if (started) {
     return (
-      <ExamShell
+      <SessionStarter
         mode="MOCK"
         title="Mock 考試"
-        totalQuestions={130}
         showCountdown
-        countdownSec={18000}
-        showTheta={false}
-        showExplanationAfterAnswer={false}
       />
     );
   }
