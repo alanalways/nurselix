@@ -2,23 +2,20 @@
 
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
 
-const data = [
-  { domain: "管理照護", value: 72 },
-  { domain: "安全感控", value: 65 },
-  { domain: "健康促進", value: 80 },
-  { domain: "心理完整", value: 58 },
-  { domain: "基本照護", value: 75 },
-  { domain: "藥理用藥", value: 45 },
-  { domain: "降低風險", value: 62 },
-  { domain: "生理調適", value: 70 },
+const domains = [
+  "管理照護", "安全感控", "健康促進", "心理完整",
+  "基本照護", "藥理用藥", "降低風險", "生理調適",
 ];
+
+const emptyData = domains.map((domain) => ({ domain, value: 0 }));
 
 export default function DomainRadarChart() {
   return (
     <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
-      <h3 className="font-semibold text-[var(--text-primary)] mb-4">八大 Domain 能力圖</h3>
+      <h3 className="font-semibold text-[var(--text-primary)] mb-1">八大 Domain 能力圖</h3>
+      <p className="text-xs text-[var(--text-muted)] mb-4">答題後此圖將自動更新</p>
       <ResponsiveContainer width="100%" height={280}>
-        <RadarChart data={data}>
+        <RadarChart data={emptyData}>
           <PolarGrid stroke="var(--border-default)" />
           <PolarAngleAxis
             dataKey="domain"

@@ -2,21 +2,18 @@
 
 import { cn } from "@/lib/utils/cn";
 
-function generateMockData() {
+function generateEmptyData() {
   const data: { date: string; count: number }[] = [];
   const today = new Date();
   for (let i = 89; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    data.push({
-      date: d.toISOString().split("T")[0],
-      count: Math.random() > 0.3 ? Math.floor(Math.random() * 25) : 0,
-    });
+    data.push({ date: d.toISOString().split("T")[0], count: 0 });
   }
   return data;
 }
 
-const mockData = generateMockData();
+const emptyData = generateEmptyData();
 
 function getColor(count: number) {
   if (count === 0) return "bg-[var(--bg-elevated)]";
@@ -27,8 +24,8 @@ function getColor(count: number) {
 
 export default function HeatMap() {
   const weeks: { date: string; count: number }[][] = [];
-  for (let i = 0; i < mockData.length; i += 7) {
-    weeks.push(mockData.slice(i, i + 7));
+  for (let i = 0; i < emptyData.length; i += 7) {
+    weeks.push(emptyData.slice(i, i + 7));
   }
 
   return (
@@ -41,7 +38,7 @@ export default function HeatMap() {
               <div
                 key={day.date}
                 title={`${day.date}: ${day.count} 題`}
-                className={cn("w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-125", getColor(day.count))}
+                className={cn("w-3 h-3 rounded-sm", getColor(day.count))}
               />
             ))}
           </div>

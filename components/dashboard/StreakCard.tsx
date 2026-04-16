@@ -4,16 +4,16 @@ import { motion } from "framer-motion";
 import { Flame } from "lucide-react";
 
 const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
-const mockDays = [true, true, true, true, true, false, false]; // last 7 days
+const emptyDays = [false, false, false, false, false, false, false];
 
 export default function StreakCard() {
   return (
     <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-[var(--text-primary)]">連續學習</h3>
-        <div className="flex items-center gap-1 text-[var(--warning)]">
+        <div className="flex items-center gap-1 text-[var(--text-muted)]">
           <Flame size={18} />
-          <span className="text-lg font-bold font-mono">7</span>
+          <span className="text-lg font-bold font-mono">0</span>
           <span className="text-sm">天</span>
         </div>
       </div>
@@ -24,13 +24,9 @@ export default function StreakCard() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: i * 0.05 }}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
-                mockDays[i]
-                  ? "bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] text-[#080E1A]"
-                  : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
-              }`}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-[var(--bg-elevated)] text-[var(--text-muted)]"
             >
-              {mockDays[i] ? "✓" : ""}
+              {emptyDays[i] ? "✓" : ""}
             </motion.div>
             <span className="text-[10px] text-[var(--text-muted)]">{day}</span>
           </div>

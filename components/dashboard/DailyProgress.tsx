@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 
 export default function DailyProgress() {
-  const done = 7;
+  const done = 0;
   const goal = 10;
-  const pct = (done / goal) * 100;
+  const pct = goal > 0 ? (done / goal) * 100 : 0;
   const radius = 40;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (pct / 100) * circumference;
@@ -46,7 +46,7 @@ export default function DailyProgress() {
         <p className="text-sm text-[var(--text-secondary)]">
           今天完成了 <span className="text-[var(--gold)] font-semibold">{done}</span> / {goal} 題目標
         </p>
-        <p className="text-xs text-[var(--text-muted)] mt-1">再答 {goal - done} 題達成今日目標！</p>
+        <p className="text-xs text-[var(--text-muted)] mt-1">開始答題達成今日目標！</p>
       </div>
     </div>
   );
