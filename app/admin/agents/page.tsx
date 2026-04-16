@@ -1,26 +1,67 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, CheckCircle, Clock, AlertCircle, Activity } from "lucide-react";
+import { Bot, CheckCircle, Clock, AlertCircle, Loader2, Copy } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 
-const tasks = [
-  { name: "Health Ping", schedule: "每 5 分鐘", lastRun: "3 分鐘前", status: "success", nextRun: "2 分鐘後" },
-  { name: "PostgreSQL 備份 → MinIO", schedule: "每天 03:00", lastRun: "昨晚 03:00", status: "success", nextRun: "今晚 03:00" },
-  { name: "資料庫清理", schedule: "每天 04:00", lastRun: "昨晚 04:00", status: "success", nextRun: "今晚 04:00" },
-  { name: "學習週報生成", schedule: "每週一 08:00", lastRun: "上週一 08:00", status: "success", nextRun: "下週一 08:00" },
-  { name: "AI 新題生成", schedule: "每月 1 日", lastRun: "2026/01/01", status: "success", nextRun: "2026/02/01" },
-  { name: "每日計數重置 (Redis)", schedule: "每天 00:00", lastRun: "今天 00:00", status: "success", nextRun: "明天 00:00" },
-  { name: "考前提醒 email", schedule: "每天 08:00", lastRun: "今天 08:00", status: "success", nextRun: "明天 08:00" },
-];
-
-const statusMap = {
-  success: { icon: CheckCircle, color: "text-[var(--success)]", badge: "success" as const },
-  running: { icon: Activity, color: "text-[var(--blue)]", badge: "blue" as const },
-  error: { icon: AlertCircle, color: "text-[var(--error)]", badge: "error" as const },
-};
+interface AgentsData {
+  timestamp: string;
+  services: {
+    database: { healthy: boolean };
+    redis: { healthy: boolean };
+    minio: { healthy: boolean | null; note?: string };
+  };
+  hermes: {
+    lastBackupAt: string | null;
+    cronTasks: Array<{ id: string; schedule: string; description: string }>;
+  };
+}
 
 export default function AdminAgentsPage() {
+  const [data, setData] = useState<AgentsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/agents", { cache: "no-store" });
+        if (res.ok) setData(await res.json());
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-6 flex flex-col items-center gap-3">
+        <Loader2 className="animate-spin text-[var(--gold)]" />
+      </div>
+    );
+  }
+
+  if (!data) return <div className="p-6 text-[var(--error)]">載入失敗</div>;
+
+  const services = [
+    { name: "PostgreSQL", healthy: data.services.database.healthy },
+    { name: "Redis", healthy: data.services.redis.healthy },
+    { name: "MinIO", healthy: data.services.minio.healthy },
+  ];
+
+  const allHealthy = services.every((s) => s.healthy !== false);
+
+  const cronText = data.hermes.cronTasks
+    .map((t) => `${t.schedule} - ${t.description}`)
+    .join("\n");
+
+  const copy = () => {
+    navigator.clipboard.writeText(cronText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -29,10 +70,11 @@ export default function AdminAgentsPage() {
     >
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Hermes 任務狀態</h1>
-        <Badge variant="success">全部正常</Badge>
+        <Badge variant={allHealthy ? "success" : "error"}>
+          {allHealthy ? "全部正常" : "有異常"}
+        </Badge>
       </div>
 
-      {/* Hermes Status Card */}
       <div className="bg-gradient-to-r from-[var(--blue-dim)] to-[var(--gold-dim)] border border-[var(--blue)] rounded-xl p-5">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-[var(--blue-dim)] border border-[var(--blue)] flex items-center justify-center">
@@ -40,68 +82,81 @@ export default function AdminAgentsPage() {
           </div>
           <div>
             <h2 className="font-semibold text-[var(--text-primary)]">Hermes AI Agent</h2>
-            <p className="text-sm text-[var(--text-secondary)]">自動化維護機器人 · 7 個排程任務運行中</p>
+            <p className="text-sm text-[var(--text-secondary)]">
+              自動化維護機器人 · {data.hermes.cronTasks.length} 個排程任務
+            </p>
+            {data.hermes.lastBackupAt && (
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                最近備份：{new Date(data.hermes.lastBackupAt).toLocaleString("zh-TW")}
+              </p>
+            )}
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[var(--success)] animate-pulse" />
-            <span className="text-sm text-[var(--success)] font-medium">Online</span>
+            <div className={`w-2 h-2 rounded-full animate-pulse ${allHealthy ? "bg-[var(--success)]" : "bg-[var(--error)]"}`} />
+            <span className={`text-sm font-medium ${allHealthy ? "text-[var(--success)]" : "text-[var(--error)]"}`}>
+              {allHealthy ? "Online" : "Degraded"}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Task List */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {services.map((s) => (
+          <div key={s.name} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-[var(--text-primary)]">{s.name}</span>
+              {s.healthy === null
+                ? <AlertCircle size={18} className="text-[var(--text-muted)]" />
+                : s.healthy
+                  ? <CheckCircle size={18} className="text-[var(--success)]" />
+                  : <AlertCircle size={18} className="text-[var(--error)]" />}
+            </div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">
+              {s.healthy === null ? "未檢查" : s.healthy ? "連線正常" : "連線失敗"}
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between">
+          <h3 className="font-semibold text-[var(--text-primary)]">排程任務清單</h3>
+          <button
+            onClick={copy}
+            className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--gold)]"
+          >
+            <Copy size={12} /> {copied ? "已複製" : "複製 crontab"}
+          </button>
+        </div>
         <table className="w-full text-sm">
           <thead className="border-b border-[var(--border-subtle)]">
             <tr>
-              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium">任務名稱</th>
-              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium hidden md:table-cell">排程</th>
-              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium hidden lg:table-cell">上次執行</th>
-              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium hidden lg:table-cell">下次執行</th>
-              <th className="text-center py-3 px-4 text-[var(--text-muted)] font-medium">狀態</th>
+              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium">任務 ID</th>
+              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium">Cron</th>
+              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium">描述</th>
             </tr>
           </thead>
           <tbody>
-            {tasks.map((t) => {
-              const s = statusMap[t.status as keyof typeof statusMap];
-              return (
-                <tr key={t.name} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <s.icon size={14} className={s.color} />
-                      <span className="text-[var(--text-primary)] font-medium">{t.name}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 hidden md:table-cell text-[var(--text-muted)] text-xs">{t.schedule}</td>
-                  <td className="py-3 px-4 hidden lg:table-cell text-[var(--text-secondary)] text-xs">{t.lastRun}</td>
-                  <td className="py-3 px-4 hidden lg:table-cell">
-                    <div className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
-                      <Clock size={11} />{t.nextRun}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <Badge variant={s.badge}>
-                      {t.status === "success" ? "成功" : t.status === "running" ? "執行中" : "錯誤"}
-                    </Badge>
-                  </td>
-                </tr>
-              );
-            })}
+            {data.hermes.cronTasks.map((t) => (
+              <tr key={t.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors">
+                <td className="py-3 px-4 font-mono text-xs text-[var(--blue)]">{t.id}</td>
+                <td className="py-3 px-4 font-mono text-xs text-[var(--gold)]">{t.schedule}</td>
+                <td className="py-3 px-4 text-[var(--text-secondary)]">{t.description}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* Log Preview */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
-        <h3 className="font-semibold text-[var(--text-primary)] mb-3">最近執行日誌</h3>
-        <div className="font-mono text-xs text-[var(--success)] bg-[var(--bg-base)] rounded-lg p-4 space-y-1 max-h-48 overflow-y-auto">
-          <p>[2026-04-15 08:00:02] ✓ Health ping: all services healthy (4ms, 1ms, 12ms)</p>
-          <p>[2026-04-15 08:00:00] ✓ Exam reminder emails sent: 23 users</p>
-          <p>[2026-04-15 04:00:03] ✓ DB cleanup: 142 expired tokens removed</p>
-          <p>[2026-04-15 03:00:11] ✓ PostgreSQL backup completed → MinIO (2.3GB)</p>
-          <p>[2026-04-15 00:00:01] ✓ Daily question counts reset in Redis</p>
-          <p>[2026-04-14 08:00:02] ✓ Health ping: all services healthy</p>
-        </div>
+        <h3 className="font-semibold text-[var(--text-primary)] mb-3">接入 Hermes</h3>
+        <p className="text-sm text-[var(--text-secondary)]">
+          請參考專案根目錄的 <code className="font-mono text-[var(--gold)]">HERMES_SETUP.md</code>，
+          裡面包含完整的 Hermes 安裝指令、Telegram 通知設定，以及上面所有 cron 任務的完整指令。
+        </p>
+        <p className="text-xs text-[var(--text-muted)] mt-2">
+          上次檢查：<Clock size={11} className="inline" /> {new Date(data.timestamp).toLocaleString("zh-TW")}
+        </p>
       </div>
     </motion.div>
   );

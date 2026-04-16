@@ -1,21 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Flag, CheckCircle, Clock } from "lucide-react";
+import { Flag, Loader2 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 
-const mockReports = [
-  { id: "r1", questionId: "Q-102", stem: "A client receiving warfarin therapy...", reason: "答案有誤", detail: "選項 B 應該是正確答案，原題目的解析有誤", reporter: "user@example.com", status: "pending", createdAt: "2026/01/14" },
-  { id: "r2", questionId: "Q-089", stem: "Priority assessment for ARDS...", reason: "解析不清楚", detail: "解析沒有說明為什麼排除選項 C", reporter: "nurse@example.com", status: "pending", createdAt: "2026/01/13" },
-  { id: "r3", questionId: "Q-234", stem: "Furosemide dosing calculation...", reason: "題目有錯誤", detail: "劑量數字有誤，應為 40mg 而非 80mg", reporter: "student@example.com", status: "reviewed", createdAt: "2026/01/10" },
-];
+interface ReportRow {
+  id: string;
+  questionId: string;
+  reason: string;
+  detail: string | null;
+  status: "pending" | "reviewed" | "resolved";
+  createdAt: string;
+  user: { email: string; name: string | null } | null;
+  question: { id: string; stem: string; domain: string | null; difficulty: string } | null;
+}
 
-const statusMap = { pending: { label: "待審核", variant: "warning" as const }, reviewed: { label: "已審核", variant: "blue" as const }, resolved: { label: "已解決", variant: "success" as const } };
+const statusMap = {
+  pending: { label: "待審核", variant: "warning" as const },
+  reviewed: { label: "已審核", variant: "blue" as const },
+  resolved: { label: "已解決", variant: "success" as const },
+};
 
 export default function AdminReportsPage() {
-  const [filter, setFilter] = useState("pending");
+  const [filter, setFilter] = useState<"pending" | "reviewed" | "resolved" | "全部">("pending");
+  const [rows, setRows] = useState<ReportRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filter !== "全部") params.set("status", filter);
+    try {
+      const res = await fetch(`/api/admin/reports?${params}`, { cache: "no-store" });
+      if (res.ok) {
+        const body = await res.json();
+        setRows(body.rows);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateStatus = async (id: string, status: "reviewed" | "resolved") => {
+    setActing(id);
+    try {
+      await fetch(`/api/admin/reports/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      await load();
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const pendingCount = rows.filter((r) => r.status === "pending").length;
 
   return (
     <motion.div
@@ -25,15 +70,16 @@ export default function AdminReportsPage() {
     >
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">題目回報管理</h1>
-        <div className="flex items-center gap-1 bg-[rgba(243,156,18,0.15)] border border-[var(--warning)] rounded-lg px-3 py-1.5">
-          <Flag size={14} className="text-[var(--warning)]" />
-          <span className="text-sm text-[var(--warning)] font-semibold">{mockReports.filter(r => r.status === "pending").length} 待處理</span>
-        </div>
+        {filter === "pending" && (
+          <div className="flex items-center gap-1 bg-[rgba(243,156,18,0.15)] border border-[var(--warning)] rounded-lg px-3 py-1.5">
+            <Flag size={14} className="text-[var(--warning)]" />
+            <span className="text-sm text-[var(--warning)] font-semibold">{pendingCount} 待處理</span>
+          </div>
+        )}
       </div>
 
-      {/* Filter tabs */}
       <div className="flex gap-2">
-        {["pending", "reviewed", "resolved", "全部"].map((s) => (
+        {(["pending", "reviewed", "resolved", "全部"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
@@ -46,37 +92,90 @@ export default function AdminReportsPage() {
         ))}
       </div>
 
-      <div className="space-y-3">
-        {mockReports.filter(r => filter === "全部" || r.status === filter).map((r) => (
-          <div key={r.id} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-mono text-[var(--text-muted)]">{r.questionId}</span>
-                  <Badge variant={statusMap[r.status as keyof typeof statusMap].variant}>
-                    {statusMap[r.status as keyof typeof statusMap].label}
-                  </Badge>
+      {loading ? (
+        <div className="py-12 flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-[var(--gold)]" />
+          <p className="text-sm text-[var(--text-secondary)]">載入回報...</p>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="py-12 text-center text-[var(--text-muted)] text-sm">
+          目前沒有{filter === "全部" ? "" : statusMap[filter].label}的回報
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((r) => (
+            <div key={r.id} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-mono text-[var(--text-muted)]">
+                      {r.question?.id.substring(0, 8) ?? "—"}
+                    </span>
+                    <Badge variant={statusMap[r.status].variant}>{statusMap[r.status].label}</Badge>
+                    {r.question?.domain && (
+                      <span className="text-xs text-[var(--text-secondary)]">{r.question.domain}</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-[var(--text-primary)] line-clamp-1">
+                    {r.question?.stem ?? "（題目已刪除）"}
+                  </p>
                 </div>
-                <p className="text-sm text-[var(--text-primary)] line-clamp-1">{r.stem}</p>
+                <span className="text-xs text-[var(--text-muted)] flex-shrink-0 ml-3">
+                  {new Date(r.createdAt).toLocaleString("zh-TW")}
+                </span>
               </div>
-              <span className="text-xs text-[var(--text-muted)] flex-shrink-0 ml-3">{r.createdAt}</span>
+              <div className="bg-[var(--bg-elevated)] rounded-lg p-3 mb-3">
+                <div className="text-xs text-[var(--gold)] mb-1">{r.reason}</div>
+                {r.detail && (
+                  <div className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{r.detail}</div>
+                )}
+              </div>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs text-[var(--text-muted)]">
+                  回報者：{r.user?.email ?? "（匿名）"}
+                </span>
+                {r.status === "pending" && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => r.question && window.open(`/admin/questions/${r.question.id}`, "_blank")}
+                    >
+                      查看題目
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updateStatus(r.id, "reviewed")}
+                      disabled={acting === r.id}
+                    >
+                      標記已審核
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="gold"
+                      onClick={() => updateStatus(r.id, "resolved")}
+                      disabled={acting === r.id}
+                    >
+                      標記已解決
+                    </Button>
+                  </div>
+                )}
+                {r.status === "reviewed" && (
+                  <Button
+                    size="sm"
+                    variant="gold"
+                    onClick={() => updateStatus(r.id, "resolved")}
+                    disabled={acting === r.id}
+                  >
+                    標記已解決
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="bg-[var(--bg-elevated)] rounded-lg p-3 mb-3">
-              <div className="text-xs text-[var(--gold)] mb-1">{r.reason}</div>
-              <div className="text-sm text-[var(--text-secondary)]">{r.detail}</div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[var(--text-muted)]">回報者：{r.reporter}</span>
-              {r.status === "pending" && (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost">查看題目</Button>
-                  <Button size="sm" variant="outline">標記已審核</Button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -1,35 +1,92 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle } from "lucide-react";
+import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Badge from "@/components/ui/Badge";
 
-const weeklyDAU = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() - 6 + i);
-  return {
-    date: d.toLocaleDateString("zh-TW", { weekday: "short" }),
-    dau: Math.floor(Math.random() * 50) + 20,
-    questions: Math.floor(Math.random() * 500) + 200,
+interface OverviewData {
+  users: { total: number; newThisWeek: number };
+  questions: { total: number; approved: number; draft: number; archived: number };
+  today: { dau: number; answers: number; answersYesterday: number };
+  last7Days: { date: string; dau: number; questions: number }[];
+}
+
+interface ServiceStatus {
+  services: {
+    database: { healthy: boolean };
+    redis: { healthy: boolean };
+    minio: { healthy: boolean | null };
   };
-});
-
-const serviceStatus = [
-  { name: "PostgreSQL", status: "healthy", latency: "4ms" },
-  { name: "Redis", status: "healthy", latency: "1ms" },
-  { name: "MinIO", status: "healthy", latency: "12ms" },
-  { name: "API Server", status: "healthy", latency: "45ms" },
-];
-
-const recentActivity = [
-  { action: "新用戶註冊", detail: "user@example.com", time: "2 分鐘前" },
-  { action: "新題目送審", detail: "Pharmacological #245", time: "15 分鐘前" },
-  { action: "題目回報", detail: "Question #102 - 解析有誤", time: "1 小時前" },
-  { action: "用戶回饋", detail: "⭐⭐⭐⭐⭐ 非常好用！", time: "2 小時前" },
-];
+}
 
 export default function AdminDashboard() {
+  const [data, setData] = useState<OverviewData | null>(null);
+  const [health, setHealth] = useState<ServiceStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [overviewRes, healthRes] = await Promise.all([
+          fetch("/api/admin/overview", { cache: "no-store" }),
+          fetch("/api/admin/agents", { cache: "no-store" }),
+        ]);
+        if (!overviewRes.ok) {
+          setError(`載入失敗 (${overviewRes.status})`);
+          return;
+        }
+        const overview = await overviewRes.json();
+        const healthJson = healthRes.ok ? await healthRes.json() : null;
+        if (alive) {
+          setData(overview);
+          setHealth(healthJson);
+        }
+      } catch (err) {
+        if (alive) setError(err instanceof Error ? err.message : "網路錯誤");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-6 flex flex-col items-center gap-3">
+        <Loader2 className="animate-spin text-[var(--gold)]" />
+        <p className="text-sm text-[var(--text-secondary)]">載入管理總覽...</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="p-6">
+        <div className="bg-[rgba(231,76,60,0.10)] border border-[var(--error)] rounded-xl p-5 flex items-center gap-3">
+          <AlertCircle className="text-[var(--error)]" />
+          <p className="text-[var(--error)]">{error ?? "無資料"}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const answerTrendPct = data.today.answersYesterday > 0
+    ? Math.round(((data.today.answers - data.today.answersYesterday) / data.today.answersYesterday) * 100)
+    : null;
+
+  const dbOk = health?.services.database.healthy ?? false;
+  const redisOk = health?.services.redis.healthy ?? false;
+
+  const chartData = data.last7Days.map((d) => ({
+    date: new Date(d.date).toLocaleDateString("zh-TW", { weekday: "short" }),
+    dau: d.dau,
+    questions: d.questions,
+  }));
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -38,13 +95,28 @@ export default function AdminDashboard() {
     >
       <h1 className="text-2xl font-bold text-[var(--text-primary)]">管理總覽</h1>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { icon: Users, label: "總用戶數", value: "1,247", sub: "+23 本週", color: "text-[var(--blue)]", bg: "bg-[var(--blue-dim)]" },
-          { icon: BookOpen, label: "題庫總數", value: "847", sub: "23 待審核", color: "text-[var(--gold)]", bg: "bg-[var(--gold-dim)]" },
-          { icon: Activity, label: "今日 DAU", value: "68", sub: "↑12% vs 昨日", color: "text-[var(--success)]", bg: "bg-[rgba(46,204,113,0.15)]" },
-          { icon: TrendingUp, label: "今日答題", value: "2,341", sub: "平均 34.4 題/人", color: "text-[var(--warning)]", bg: "bg-[rgba(243,156,18,0.15)]" },
+          {
+            icon: Users, label: "總用戶數", value: data.users.total.toLocaleString(),
+            sub: `+${data.users.newThisWeek} 本週`,
+            color: "text-[var(--blue)]", bg: "bg-[var(--blue-dim)]",
+          },
+          {
+            icon: BookOpen, label: "題庫總數", value: data.questions.total.toLocaleString(),
+            sub: `${data.questions.draft} 待審核 · ${data.questions.approved} 已核`,
+            color: "text-[var(--gold)]", bg: "bg-[var(--gold-dim)]",
+          },
+          {
+            icon: Activity, label: "今日 DAU", value: data.today.dau.toLocaleString(),
+            sub: answerTrendPct !== null ? `${answerTrendPct >= 0 ? "↑" : "↓"}${Math.abs(answerTrendPct)}% vs 昨日` : "—",
+            color: "text-[var(--success)]", bg: "bg-[rgba(46,204,113,0.15)]",
+          },
+          {
+            icon: TrendingUp, label: "今日答題", value: data.today.answers.toLocaleString(),
+            sub: data.today.dau > 0 ? `平均 ${(data.today.answers / data.today.dau).toFixed(1)} 題/人` : "—",
+            color: "text-[var(--warning)]", bg: "bg-[rgba(243,156,18,0.15)]",
+          },
         ].map((s) => (
           <div key={s.label} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-4">
             <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
@@ -58,11 +130,10 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* DAU Chart */}
         <div className="lg:col-span-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
           <h3 className="font-semibold text-[var(--text-primary)] mb-4">近 7 天 DAU / 答題數</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={weeklyDAU}>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
               <XAxis dataKey="date" tick={{ fill: "var(--text-muted)", fontSize: 11 }} />
               <YAxis yAxisId="left" tick={{ fill: "var(--text-muted)", fontSize: 11 }} />
@@ -71,47 +142,61 @@ export default function AdminDashboard() {
                 contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 8 }}
                 labelStyle={{ color: "var(--text-primary)" }}
               />
-              <Line yAxisId="left" type="monotone" dataKey="dau" stroke="var(--gold)" strokeWidth={2} dot={false} name="DAU" />
-              <Line yAxisId="right" type="monotone" dataKey="questions" stroke="var(--blue)" strokeWidth={2} dot={false} name="答題數" />
+              <Line yAxisId="left" type="monotone" dataKey="dau" stroke="var(--gold)" strokeWidth={2} dot={{ r: 3 }} name="DAU" />
+              <Line yAxisId="right" type="monotone" dataKey="questions" stroke="var(--blue)" strokeWidth={2} dot={{ r: 3 }} name="答題數" />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Service Health */}
         <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
           <h3 className="font-semibold text-[var(--text-primary)] mb-4">服務狀態</h3>
           <div className="space-y-3">
-            {serviceStatus.map((s) => (
+            {[
+              { name: "PostgreSQL", ok: dbOk },
+              { name: "Redis", ok: redisOk },
+              { name: "API Server", ok: true },
+              { name: "MinIO", ok: health?.services.minio.healthy },
+            ].map((s) => (
               <div key={s.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <CheckCircle size={14} className="text-[var(--success)]" />
+                  {s.ok === null
+                    ? <AlertCircle size={14} className="text-[var(--text-muted)]" />
+                    : s.ok
+                      ? <CheckCircle size={14} className="text-[var(--success)]" />
+                      : <AlertCircle size={14} className="text-[var(--error)]" />}
                   <span className="text-sm text-[var(--text-secondary)]">{s.name}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="success" className="text-[10px]">正常</Badge>
-                  <span className="text-xs font-mono text-[var(--text-muted)]">{s.latency}</span>
-                </div>
+                <Badge variant={s.ok === null ? "muted" : s.ok ? "success" : "error"} className="text-[10px]">
+                  {s.ok === null ? "N/A" : s.ok ? "正常" : "異常"}
+                </Badge>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Recent Activity */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
-        <h3 className="font-semibold text-[var(--text-primary)] mb-4">最近活動</h3>
-        <div className="space-y-3">
-          {recentActivity.map((a, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-[var(--border-subtle)] last:border-0">
-              <div>
-                <span className="text-sm font-medium text-[var(--text-primary)]">{a.action}</span>
-                <span className="text-sm text-[var(--text-muted)] ml-2">{a.detail}</span>
-              </div>
-              <span className="text-xs text-[var(--text-muted)] flex-shrink-0">{a.time}</span>
-            </div>
-          ))}
+        <h3 className="font-semibold text-[var(--text-primary)] mb-4">題庫狀態</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <StatusCard label="已審核（APPROVED）" value={data.questions.approved} color="success" />
+          <StatusCard label="草稿（DRAFT）" value={data.questions.draft} color="warning" />
+          <StatusCard label="封存（ARCHIVED）" value={data.questions.archived} color="muted" />
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function StatusCard({ label, value, color }: { label: string; value: number; color: "success" | "warning" | "muted" }) {
+  const colorMap = {
+    success: "text-[var(--success)]",
+    warning: "text-[var(--warning)]",
+    muted: "text-[var(--text-muted)]",
+  };
+  return (
+    <div className="bg-[var(--bg-elevated)] rounded-lg p-4 text-center">
+      <div className={`text-2xl font-bold font-mono ${colorMap[color]}`}>{value.toLocaleString()}</div>
+      <div className="text-xs text-[var(--text-muted)] mt-1">{label}</div>
+    </div>
   );
 }

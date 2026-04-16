@@ -1,16 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ClipboardList, X } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { useState } from "react";
 
 export default function AssessmentPrompt() {
   const [dismissed, setDismissed] = useState(false);
+  const [hasAssessment, setHasAssessment] = useState<boolean | null>(null);
   const router = useRouter();
 
-  if (dismissed) return null;
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/stats", { cache: "no-store" });
+        if (!res.ok) return;
+        const body = await res.json();
+        setHasAssessment(body.assessmentTheta !== null);
+      } catch {
+        setHasAssessment(null);
+      }
+    })();
+  }, []);
+
+  // Don't show if user already completed an assessment
+  if (dismissed || hasAssessment === true) return null;
 
   return (
     <motion.div

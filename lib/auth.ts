@@ -7,6 +7,39 @@ import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/lib/auth.config";
 import type { Role, Plan } from "@/types";
 
+/**
+ * Admin emails — these users are automatically promoted to ADMIN + ELITE on
+ * first sign-in and every subsequent sign-in (self-healing if role is demoted).
+ */
+const ADMIN_EMAILS = new Set([
+  "cmshj30326@gmail.com",
+]);
+
+async function ensureAdminRole(email: string | null | undefined) {
+  if (!email) return null;
+  const normalized = email.toLowerCase();
+  if (!ADMIN_EMAILS.has(normalized)) return null;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: normalized },
+      select: { id: true, role: true, plan: true },
+    });
+    if (!user) return null;
+    if (user.role !== "ADMIN" || user.plan !== "ELITE") {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "ADMIN", plan: "ELITE" },
+      });
+      return { id: user.id, role: "ADMIN" as Role, plan: "ELITE" as Plan };
+    }
+    return { id: user.id, role: user.role as Role, plan: user.plan as Plan };
+  } catch (err) {
+    console.warn("[auth] ensureAdminRole failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   trustHost: true,
@@ -36,6 +69,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
         if (!isValid) return null;
 
+        await ensureAdminRole(user.email);
+
         return {
           id: user.id,
           email: user.email,
@@ -55,8 +90,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role ?? "STUDENT";
         token.plan = user.plan ?? "FREE";
       }
-      // OAuth sign-in: fetch fresh role/plan from DB (adapter created the user)
+      // OAuth sign-in: promote admin and fetch fresh role/plan from DB
       if (account && account.provider !== "credentials") {
+        await ensureAdminRole(token.email);
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email! },
           select: { id: true, role: true, plan: true },
@@ -80,13 +116,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   events: {
-    // Create default UserSettings for new OAuth users
+    // Create default UserSettings + promote admin for new OAuth users
     async createUser({ user }) {
-      if (user.id) {
-        await prisma.userSettings.upsert({
-          where: { userId: user.id },
-          update: {},
-          create: { userId: user.id },
+      if (!user.id) return;
+      await prisma.userSettings.upsert({
+        where: { userId: user.id },
+        update: {},
+        create: { userId: user.id },
+      });
+      if (user.email && ADMIN_EMAILS.has(user.email.toLowerCase())) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { role: "ADMIN", plan: "ELITE" },
         });
       }
     },

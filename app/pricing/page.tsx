@@ -109,6 +109,31 @@ export default function PricingPage() {
   const [billing, setBilling] = useState<Billing>("quarterly");
   const [betaEmail, setBetaEmail] = useState("");
   const [betaSubscribed, setBetaSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
+
+  const submitBeta = async () => {
+    if (!betaEmail || subscribing) return;
+    setSubscribing(true);
+    setSubscribeError(null);
+    try {
+      const res = await fetch("/api/beta-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: betaEmail }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setSubscribeError(body.error ?? "訂閱失敗");
+        return;
+      }
+      setBetaSubscribed(true);
+    } catch (err) {
+      setSubscribeError(err instanceof Error ? err.message : "網路錯誤");
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)]">
@@ -262,19 +287,24 @@ export default function PricingPage() {
           <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">搶先收到正式上線通知</h2>
           <p className="text-[var(--text-secondary)] mb-6">Beta 測試期間完全免費，正式上線時通知你</p>
           {!betaSubscribed ? (
-            <div className="flex gap-2 max-w-md mx-auto">
-              <Input
-                value={betaEmail}
-                onChange={(e) => setBetaEmail(e.target.value)}
-                type="email"
-                placeholder="your@email.com"
-                icon={<Mail size={16} />}
-                className="flex-1"
-              />
-              <Button disabled={!betaEmail} onClick={() => setBetaSubscribed(true)}>
-                訂閱
-              </Button>
-            </div>
+            <>
+              <div className="flex gap-2 max-w-md mx-auto">
+                <Input
+                  value={betaEmail}
+                  onChange={(e) => setBetaEmail(e.target.value)}
+                  type="email"
+                  placeholder="your@email.com"
+                  icon={<Mail size={16} />}
+                  className="flex-1"
+                />
+                <Button disabled={!betaEmail || subscribing} onClick={submitBeta}>
+                  {subscribing ? "訂閱中..." : "訂閱"}
+                </Button>
+              </div>
+              {subscribeError && (
+                <p className="text-sm text-[var(--error)] mt-3">{subscribeError}</p>
+              )}
+            </>
           ) : (
             <div className="bg-[var(--gold-dim)] border border-[var(--gold)] rounded-xl px-6 py-3 inline-block">
               <p className="text-[var(--gold)] font-semibold">✓ 已訂閱！感謝你的支持</p>

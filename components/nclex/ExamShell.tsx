@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Pause, ChevronRight, Bookmark, BookOpen, Loader2, AlertCircle, Lock } from "lucide-react";
+import { Pause, ChevronRight, BookOpen, Loader2, AlertCircle, Lock } from "lucide-react";
 import Button from "@/components/ui/Button";
 import ProgressBar from "./ProgressBar";
 import ElapsedTimer from "./ElapsedTimer";
@@ -14,6 +14,7 @@ import OptionButton from "./OptionButton";
 import ExplanationPanel from "./ExplanationPanel";
 import ReportButton from "./ReportButton";
 import QuestionNote from "./QuestionNote";
+import BookmarkButton from "./BookmarkButton";
 import Modal from "@/components/ui/Modal";
 import type { QuestionPayload, SessionMode } from "@/types";
 
@@ -442,10 +443,7 @@ export default function ExamShell({
                   <div className="flex items-center gap-4">
                     <ReportButton questionId={question.id} />
                     <QuestionNote questionId={question.id} />
-                    <button className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--gold)] transition-colors">
-                      <Bookmark size={12} />
-                      收藏
-                    </button>
+                    <BookmarkButton questionId={question.id} />
                   </div>
 
                   <div className="flex items-center gap-2">

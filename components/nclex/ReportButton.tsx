@@ -5,17 +5,43 @@ import { Flag } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 
-const reasons = ["答案有誤", "解析不清楚", "題目有錯誤", "選項不完整", "其他"];
+const REASONS = ["答案有誤", "解析不清楚", "題目有錯誤", "選項不完整", "其他"];
 
 export default function ReportButton({ questionId }: { questionId: string }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState("");
   const [detail, setDetail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-    setTimeout(() => { setOpen(false); setSubmitted(false); setSelected(""); setDetail(""); }, 1500);
+  const handleSubmit = async () => {
+    if (!selected || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId, reason: selected, detail: detail || undefined }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body.error ?? "回報失敗");
+        return;
+      }
+      setSubmitted(true);
+      setTimeout(() => {
+        setOpen(false);
+        setSubmitted(false);
+        setSelected("");
+        setDetail("");
+      }, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "網路錯誤");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -39,7 +65,7 @@ export default function ReportButton({ questionId }: { questionId: string }) {
           <div className="space-y-4">
             <div className="space-y-2">
               <p className="text-sm text-[var(--text-secondary)]">請選擇問題類型：</p>
-              {reasons.map((r) => (
+              {REASONS.map((r) => (
                 <button
                   key={r}
                   onClick={() => setSelected(r)}
@@ -60,7 +86,10 @@ export default function ReportButton({ questionId }: { questionId: string }) {
               rows={3}
               className="w-full px-3 py-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--gold)] resize-none"
             />
-            <Button fullWidth disabled={!selected} onClick={handleSubmit}>送出回報</Button>
+            {error && <p className="text-sm text-[var(--error)]">{error}</p>}
+            <Button fullWidth disabled={!selected || submitting} onClick={handleSubmit}>
+              {submitting ? "送出中..." : "送出回報"}
+            </Button>
           </div>
         )}
       </Modal>

@@ -5,124 +5,194 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Save } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
 
-const domains = ["Management of Care", "Safety & Infection Control", "Health Promotion & Maintenance", "Psychosocial Integrity", "Basic Care & Comfort", "Pharmacological & Parenteral", "Reduction of Risk Potential", "Physiological Adaptation"];
+const DOMAINS = [
+  "Management of Care", "Safety & Infection Control", "Health Promotion & Maintenance",
+  "Psychosocial Integrity", "Basic Care & Comfort", "Pharmacological & Parenteral",
+  "Reduction of Risk Potential", "Physiological Adaptation",
+];
+
+interface Draft {
+  stem: string;
+  stemZh: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  optionE: string;
+  optionF: string;
+  correctAnswer: string;
+  explanationZh: string;
+  explanationEn: string;
+  usTwDifference: string;
+  domain: string;
+  questionType: "MCQ" | "SATA";
+  difficulty: "EASY" | "MEDIUM" | "HARD";
+  status: "DRAFT" | "APPROVED";
+}
 
 export default function NewQuestionPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [d, setD] = useState<Draft>({
+    stem: "",
+    stemZh: "",
+    optionA: "",
+    optionB: "",
+    optionC: "",
+    optionD: "",
+    optionE: "",
+    optionF: "",
+    correctAnswer: "A",
+    explanationZh: "",
+    explanationEn: "",
+    usTwDifference: "",
+    domain: "Management of Care",
+    questionType: "MCQ",
+    difficulty: "MEDIUM",
+    status: "DRAFT",
+  });
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving) return;
+    if (!d.stem || !d.optionA || !d.optionB || !d.optionC || !d.optionD || !d.correctAnswer || !d.explanationZh) {
+      setError("請填寫必填欄位：題幹、四個選項、正確答案、中文解析");
+      return;
+    }
     setSaving(true);
-    setTimeout(() => { setSaving(false); router.push("/admin/questions"); }, 1500);
+    setError(null);
+    try {
+      const payload: Record<string, unknown> = {
+        stem: d.stem,
+        optionA: d.optionA,
+        optionB: d.optionB,
+        optionC: d.optionC,
+        optionD: d.optionD,
+        correctAnswer: d.correctAnswer.toUpperCase(),
+        correctAnswers: d.correctAnswer.toUpperCase().split(",").map((s) => s.trim()).filter(Boolean),
+        explanationZh: d.explanationZh,
+        domain: d.domain,
+        questionType: d.questionType,
+        difficulty: d.difficulty,
+        status: d.status,
+      };
+      if (d.stemZh) payload.stemZh = d.stemZh;
+      if (d.optionE) payload.optionE = d.optionE;
+      if (d.optionF) payload.optionF = d.optionF;
+      if (d.explanationEn) payload.explanationEn = d.explanationEn;
+      if (d.usTwDifference) payload.usTwDifference = d.usTwDifference;
+
+      const res = await fetch("/api/admin/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      router.push("/admin/questions");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "網路錯誤");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const update = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((prev) => ({ ...prev, [k]: v }));
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-6 max-w-4xl space-y-6"
+      className="p-6 max-w-4xl mx-auto space-y-5"
     >
       <div className="flex items-center gap-3">
         <button onClick={() => router.back()} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">新增題目</h1>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left: Question Content */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-4">
-            <h2 className="font-semibold text-[var(--text-primary)]">題目內容（英文）</h2>
-            <div>
-              <label className="text-sm text-[var(--text-secondary)] block mb-2">題幹 (Stem) *</label>
-              <textarea
-                rows={4}
-                placeholder="A XX-year-old client with... The nurse should..."
-                className="w-full px-3 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--gold)] text-sm resize-none"
-              />
-            </div>
-            {["A", "B", "C", "D"].map((opt) => (
-              <Input key={opt} label={`選項 ${opt} *`} placeholder={`Option ${opt}...`} />
-            ))}
-            <div>
-              <label className="text-sm text-[var(--text-secondary)] block mb-2">正確答案 *</label>
-              <div className="flex gap-2">
-                {["A", "B", "C", "D"].map((opt) => (
-                  <button key={opt} className="flex-1 py-2 rounded-xl border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:border-[var(--success)] hover:text-[var(--success)] transition-colors">
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-4">
-            <h2 className="font-semibold text-[var(--text-primary)]">解析</h2>
-            <div>
-              <label className="text-sm text-[var(--text-secondary)] block mb-2">中文解析 * （300 字以上）</label>
-              <textarea
-                rows={6}
-                placeholder="詳細解析正確答案的原因，以及其他三個選項錯誤的原因..."
-                className="w-full px-3 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--gold)] text-sm resize-none"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-[var(--text-secondary)] block mb-2">台美差異說明（選填）</label>
-              <textarea
-                rows={3}
-                placeholder="如果此題涉及台美做法不同，請說明差異..."
-                className="w-full px-3 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--gold)] text-sm resize-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Metadata */}
-        <div className="space-y-4">
-          <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-4">
-            <h2 className="font-semibold text-[var(--text-primary)]">分類設定</h2>
-            <div>
-              <label className="text-sm text-[var(--text-secondary)] block mb-2">Domain *</label>
-              <select className="w-full px-3 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-primary)] outline-none focus:border-[var(--gold)] text-sm">
-                {domains.map(d => <option key={d}>{d}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--text-secondary)] block mb-2">難易度 *</label>
-              <div className="flex gap-2">
-                {["EASY", "MEDIUM", "HARD"].map((d) => (
-                  <button key={d} className="flex-1 py-2 rounded-xl border border-[var(--border-default)] text-xs text-[var(--text-secondary)] hover:border-[var(--gold)] transition-colors">
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--text-secondary)] block mb-2">題型</label>
-              <select className="w-full px-3 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-primary)] outline-none focus:border-[var(--gold)] text-sm">
-                {["MCQ", "SATA", "Dropdown", "Matrix", "Bowtie", "Ordered"].map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-4">
-            <h2 className="font-semibold text-[var(--text-primary)]">IRT 參數（選填）</h2>
-            <Input label="鑑別度 a (0.5–2.0)" placeholder="1.0" type="number" />
-            <Input label="難度 b (-3.0–3.0)" placeholder="0.0" type="number" />
-            <Input label="猜測 c (0.10–0.25)" placeholder="0.15" type="number" />
-          </div>
-
-          <Button fullWidth loading={saving} onClick={handleSave}>
-            <Save size={14} /> 儲存題目（草稿）
-          </Button>
-          <Button fullWidth variant="outline" onClick={handleSave}>
-            儲存並送審
+        <div className="ml-auto flex gap-2">
+          <Button onClick={handleSave} disabled={saving}>
+            <Save size={14} /> {saving ? "儲存中..." : "儲存"}
           </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-[rgba(231,76,60,0.10)] border border-[var(--error)] rounded-lg p-3 text-sm text-[var(--error)]">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <Select label="題型" value={d.questionType} onChange={(v) => update("questionType", v as Draft["questionType"])} options={["MCQ", "SATA"]} />
+        <Select label="難度" value={d.difficulty} onChange={(v) => update("difficulty", v as Draft["difficulty"])} options={["EASY", "MEDIUM", "HARD"]} />
+        <Select label="狀態" value={d.status} onChange={(v) => update("status", v as Draft["status"])} options={["DRAFT", "APPROVED"]} />
+        <Select label="Domain" value={d.domain} onChange={(v) => update("domain", v)} options={DOMAINS} />
+      </div>
+
+      <Textarea label="題幹 Stem (EN) *" value={d.stem} onChange={(v) => update("stem", v)} rows={4} />
+      <Textarea label="題幹 Stem (ZH) 選填" value={d.stemZh} onChange={(v) => update("stemZh", v)} rows={3} />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Input label="選項 A *" value={d.optionA} onChange={(v) => update("optionA", v)} />
+        <Input label="選項 B *" value={d.optionB} onChange={(v) => update("optionB", v)} />
+        <Input label="選項 C *" value={d.optionC} onChange={(v) => update("optionC", v)} />
+        <Input label="選項 D *" value={d.optionD} onChange={(v) => update("optionD", v)} />
+        <Input label="選項 E（SATA 用）" value={d.optionE} onChange={(v) => update("optionE", v)} />
+        <Input label="選項 F（SATA 用）" value={d.optionF} onChange={(v) => update("optionF", v)} />
+      </div>
+
+      <Input label="正確答案（MCQ 填 D；SATA 填 B,C,E） *" value={d.correctAnswer} onChange={(v) => update("correctAnswer", v.toUpperCase())} />
+
+      <Textarea label="中文解析 *（300 字以上建議）" value={d.explanationZh} onChange={(v) => update("explanationZh", v)} rows={6} />
+      <Textarea label="英文解析（選填）" value={d.explanationEn} onChange={(v) => update("explanationEn", v)} rows={3} />
+      <Textarea label="台美差異提示（選填）" value={d.usTwDifference} onChange={(v) => update("usTwDifference", v)} rows={3} />
     </motion.div>
+  );
+}
+
+function Input({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block">
+      <span className="block text-xs text-[var(--text-muted)] mb-1">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--gold)] outline-none"
+      />
+    </label>
+  );
+}
+
+function Textarea({ label, value, onChange, rows = 4 }: { label: string; value: string; onChange: (v: string) => void; rows?: number }) {
+  return (
+    <label className="block">
+      <span className="block text-xs text-[var(--text-muted)] mb-1">{label}</span>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        className="w-full bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--gold)] outline-none font-mono"
+      />
+    </label>
+  );
+}
+
+function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  return (
+    <label className="block">
+      <span className="block text-xs text-[var(--text-muted)] mb-1">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--gold)] outline-none"
+      >
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </label>
   );
 }

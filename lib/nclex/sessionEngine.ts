@@ -15,6 +15,7 @@ import {
   CATEGORY_TO_DOMAIN,
   type CandidateQuestion,
 } from "@/lib/irt/cat";
+import { evaluateAfterAnswer, evaluateAfterSession } from "@/lib/nclex/achievements";
 import type { QuestionPayload } from "@/types";
 
 // ============================================================================
@@ -486,6 +487,11 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
     console.warn("[sessionEngine] upsertDailyStats failed:", err?.message);
   });
 
+  // Evaluate achievements (non-critical)
+  evaluateAfterAnswer(session.userId).catch((err) => {
+    console.warn("[sessionEngine] evaluateAfterAnswer failed:", err?.message);
+  });
+
   return {
     accepted: true,
     isCorrect: correct,
@@ -631,7 +637,7 @@ export async function finishSession(sessionId: string, userId: string, reason = 
     passFail = session.theta >= 0 ? "PASS" : "FAIL";
   }
 
-  return prisma.userSession.update({
+  const result = await prisma.userSession.update({
     where: { id: sessionId },
     data: {
       endedAt: new Date(),
@@ -640,6 +646,13 @@ export async function finishSession(sessionId: string, userId: string, reason = 
       score: session.totalQuestions > 0 ? (session.correctCount / session.totalQuestions) * 100 : 0,
     },
   });
+
+  // Evaluate session-finish achievements
+  evaluateAfterSession(userId, sessionId).catch((err) => {
+    console.warn("[sessionEngine] evaluateAfterSession failed:", err?.message);
+  });
+
+  return result;
 }
 
 export async function pauseSession(sessionId: string, userId: string) {
