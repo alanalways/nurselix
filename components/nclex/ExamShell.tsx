@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pause, ChevronRight, Bookmark, SkipForward } from "lucide-react";
+import { Pause, ChevronRight, Bookmark, SkipForward, BookOpen } from "lucide-react";
 import Button from "@/components/ui/Button";
 import ProgressBar from "./ProgressBar";
 import ElapsedTimer from "./ElapsedTimer";
@@ -16,33 +16,6 @@ import ReportButton from "./ReportButton";
 import QuestionNote from "./QuestionNote";
 import Modal from "@/components/ui/Modal";
 import type { Question, SessionMode } from "@/types";
-
-// Mock question for Phase 1 UI demo
-const MOCK_QUESTION: Question = {
-  id: "mock-1",
-  module: "NCLEX",
-  questionType: "MCQ",
-  stem: "A 68-year-old client with heart failure is receiving furosemide (Lasix) 40 mg IV. Which assessment finding would require the nurse to notify the healthcare provider immediately?",
-  optionA: "Urine output of 200 mL in the past 2 hours",
-  optionB: "Serum potassium level of 3.1 mEq/L",
-  optionC: "Blood pressure of 118/72 mmHg",
-  optionD: "Weight loss of 0.5 kg since yesterday",
-  correctAnswer: "B",
-  explanationZh: "呋塞米（Lasix）是強效的迴路利尿劑，會導致鉀離子從尿液中大量排出，造成低血鉀（hypokalemia）。正常血鉀濃度為 3.5-5.0 mEq/L，此病人的血鉀為 3.1 mEq/L，已低於正常值，這是需要立即通知醫師的緊急情況。低血鉀可能引起嚴重的心律不整（如心室顫動），對心衰竭病人尤為危險。選項 A 的尿量正常（利尿劑應增加尿量）。選項 C 的血壓正常。選項 D 的體重下降輕微且符合預期。",
-  usTwDifference: "美國臨床標準：血鉀 < 3.5 mEq/L 即需通報並考慮補鉀。台灣臨床：部分醫院設定的通報值可能略低（如 < 3.0 mEq/L），但 NCLEX 考試以美國標準為準。",
-  domain: "Pharmacological",
-  subDomain: "Loop Diuretics",
-  tags: ["furosemide", "hypokalemia", "heart failure", "electrolytes"],
-  irtA: 1.2,
-  irtB: 0.5,
-  irtC: 0.15,
-  difficulty: "MEDIUM",
-  attemptCount: 1523,
-  correctCount: 891,
-  errorRate: 0.415,
-  status: "APPROVED",
-  createdAt: new Date().toISOString(),
-};
 
 interface ExamShellProps {
   mode: SessionMode;
@@ -71,18 +44,19 @@ export default function ExamShell({
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [questionIndex] = useState(0);
 
-  const question = MOCK_QUESTION;
-  const theta = 0.82;
-  const se = 0.38;
+  const question: Question | null = null; // Will be loaded from API when question bank is seeded
+  const theta = 0;
+  const se = 0;
 
-  const options = [
+  const options = question ? [
     { label: "A", text: question.optionA, key: "A" },
     { label: "B", text: question.optionB, key: "B" },
     { label: "C", text: question.optionC, key: "C" },
     { label: "D", text: question.optionD, key: "D" },
-  ];
+  ] : [];
 
   const getOptionState = (key: string) => {
+    if (!question) return "default";
     if (!confirmed) return selectedAnswer === key ? "selected" : "default";
     if (key === question.correctAnswer) return "correct";
     if (key === selectedAnswer && key !== question.correctAnswer) return "incorrect";
@@ -142,56 +116,78 @@ export default function ExamShell({
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-          {/* Question */}
-          <QuestionCard question={question} questionNumber={questionIndex + 1} totalQuestions={totalQuestions} />
-
-          {/* Options */}
-          <div className="space-y-3">
-            {options.map((opt) => (
-              <OptionButton
-                key={opt.key}
-                label={opt.label}
-                text={opt.text}
-                state={getOptionState(opt.key)}
-                disabled={confirmed}
-                onClick={() => !confirmed && setSelectedAnswer(opt.key)}
-              />
-            ))}
-          </div>
-
-          {/* Explanation (Practice / Tutor only) */}
-          {showExplanationAfterAnswer && confirmed && (
-            <ExplanationPanel question={question} selectedAnswer={selectedAnswer!} />
-          )}
-
-          {/* Action row */}
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-4">
-              <ReportButton questionId={question.id} />
-              <QuestionNote questionId={question.id} />
-              <button className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--gold)] transition-colors">
-                <Bookmark size={12} />
-                收藏
+          {/* No question available */}
+          {!question && (
+            <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-[var(--gold-dim)] flex items-center justify-center">
+                <BookOpen size={32} className="text-[var(--gold)]" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-[var(--text-primary)]">題庫準備中</p>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">題目將在題庫匯入後正式開放</p>
+              </div>
+              <button
+                onClick={() => router.back()}
+                className="mt-2 text-sm text-[var(--gold)] hover:underline"
+              >
+                返回上一頁
               </button>
             </div>
+          )}
+          {/* Question */}
+          {question && <QuestionCard question={question} questionNumber={questionIndex + 1} totalQuestions={totalQuestions} />}
 
-            <div className="flex items-center gap-2">
-              {!confirmed ? (
-                <Button
-                  onClick={handleConfirm}
-                  disabled={!selectedAnswer}
-                  variant="gold"
-                  size="md"
-                >
-                  確認作答
-                </Button>
-              ) : (
-                <Button onClick={handleNext} variant="gold" size="md">
-                  下一題 <ChevronRight size={16} />
-                </Button>
+          {/* Options */}
+          {question && (
+            <>
+              <div className="space-y-3">
+                {options.map((opt) => (
+                  <OptionButton
+                    key={opt.key}
+                    label={opt.label}
+                    text={opt.text}
+                    state={getOptionState(opt.key)}
+                    disabled={confirmed}
+                    onClick={() => !confirmed && setSelectedAnswer(opt.key)}
+                  />
+                ))}
+              </div>
+
+              {/* Explanation (Practice / Tutor only) */}
+              {showExplanationAfterAnswer && confirmed && (
+                <ExplanationPanel question={question} selectedAnswer={selectedAnswer!} />
               )}
-            </div>
-          </div>
+
+              {/* Action row */}
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center gap-4">
+                  <ReportButton questionId={question.id} />
+                  <QuestionNote questionId={question.id} />
+                  <button className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--gold)] transition-colors">
+                    <Bookmark size={12} />
+                    收藏
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {!confirmed ? (
+                    <Button
+                      onClick={handleConfirm}
+                      disabled={!selectedAnswer}
+                      variant="gold"
+                      size="md"
+                    >
+                      確認作答
+                    </Button>
+                  ) : (
+                    <Button onClick={handleNext} variant="gold" size="md">
+                      下一題 <ChevronRight size={16} />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

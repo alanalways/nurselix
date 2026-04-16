@@ -83,14 +83,14 @@ const modes = [
 ];
 
 const domains = [
-  { name: "Management of Care", zh: "管理照護", pct: 72, done: 145, total: 200 },
-  { name: "Safety & Infection Control", zh: "安全感染控制", pct: 65, done: 78, total: 120 },
-  { name: "Health Promotion", zh: "健康促進與維護", pct: 80, done: 72, total: 90 },
-  { name: "Psychosocial Integrity", zh: "心理社會完整性", pct: 58, done: 52, total: 90 },
-  { name: "Basic Care & Comfort", zh: "基本照護與舒適", pct: 75, done: 68, total: 90 },
-  { name: "Pharmacological", zh: "藥理與腸外用藥", pct: 45, done: 72, total: 160 },
-  { name: "Reduction of Risk", zh: "降低風險潛力", pct: 62, done: 74, total: 120 },
-  { name: "Physiological Adaptation", zh: "生理適應", pct: 70, done: 91, total: 130 },
+  { name: "Management of Care", zh: "管理照護", pct: 0, done: 0, total: 0 },
+  { name: "Safety & Infection Control", zh: "安全感染控制", pct: 0, done: 0, total: 0 },
+  { name: "Health Promotion", zh: "健康促進與維護", pct: 0, done: 0, total: 0 },
+  { name: "Psychosocial Integrity", zh: "心理社會完整性", pct: 0, done: 0, total: 0 },
+  { name: "Basic Care & Comfort", zh: "基本照護與舒適", pct: 0, done: 0, total: 0 },
+  { name: "Pharmacological", zh: "藥理與腸外用藥", pct: 0, done: 0, total: 0 },
+  { name: "Reduction of Risk", zh: "降低風險潛力", pct: 0, done: 0, total: 0 },
+  { name: "Physiological Adaptation", zh: "生理適應", pct: 0, done: 0, total: 0 },
 ];
 
 export default function NclexPage() {
@@ -110,9 +110,8 @@ export default function NclexPage() {
           <p className="text-[var(--text-secondary)] mt-1">選擇你的練習模式開始備考</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-          <TrendingUp size={16} className="text-[var(--gold)]" />
-          <span>能力值：<span className="text-[var(--gold)] font-semibold font-mono">θ = 0.82</span></span>
-          <Badge variant="gold">良好</Badge>
+          <TrendingUp size={16} className="text-[var(--text-muted)]" />
+          <span>能力值：<span className="text-[var(--text-muted)] font-semibold font-mono">θ = --</span></span>
         </div>
       </div>
 
