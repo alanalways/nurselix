@@ -43,8 +43,7 @@ export default function ExamShell({
   const [confirmed, setConfirmed] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [questionIndex] = useState(0);
-
-  const question: Question | null = null; // Will be loaded from API when question bank is seeded
+  const [question] = useState<Question | null>(null); // Will be loaded from API when question bank is seeded
   const theta = 0;
   const se = 0;
 
