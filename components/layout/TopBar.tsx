@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, Shield } from "lucide-react";
+import Link from "next/link";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import FontSizeControl from "@/components/ui/FontSizeControl";
 import Badge from "@/components/ui/Badge";
@@ -20,6 +21,7 @@ export default function TopBar({ title }: { title?: string }) {
   const user = session?.user;
   const displayName = user?.name ?? "使用者";
   const plan = (user as any)?.plan ?? "FREE";
+  const isAdmin = (user as any)?.role === "ADMIN";
   const initial = displayName[0]?.toUpperCase() ?? "U";
 
   return (
@@ -42,6 +44,16 @@ export default function TopBar({ title }: { title?: string }) {
 
       {/* Right */}
       <div className="flex items-center gap-2">
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="hidden md:flex items-center gap-1.5 px-3 h-10 rounded-full bg-[var(--gold-dim)] border border-[var(--gold)] text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[#080E1A] transition-colors text-xs font-semibold"
+            title="進入管理後台"
+          >
+            <Shield size={14} />
+            <span>管理後台</span>
+          </Link>
+        )}
         <FontSizeControl />
         <ThemeToggle />
         <button className="relative w-10 h-10 rounded-full flex items-center justify-center bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">

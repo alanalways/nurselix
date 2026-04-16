@@ -6,12 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Brain, BookOpen, Calendar, BarChart3,
   Trophy, Bookmark, Settings, ChevronLeft, ChevronRight,
-  LogOut, Stethoscope, Star
+  LogOut, Stethoscope, Star, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import Badge from "@/components/ui/Badge";
-import { useState } from "react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "儀表板" },
@@ -35,6 +34,8 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
 
   return (
     <motion.aside
@@ -131,6 +132,26 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
 
       {/* Bottom */}
       <div className="p-3 border-t border-[var(--border-subtle)] space-y-1">
+        {isAdmin && (
+          <Link href="/admin">
+            <div
+              className={cn(
+                "sidebar-link text-[var(--gold)]",
+                pathname.startsWith("/admin") && "active",
+                collapsed && "justify-center px-0"
+              )}
+              title={collapsed ? "管理後台" : undefined}
+            >
+              <Shield size={18} className="flex-shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1">管理後台</span>
+                  <Badge variant="gold" className="text-[10px] px-1.5 py-0.5">Admin</Badge>
+                </>
+              )}
+            </div>
+          </Link>
+        )}
         <Link href="/settings">
           <div className={cn("sidebar-link", collapsed && "justify-center px-0")}>
             <Settings size={18} />
