@@ -2,108 +2,86 @@
 
 【最重要規則】
 1. 只能根據「允許商用二創」的來源概念出題，不可直接複製原文，不可逐字改寫，不可搬運官方題目。
-2. 只能參考以下來源類型：
-   - CC BY 4.0 或等同允許商用改作的護理 OER
-   - 目前優先來源概念池：
-     a. Open RN / WisTech Open - Nursing Fundamentals 2e
-     b. Open RN / WisTech Open - Nursing Skills 2e
-     c. Open RN / WisTech Open - Nursing Pharmacology 2e
-     d. Open RN / WisTech Open - Nursing Management and Professional Concepts 2e
-     e. Open RN / WisTech Open - Nursing Mental Health and Community Concepts 2e
-     f. Open RN / WisTech Open - Nursing Health Promotion
-3. 明確排除以下內容：
-   - NCSBN / NCLEX 官方 sample questions、official exam preview、official test bank
-   - 任何標示 non-commercial、CC BY-NC、CC BY-NC-SA、all rights reserved 的內容
-4. 題目必須是「全新重寫」的 licensure-style 題目，只能借用知識點，不可重製原題。
-5. 請以 2026 NCLEX-RN 的考試精神對齊，但不要複製官方藍圖原文。
+2. 只能參考以下來源類型：CC BY 4.0 或等同允許商用改作的護理 OER，優先來源：Open RN / WisTech Open（Nursing Fundamentals 2e、Nursing Skills 2e、Nursing Pharmacology 2e、Nursing Management and Professional Concepts 2e、Nursing Mental Health and Community Concepts 2e、Nursing Health Promotion）。
+3. 明確排除：NCSBN / NCLEX 官方 sample questions、official exam preview、official test bank；任何 non-commercial、CC BY-NC、CC BY-NC-SA、all rights reserved 內容。
+4. 題目必須全新重寫，只能借用知識點，不可重製原題。
+5. 以 2026 NCLEX-RN 考試精神對齊，不複製官方藍圖原文。
 
 【本次生成任務】
 - exam: NCLEX-RN
 - version: 2026-aligned-original
 - language: bilingual_en_zh_tw
-- output_count: 25
+- output_count: 1600
 - category: pharmacological_and_parenteral_therapies
 - id_prefix: "rn2026_pharm"
-- start_index: 1        ← 每次執行時改成：1, 26, 51, 76, 101...（每次+25）
+- id_range: rn2026_pharm_0001 ～ rn2026_pharm_1600
 
-【題型分配（嚴格執行）】
-- single_best_answer（SBA）：15 題（60%）→ 每題剛好 4 個選項，1 個正確答案
-- sata（SATA）：10 題（40%）→ 每題 5 或 6 個選項，2–4 個正確答案
-- SATA 正確答案數量分布：2 個正確 × 3 題、3 個正確 × 5 題、4 個正確 × 2 題
+【如果單次輸出被截斷】
+請在截斷處的 JSON 之後直接繼續輸出，保持同一個 questions 陣列，不需重新開頭。
+若需要分多次完成，每次請從上次最後一個 id 的下一個繼續，並告知目前已完成的題數。
+
+【題型分配（嚴格執行，共 1600 題）】
+- single_best_answer（SBA）：960 題（60%）→ 每題剛好 4 個選項，1 個正確答案
+- sata（SATA）：640 題（40%）→ 每題 5 或 6 個選項，2–4 個正確答案
+- SATA 正確答案數量分布：2 個正確 × 192 題、3 個正確 × 320 題、4 個正確 × 128 題
 
 【難度分配（嚴格執行）】
-- easy：5 題（20%）
-- medium：15 題（60%）
-- hard：5 題（20%）
-- 難度與題型交叉：easy = SBA 3 + SATA 2；medium = SBA 9 + SATA 6；hard = SBA 3 + SATA 2
+- easy：320 題（20%）→ SBA 192 + SATA 128
+- medium：960 題（60%）→ SBA 576 + SATA 384
+- hard：320 題（20%）→ SBA 192 + SATA 128
 
-【主題內容分配（共 25 題）】
-1. medication administration rights / six rights（給藥六大原則）：3 題
-2. adverse effects / toxicity monitoring（不良反應與毒性監測）：3 題
-3. high-alert medications（高警訊藥物：抗凝血劑、胰島素、鴉片類）：3 題
-4. IV therapy / blood product administration（靜脈輸液與血品輸注）：3 題
-5. pharmacokinetics / drug-drug interactions（藥物動力學與交互作用）：2 題
-6. dosage calculation / safe dose range（劑量計算與安全範圍）：3 題
-7. controlled substances / medication security（管制藥品與藥物安全管理）：2 題
-8. patient and family medication teaching（病人與家屬用藥衛教）：3 題
-9. medication reconciliation / error prevention（藥物調解與錯誤預防）：3 題
+【主題內容分配（共 1600 題）】
+1. medication administration rights / six rights（給藥六大原則）：180 題
+2. adverse effects / toxicity monitoring（不良反應與毒性監測）：180 題
+3. high-alert medications（高警訊藥物：抗凝血劑、胰島素、鴉片類）：180 題
+4. IV therapy / blood product administration（靜脈輸液與血品輸注）：180 題
+5. pharmacokinetics / drug-drug interactions（藥物動力學與交互作用）：160 題
+6. dosage calculation / safe dose range（劑量計算與安全範圍）：180 題
+7. controlled substances / medication security（管制藥品管理）：130 題
+8. patient and family medication teaching（病人與家屬用藥衛教）：200 題
+9. medication reconciliation / error prevention（藥物調解與錯誤預防）：210 題
 
-【Bloom's 認知層級分配】
-- understand：3 題（12%）
-- apply：7 題（28%）
-- analyze：9 題（36%）
-- evaluate：6 題（24%）
+【Bloom's 認知層級分配（共 1600 題）】
+- understand：192 題（12%）
+- apply：448 題（28%）
+- analyze：576 題（36%）
+- evaluate：384 題（24%）
 
-【CJMM 臨床判斷步驟輪替】
-- recognize_cues：4 題
-- analyze_cues：5 題
-- prioritize_hypotheses：4 題
-- generate_solutions：4 題
-- take_action：5 題
-- evaluate_outcomes：3 題
+【CJMM 臨床判斷步驟分配（共 1600 題）】
+- recognize_cues：256 題
+- analyze_cues：320 題
+- prioritize_hypotheses：256 題
+- generate_solutions：256 題
+- take_action：320 題
+- evaluate_outcomes：192 題
 
 【出題品質要求】
 1. 每題都要有真實臨床情境（clinical scenario），避免教科書式死背題。
-2. 題幹（stem）明確，不模糊；single_best_answer 有且只有一個最佳答案。
-3. 錯誤選項必須具迷惑性，但不能荒謬或明顯不相關。
-4. rationale 必須逐選項提供，正確與錯誤原因都要清楚說明。
-5. 25 題中不可重複相同臨床情境，不可出現相同答案模式。
-6. 正確答案字母分布要均勻（A、B、C、D 各約 6–7 次）。
-7. 所有藥物名稱、劑量、給藥途徑、禁忌症要臨床正確。
-8. SATA 題的正確選項間不可有明顯邏輯重疊。
-9. 劑量計算題需提供完整計算過程於 rationale 中。
+2. single_best_answer 有且只有一個最佳答案，錯誤選項必須具迷惑性。
+3. rationale 必須逐選項提供，正確與錯誤原因都要清楚說明。
+4. 1600 題中不可重複相同臨床情境，正確答案字母（A/B/C/D）整體分布均勻（各約 400 次）。
+5. 所有藥物名稱、劑量、給藥途徑、禁忌症要臨床正確。
+6. SATA 題的正確選項間不可有明顯邏輯重疊。
+7. 劑量計算題需在 rationale 中提供完整計算過程。
 
 【語言規範】
-- 所有 _zh 欄位使用繁體中文（台灣用語、台灣護理執照考試慣用詞彙）
+- 所有 _zh 欄位使用繁體中文（台灣用語）
 - 英文欄位使用 American English，符合 NCLEX-RN 用語
-- 藥名優先使用 generic name（學名），括號內可附 brand name
-- 單位：mmHg、mEq/L、mg/dL、BPM、mcg/kg/min、units/hr 等依情境並列
+- 藥名優先使用 generic name，括號內可附 brand name
+- 單位：mmHg、mEq/L、mg/dL、mcg/kg/min、units/hr 等依情境並列
 
-【輸出格式規則】
-1. 只能輸出 1 個完整合法的 JSON 物件，不可在 JSON 外輸出任何文字、說明、markdown。
-2. questions 陣列長度必須剛好等於 25。
-3. id 從 rn2026_pharm_XXXX 連續編號（XXXX = start_index 補零至 4 位）。
-4. single_best_answer：options 剛好 4 個，correct_answer_ids 只有 1 個。
-5. sata：options 為 5 或 6 個，correct_answer_ids 為 2–4 個。
-6. 每題必須有 answer_summary_en 與 answer_summary_zh（50–80 字摘要）。
-7. 所有選項 id 格式：rn2026_pharm_XXXX_a 到 rn2026_pharm_XXXX_f。
-
-【輸出 JSON schema（嚴格遵守欄位名稱與結構）】
+【輸出 JSON schema（嚴格遵守）】
 {
   "metadata": {
     "exam": "NCLEX-RN",
     "version": "2026-aligned-original",
     "language": "bilingual_en_zh_tw",
     "category": "pharmacological_and_parenteral_therapies",
-    "count": 25,
+    "count": 1600,
     "id_prefix": "rn2026_pharm",
-    "start_index": 1,
     "distribution": {
-      "sba_count": 15,
-      "sata_count": 10,
-      "easy_count": 5,
-      "medium_count": 15,
-      "hard_count": 5
+      "sba_count": 960, "sata_count": 640,
+      "easy_count": 320, "medium_count": 960, "hard_count": 320
     },
     "source_policy": {
       "allowed_source_family": ["Open RN / WisTech Open Nursing Fundamentals 2e","Open RN / WisTech Open Nursing Skills 2e","Open RN / WisTech Open Nursing Pharmacology 2e","Open RN / WisTech Open Nursing Management and Professional Concepts 2e","Open RN / WisTech Open Nursing Mental Health and Community Concepts 2e","Open RN / WisTech Open Nursing Health Promotion"],

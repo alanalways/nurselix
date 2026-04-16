@@ -2,108 +2,85 @@
 
 【最重要規則】
 1. 只能根據「允許商用二創」的來源概念出題，不可直接複製原文，不可逐字改寫，不可搬運官方題目。
-2. 只能參考以下來源類型：
-   - CC BY 4.0 或等同允許商用改作的護理 OER
-   - 目前優先來源概念池：
-     a. Open RN / WisTech Open - Nursing Fundamentals 2e
-     b. Open RN / WisTech Open - Nursing Skills 2e
-     c. Open RN / WisTech Open - Nursing Pharmacology 2e
-     d. Open RN / WisTech Open - Nursing Management and Professional Concepts 2e
-     e. Open RN / WisTech Open - Nursing Mental Health and Community Concepts 2e
-     f. Open RN / WisTech Open - Nursing Health Promotion
-3. 明確排除以下內容：
-   - NCSBN / NCLEX 官方 sample questions、official exam preview、official test bank
-   - 任何標示 non-commercial、CC BY-NC、CC BY-NC-SA、all rights reserved 的內容
-4. 題目必須是「全新重寫」的 licensure-style 題目，只能借用知識點，不可重製原題。
-5. 請以 2026 NCLEX-RN 的考試精神對齊，但不要複製官方藍圖原文。
+2. 只能參考以下來源類型：CC BY 4.0 或等同允許商用改作的護理 OER，優先來源：Open RN / WisTech Open（Nursing Fundamentals 2e、Nursing Skills 2e、Nursing Pharmacology 2e、Nursing Management and Professional Concepts 2e、Nursing Mental Health and Community Concepts 2e、Nursing Health Promotion）。
+3. 明確排除：NCSBN / NCLEX 官方 sample questions、official exam preview、official test bank；任何 non-commercial、CC BY-NC、CC BY-NC-SA、all rights reserved 內容。
+4. 題目必須全新重寫，只能借用知識點，不可重製原題。
+5. 以 2026 NCLEX-RN 考試精神對齊，不複製官方藍圖原文。
 
 【本次生成任務】
 - exam: NCLEX-RN
 - version: 2026-aligned-original
 - language: bilingual_en_zh_tw
-- output_count: 25
+- output_count: 800
 - category: basic_care_and_comfort
 - id_prefix: "rn2026_bcc"
-- start_index: 1        ← 每次執行時改成：1, 26, 51, 76, 101...（每次+25）
+- id_range: rn2026_bcc_0001 ～ rn2026_bcc_0800
 
-【題型分配（嚴格執行）】
-- single_best_answer（SBA）：15 題（60%）→ 每題剛好 4 個選項，1 個正確答案
-- sata（SATA）：10 題（40%）→ 每題 5 或 6 個選項，2–4 個正確答案
-- SATA 正確答案數量分布：2 個正確 × 3 題、3 個正確 × 5 題、4 個正確 × 2 題
+【如果單次輸出被截斷】
+請在截斷處的 JSON 之後直接繼續輸出，保持同一個 questions 陣列，不需重新開頭。
+若需要分多次完成，每次請從上次最後一個 id 的下一個繼續，並告知目前已完成的題數。
+
+【題型分配（嚴格執行，共 800 題）】
+- single_best_answer（SBA）：480 題（60%）→ 每題剛好 4 個選項，1 個正確答案
+- sata（SATA）：320 題（40%）→ 每題 5 或 6 個選項，2–4 個正確答案
+- SATA 正確答案數量分布：2 個正確 × 96 題、3 個正確 × 160 題、4 個正確 × 64 題
 
 【難度分配（嚴格執行）】
-- easy：5 題（20%）
-- medium：15 題（60%）
-- hard：5 題（20%）
-- 難度與題型交叉：easy = SBA 3 + SATA 2；medium = SBA 9 + SATA 6；hard = SBA 3 + SATA 2
+- easy：160 題（20%）→ SBA 96 + SATA 64
+- medium：480 題（60%）→ SBA 288 + SATA 192
+- hard：160 題（20%）→ SBA 96 + SATA 64
 
-【主題內容分配（共 25 題）】
-1. personal hygiene and ADL assistance（個人衛生與日常生活活動協助）：3 題
-2. mobility, positioning, and safe transfer（活動度、擺位與安全移位）：3 題
-3. nutrition, hydration, and enteral feeding（營養、水分補充與管灌餵食）：3 題
-4. elimination — bowel and bladder management（排泄管理：腸道與膀胱）：3 題
-5. pain assessment and non-pharmacologic management（疼痛評估與非藥物處置）：3 題
-6. rest, sleep, and comfort promotion（休息、睡眠與舒適促進）：2 題
-7. assistive devices and adaptive equipment（輔助器具與適應性設備）：2 題
-8. palliative and end-of-life comfort care（安寧與臨終舒適照護）：3 題
-9. skin integrity and pressure injury prevention（皮膚完整性與壓力性損傷預防）：3 題
+【主題內容分配（共 800 題）】
+1. personal hygiene and ADL assistance（個人衛生與日常生活活動協助）：90 題
+2. mobility, positioning, and safe transfer（活動度、擺位與安全移位）：90 題
+3. nutrition, hydration, and enteral feeding（營養、水分補充與管灌餵食）：90 題
+4. elimination — bowel and bladder management（排泄管理：腸道與膀胱）：90 題
+5. pain assessment and non-pharmacologic management（疼痛評估與非藥物處置）：90 題
+6. rest, sleep, and comfort promotion（休息、睡眠與舒適促進）：80 題
+7. assistive devices and adaptive equipment（輔助器具與適應性設備）：80 題
+8. palliative and end-of-life comfort care（安寧與臨終舒適照護）：90 題
+9. skin integrity and pressure injury prevention（皮膚完整性與壓力性損傷預防）：100 題
 
-【Bloom's 認知層級分配】
-- understand：3 題（12%）
-- apply：7 題（28%）
-- analyze：9 題（36%）
-- evaluate：6 題（24%）
+【Bloom's 認知層級分配（共 800 題）】
+- understand：96 題（12%）
+- apply：224 題（28%）
+- analyze：288 題（36%）
+- evaluate：192 題（24%）
 
-【CJMM 臨床判斷步驟輪替】
-- recognize_cues：4 題
-- analyze_cues：5 題
-- prioritize_hypotheses：4 題
-- generate_solutions：4 題
-- take_action：5 題
-- evaluate_outcomes：3 題
+【CJMM 臨床判斷步驟分配（共 800 題）】
+- recognize_cues：128 題
+- analyze_cues：160 題
+- prioritize_hypotheses：128 題
+- generate_solutions：128 題
+- take_action：160 題
+- evaluate_outcomes：96 題
 
 【出題品質要求】
 1. 每題都要有真實臨床情境（clinical scenario），避免教科書式死背題。
-2. 題幹（stem）明確，不模糊；single_best_answer 有且只有一個最佳答案。
-3. 錯誤選項必須具迷惑性，但不能荒謬或明顯不相關。
-4. rationale 必須逐選項提供，正確與錯誤原因都要清楚說明。
-5. 25 題中不可重複相同臨床情境，不可出現相同答案模式。
-6. 正確答案字母分布要均勻（A、B、C、D 各約 6–7 次）。
-7. Braden Scale、PUSH Tool、疼痛量表（NRS、FLACC）等評估工具分數解讀必須正確。
-8. SATA 題的正確選項間不可有明顯邏輯重疊。
-9. 鼻胃管、導尿管、造口等照護步驟必須符合臨床標準流程。
+2. single_best_answer 有且只有一個最佳答案，錯誤選項必須具迷惑性。
+3. rationale 必須逐選項提供，正確與錯誤原因都要清楚說明。
+4. 800 題中不可重複相同臨床情境，正確答案字母（A/B/C/D）整體分布均勻（各約 200 次）。
+5. Braden Scale、疼痛量表（NRS、FLACC）等評估工具分數解讀必須正確。
+6. 鼻胃管、導尿管、造口等照護步驟必須符合臨床標準流程。
+7. SATA 題的正確選項間不可有明顯邏輯重疊。
 
 【語言規範】
-- 所有 _zh 欄位使用繁體中文（台灣用語、台灣護理執照考試慣用詞彙）
+- 所有 _zh 欄位使用繁體中文（台灣用語）
 - 英文欄位使用 American English，符合 NCLEX-RN 用語
-- 藥名優先使用 generic name（學名），括號內可附 brand name
-- 解剖位置以專業術語表示（如 sacral, trochanter, malleolus）並附中文
+- 解剖位置以專業術語標示（如 sacral, trochanter）並附中文
 
-【輸出格式規則】
-1. 只能輸出 1 個完整合法的 JSON 物件，不可在 JSON 外輸出任何文字、說明、markdown。
-2. questions 陣列長度必須剛好等於 25。
-3. id 從 rn2026_bcc_XXXX 連續編號（XXXX = start_index 補零至 4 位）。
-4. single_best_answer：options 剛好 4 個，correct_answer_ids 只有 1 個。
-5. sata：options 為 5 或 6 個，correct_answer_ids 為 2–4 個。
-6. 每題必須有 answer_summary_en 與 answer_summary_zh（50–80 字摘要）。
-7. 所有選項 id 格式：rn2026_bcc_XXXX_a 到 rn2026_bcc_XXXX_f。
-
-【輸出 JSON schema（嚴格遵守欄位名稱與結構）】
+【輸出 JSON schema（嚴格遵守）】
 {
   "metadata": {
     "exam": "NCLEX-RN",
     "version": "2026-aligned-original",
     "language": "bilingual_en_zh_tw",
     "category": "basic_care_and_comfort",
-    "count": 25,
+    "count": 800,
     "id_prefix": "rn2026_bcc",
-    "start_index": 1,
     "distribution": {
-      "sba_count": 15,
-      "sata_count": 10,
-      "easy_count": 5,
-      "medium_count": 15,
-      "hard_count": 5
+      "sba_count": 480, "sata_count": 320,
+      "easy_count": 160, "medium_count": 480, "hard_count": 160
     },
     "source_policy": {
       "allowed_source_family": ["Open RN / WisTech Open Nursing Fundamentals 2e","Open RN / WisTech Open Nursing Skills 2e","Open RN / WisTech Open Nursing Pharmacology 2e","Open RN / WisTech Open Nursing Management and Professional Concepts 2e","Open RN / WisTech Open Nursing Mental Health and Community Concepts 2e","Open RN / WisTech Open Nursing Health Promotion"],
