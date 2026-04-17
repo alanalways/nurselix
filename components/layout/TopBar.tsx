@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, Shield } from "lucide-react";
+import { Bell, Search, Shield, Zap } from "lucide-react";
 import Link from "next/link";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import FontSizeControl from "@/components/ui/FontSizeControl";
@@ -44,6 +44,15 @@ export default function TopBar({ title }: { title?: string }) {
 
       {/* Right */}
       <div className="flex items-center gap-2">
+        {plan === "FREE" && (
+          <Link
+            href="/pricing"
+            className="hidden md:flex items-center gap-1.5 px-3 h-9 rounded-full bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-[#080E1A] font-semibold text-xs hover:opacity-90 transition-opacity"
+          >
+            <Zap size={13} />
+            <span>免費試用 Pro 7天</span>
+          </Link>
+        )}
         {isAdmin && (
           <Link
             href="/admin"
@@ -77,7 +86,9 @@ export default function TopBar({ title }: { title?: string }) {
           )}
           <div className="hidden md:flex flex-col">
             <span className="text-sm font-medium text-[var(--text-primary)] leading-tight">{displayName}</span>
-            <Badge variant={planVariant[plan] ?? "muted"} className="text-[10px]">{plan}</Badge>
+            <Link href="/pricing">
+              <Badge variant={planVariant[plan] ?? "muted"} className="text-[10px] cursor-pointer hover:opacity-80 transition-opacity">{plan}</Badge>
+            </Link>
           </div>
         </div>
       </div>

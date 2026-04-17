@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Brain, BookOpen, Calendar, BarChart3,
   Trophy, Bookmark, Settings, ChevronLeft, ChevronRight,
-  LogOut, Stethoscope, Star, Shield, Sparkles
+  LogOut, Stethoscope, Star, Shield, Sparkles, Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import Badge from "@/components/ui/Badge";
@@ -20,6 +20,7 @@ const navItems = [
   { href: "/stats", icon: BarChart3, label: "學習統計" },
   { href: "/achievements", icon: Trophy, label: "成就" },
   { href: "/bookmarks", icon: Bookmark, label: "收藏題目" },
+  { href: "/pricing", icon: Zap, label: "方案與定價" },
 ];
 
 const secondaryItems = [
@@ -36,7 +37,8 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
-  const isElite = (session?.user as any)?.plan === "ELITE";
+  const plan = (session?.user as any)?.plan ?? "FREE";
+  const isElite = plan === "ELITE";
 
   return (
     <motion.aside
@@ -168,6 +170,32 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
                 <>
                   <span className="flex-1">管理後台</span>
                   <Badge variant="gold" className="text-[10px] px-1.5 py-0.5">Admin</Badge>
+                </>
+              )}
+            </div>
+          </Link>
+        )}
+        {!isElite && (
+          <Link href="/pricing">
+            <div
+              className={cn(
+                "sidebar-link relative overflow-hidden",
+                "border border-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] to-transparent",
+                "text-[var(--gold)] hover:bg-[var(--gold-dim)]",
+                pathname === "/pricing" && "active",
+                collapsed && "justify-center px-0"
+              )}
+              title={collapsed ? "升級方案" : undefined}
+            >
+              <Zap size={16} className="flex-shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 font-semibold">
+                    {plan === "FREE" ? "開始免費試用" : "升級方案"}
+                  </span>
+                  <Badge variant="gold" className="text-[10px] px-1.5 py-0.5">
+                    {plan === "FREE" ? "Pro 7天免費" : "升級"}
+                  </Badge>
                 </>
               )}
             </div>

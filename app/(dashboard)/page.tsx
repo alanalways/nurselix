@@ -10,6 +10,7 @@ import ExamCountdown from "@/components/dashboard/ExamCountdown";
 import StreakCard from "@/components/dashboard/StreakCard";
 import DomainRadarChart from "@/components/dashboard/RadarChart";
 import HeatMap from "@/components/dashboard/HeatMap";
+import UpgradeBanner from "@/components/dashboard/UpgradeBanner";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -43,6 +44,9 @@ export default function DashboardPage() {
           歡迎回來，繼續你的備考之旅！
         </p>
       </div>
+
+      {/* Upgrade Banner */}
+      <UpgradeBanner />
 
       {/* Assessment Prompt (if not done) */}
       <AssessmentPrompt />
