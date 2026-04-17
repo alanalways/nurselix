@@ -54,9 +54,9 @@ const plans = [
   {
     key: "PRO",
     name: "Plus",
-    prices: { monthly: 459, quarterly: 413, yearly: 369 },
-    quarterlyTotal: 1239,  // 413 × 3
-    yearlyTotal: 4428,     // 369 × 12
+    prices: { monthly: 399, quarterly: 359, yearly: 266 },
+    quarterlyTotal: 1077,  // 359 × 3
+    yearlyTotal: 3190,     // 266 × 12
     description: "認真備考的最佳選擇",
     features: [
       { text: "無限答題", included: true },
@@ -73,9 +73,9 @@ const plans = [
   {
     key: "ELITE",
     name: "Premium",
-    prices: { monthly: 999, quarterly: 899, yearly: 799 },
-    quarterlyTotal: 2697,  // 899 × 3
-    yearlyTotal: 9588,     // 799 × 12
+    prices: { monthly: 699, quarterly: 629, yearly: 466 },
+    quarterlyTotal: 1887,  // 629 × 3
+    yearlyTotal: 5590,     // 466 × 12
     description: "全方位 AI 備考支援",
     features: [
       { text: "Plus 所有功能", included: true },

@@ -77,9 +77,45 @@ export async function GET() {
     });
   }
 
+  // API Cost: last 30 days aggregated by day
+  const apiLogs = await prisma.apiUsageLog.findMany({
+    where: { createdAt: { gte: thirtyDaysAgo } },
+    select: { createdAt: true, model: true, costUsd: true, inputTokens: true, outputTokens: true, purpose: true },
+  });
+
+  const apiByDate: Record<string, { costUsd: number; calls: number }> = {};
+  let totalCostUsd = 0;
+  let totalCalls = 0;
+  const costByModel: Record<string, number> = {};
+  for (const log of apiLogs) {
+    const key = log.createdAt.toISOString().substring(0, 10);
+    if (!apiByDate[key]) apiByDate[key] = { costUsd: 0, calls: 0 };
+    apiByDate[key].costUsd += log.costUsd;
+    apiByDate[key].calls += 1;
+    totalCostUsd += log.costUsd;
+    totalCalls += 1;
+    costByModel[log.model] = (costByModel[log.model] ?? 0) + log.costUsd;
+  }
+
+  const apiDaily: { date: string; costUsd: number; calls: number }[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - i);
+    d.setUTCHours(0, 0, 0, 0);
+    const key = d.toISOString().substring(0, 10);
+    apiDaily.push({ date: key, costUsd: apiByDate[key]?.costUsd ?? 0, calls: apiByDate[key]?.calls ?? 0 });
+  }
+
   return NextResponse.json({
     domainBreakdown,
     weakestQuestions,
     mauDaily,
+    apiCost: {
+      daily: apiDaily,
+      totalCostUsd: Math.round(totalCostUsd * 10000) / 10000,
+      totalCostTwd: Math.round(totalCostUsd * 32 * 10) / 10,
+      totalCalls,
+      byModel: Object.entries(costByModel).map(([model, cost]) => ({ model, costUsd: Math.round(cost * 10000) / 10000 })),
+    },
   });
 }

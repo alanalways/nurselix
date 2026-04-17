@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { runAnalyticsAgent, type SessionSnapshot } from "./analyticsAgent";
 import { runTeachingAgent, type ProfileSnapshot } from "./teachingAgent";
+import { calcCostUsd } from "@/lib/ai/costCalc";
 
 export async function runHermesForSession(sessionId: string, userId: string): Promise<void> {
   // Mark job as running
@@ -155,7 +156,57 @@ export async function runHermesForSession(sessionId: string, userId: string): Pr
       },
     });
 
-    // 9. Mark job done
+    // 9. Save HermesReport snapshot for history
+    await prisma.hermesReport.create({
+      data: {
+        userId,
+        sessionId,
+        type: "session",
+        insightSummary: teaching.insightSummary,
+        nextActions: teaching.nextActions as unknown as object[],
+        studyPlan: teaching.studyPlan as unknown as object[],
+        keyInsight: analytics.keyInsight,
+        rootCauses: analytics.rootCauses,
+        mistakeTypes: analytics.mistakeTypes,
+        weakDomains: analytics.weakDomains,
+        confidenceBand: teaching.confidenceBand,
+        recentTrend: teaching.recentTrend,
+      },
+    });
+
+    // 10. Log API usage costs
+    const analyticsModel = "claude-haiku-4-5-20251001";
+    const teachingModel  = "claude-sonnet-4-6";
+    if (analytics._usage) {
+      await prisma.apiUsageLog.create({
+        data: {
+          userId,
+          model: analyticsModel,
+          inputTokens: analytics._usage.inputTokens,
+          outputTokens: analytics._usage.outputTokens,
+          cacheReadTokens: analytics._usage.cacheReadTokens,
+          cacheWriteTokens: analytics._usage.cacheWriteTokens,
+          purpose: "hermes_analytics",
+          costUsd: calcCostUsd(analyticsModel, analytics._usage),
+        },
+      });
+    }
+    if (teaching._usage) {
+      await prisma.apiUsageLog.create({
+        data: {
+          userId,
+          model: teachingModel,
+          inputTokens: teaching._usage.inputTokens,
+          outputTokens: teaching._usage.outputTokens,
+          cacheReadTokens: teaching._usage.cacheReadTokens,
+          cacheWriteTokens: teaching._usage.cacheWriteTokens,
+          purpose: "hermes_teaching",
+          costUsd: calcCostUsd(teachingModel, teaching._usage),
+        },
+      });
+    }
+
+    // 11. Mark job done
     await prisma.hermesJob.updateMany({
       where: { sessionId, userId, status: "running" },
       data: { status: "done" },

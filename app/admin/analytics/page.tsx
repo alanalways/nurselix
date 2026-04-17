@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { BarChart2, Loader2 } from "lucide-react";
+import { BarChart2, Loader2, DollarSign } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 interface AnalyticsData {
@@ -14,6 +14,13 @@ interface AnalyticsData {
     attempts: number; correct: number; errorRate: number;
   }>;
   mauDaily: Array<{ date: string; dau: number; questions: number }>;
+  apiCost: {
+    daily: Array<{ date: string; costUsd: number; calls: number }>;
+    totalCostUsd: number;
+    totalCostTwd: number;
+    totalCalls: number;
+    byModel: Array<{ model: string; costUsd: number }>;
+  };
 }
 
 export default function AdminAnalyticsPage() {
@@ -122,6 +129,66 @@ export default function AdminAnalyticsPage() {
           </ResponsiveContainer>
         )}
       </div>
+
+      {/* API Cost Section */}
+      {data.apiCost && (
+        <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <DollarSign size={18} className="text-[var(--gold)]" />
+            <h3 className="font-semibold text-[var(--text-primary)]">Claude API 費用（近 30 天）</h3>
+          </div>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg bg-[var(--bg-elevated)] p-3 text-center">
+              <div className="text-xl font-bold text-[var(--gold)]">NT${data.apiCost.totalCostTwd}</div>
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">總費用（TWD）</div>
+            </div>
+            <div className="rounded-lg bg-[var(--bg-elevated)] p-3 text-center">
+              <div className="text-xl font-bold text-[var(--text-primary)]">${data.apiCost.totalCostUsd}</div>
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">總費用（USD）</div>
+            </div>
+            <div className="rounded-lg bg-[var(--bg-elevated)] p-3 text-center">
+              <div className="text-xl font-bold text-[var(--text-primary)]">{data.apiCost.totalCalls}</div>
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">API 呼叫次數</div>
+            </div>
+          </div>
+
+          {/* Per-model cost */}
+          {data.apiCost.byModel.length > 0 && (
+            <div className="space-y-1.5">
+              {data.apiCost.byModel.map((m) => (
+                <div key={m.model} className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--text-secondary)] font-mono text-xs">{m.model}</span>
+                  <span className="text-[var(--text-primary)]">${m.costUsd} USD · NT${Math.round(m.costUsd * 32 * 10) / 10}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Daily cost chart */}
+          {data.apiCost.daily.some((d) => d.costUsd > 0) ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={data.apiCost.daily.map((d) => ({
+                ...d,
+                dateLabel: new Date(d.date).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" }),
+                costTwd: Math.round(d.costUsd * 32 * 100) / 100,
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                <XAxis dataKey="dateLabel" tick={{ fill: "var(--text-muted)", fontSize: 9 }} />
+                <YAxis tick={{ fill: "var(--text-muted)", fontSize: 10 }} />
+                <Tooltip
+                  contentStyle={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 8 }}
+                  formatter={(val) => [`NT$${val}`, "費用"]}
+                />
+                <Bar dataKey="costTwd" fill="var(--gold)" radius={[3, 3, 0, 0]} name="費用 (TWD)" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-[var(--text-muted)] text-center py-4">尚無 API 使用紀錄</p>
+          )}
+        </div>
+      )}
 
       {/* Weakest Questions */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">

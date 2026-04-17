@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Sparkles, TrendingUp, TrendingDown, Minus, Target,
   AlertCircle, Brain, Loader2, ArrowRight, CheckCircle2,
-  Calendar, Zap, BookOpen,
+  Calendar, Zap, BookOpen, History, Lock,
 } from "lucide-react";
 import Link from "next/link";
 import Badge from "@/components/ui/Badge";
@@ -14,6 +14,18 @@ interface StudyPlanDay {
   day: number;
   focus: string;
   questions: number;
+}
+
+interface HermesReport {
+  id: string;
+  type: string;
+  insightSummary: string | null;
+  nextActions: string[];
+  keyInsight: string | null;
+  confidenceBand: string | null;
+  recentTrend: string | null;
+  weakDomains: string[];
+  createdAt: string;
 }
 
 interface Profile {
@@ -59,15 +71,25 @@ const DAY_LABELS = ["", "明天", "後天", "第 3 天"];
 
 export default function InsightsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [reports, setReports] = useState<HermesReport[]>([]);
+  const [reportsLocked, setReportsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/user/profile", { cache: "no-store" });
-        if (res.ok) {
-          const body = await res.json();
+        const [profileRes, reportsRes] = await Promise.all([
+          fetch("/api/user/profile", { cache: "no-store" }),
+          fetch("/api/user/hermes/reports", { cache: "no-store" }),
+        ]);
+        if (profileRes.ok) {
+          const body = await profileRes.json();
           setProfile(body.profile);
+        }
+        if (reportsRes.ok) {
+          const body = await reportsRes.json();
+          setReports(body.reports ?? []);
+          setReportsLocked(body.locked ?? false);
         }
       } finally {
         setLoading(false);
@@ -331,6 +353,71 @@ export default function InsightsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Report History */}
+      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <History size={16} className="text-[var(--gold)]" />
+          <span className="text-sm font-semibold text-[var(--text-primary)]">歷史分析報告</span>
+          {reportsLocked && (
+            <Badge variant="muted" className="ml-auto flex items-center gap-1">
+              <Lock size={10} /> Plus 以上方案解鎖
+            </Badge>
+          )}
+        </div>
+
+        {reportsLocked ? (
+          <div className="text-center py-6">
+            <Lock size={24} className="mx-auto text-[var(--text-muted)] mb-2" />
+            <p className="text-sm text-[var(--text-secondary)] mb-3">升級到 Plus 即可存取完整歷史報告</p>
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-[#080E1A] text-sm font-semibold hover:opacity-90 transition"
+            >
+              查看方案 <ArrowRight size={14} />
+            </Link>
+          </div>
+        ) : reports.length === 0 ? (
+          <p className="text-sm text-[var(--text-muted)] text-center py-4">完成測驗後 Hermes 會自動生成報告</p>
+        ) : (
+          <div className="space-y-3">
+            {reports.map((r) => (
+              <div key={r.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={r.type === "weekly" ? "gold" : "muted"}>
+                      {r.type === "weekly" ? "週報" : "測驗分析"}
+                    </Badge>
+                    {r.confidenceBand && (
+                      <span className={`text-xs font-medium ${
+                        r.confidenceBand === "high" ? "text-[var(--success)]"
+                        : r.confidenceBand === "stable" ? "text-[var(--gold)]"
+                        : r.confidenceBand === "developing" ? "text-[var(--warning)]"
+                        : "text-[var(--error)]"
+                      }`}>
+                        {r.confidenceBand === "high" ? "高信心" : r.confidenceBand === "stable" ? "穩定" : r.confidenceBand === "developing" ? "發展中" : "信心偏低"}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-[var(--text-muted)] flex-shrink-0">
+                    {new Date(r.createdAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                {r.insightSummary && (
+                  <p className="text-sm text-[var(--text-primary)] leading-relaxed mb-2">{r.insightSummary}</p>
+                )}
+                {r.weakDomains.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {r.weakDomains.map((d) => (
+                      <span key={d} className="text-xs px-2 py-0.5 rounded-full bg-[var(--error)]/10 text-[var(--error)]">{d}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="text-xs text-[var(--text-muted)] text-center pt-4">

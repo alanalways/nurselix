@@ -73,8 +73,8 @@ export function buildPaymentForm(params: TradeParams): string {
 
 export const PLAN_AMOUNTS: Record<string, Record<string, number>> = {
   BASIC:  { monthly: 299, quarterly: 807,  yearly: 2868 },
-  PRO:    { monthly: 459, quarterly: 1239, yearly: 4428 },
-  ELITE:  { monthly: 999, quarterly: 2697, yearly: 9588 },
+  PRO:    { monthly: 399, quarterly: 1077, yearly: 3190 },
+  ELITE:  { monthly: 699, quarterly: 1887, yearly: 5590 },
 };
 
 export const PLAN_LABELS: Record<string, string> = {

@@ -55,3 +55,40 @@ CREATE TABLE IF NOT EXISTS "AppSetting" (
   "value"     TEXT        NOT NULL,
   "updatedAt" TIMESTAMP   NOT NULL DEFAULT NOW()
 );
+
+-- Phase 10c: Hermes Report History
+CREATE TABLE IF NOT EXISTS "HermesReport" (
+  "id"             TEXT        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId"         TEXT        NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+  "sessionId"      TEXT,
+  "type"           TEXT        NOT NULL DEFAULT 'session',
+  "insightSummary" TEXT,
+  "nextActions"    JSONB       NOT NULL DEFAULT '[]',
+  "studyPlan"      JSONB       NOT NULL DEFAULT '[]',
+  "keyInsight"     TEXT,
+  "rootCauses"     TEXT,
+  "mistakeTypes"   TEXT[]      NOT NULL DEFAULT '{}',
+  "weakDomains"    TEXT[]      NOT NULL DEFAULT '{}',
+  "confidenceBand" TEXT,
+  "recentTrend"    TEXT,
+  "createdAt"      TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS "HermesReport_userId_createdAt_idx" ON "HermesReport"("userId", "createdAt" DESC);
+
+-- Phase 10c: API Usage / Cost Tracking
+CREATE TABLE IF NOT EXISTS "ApiUsageLog" (
+  "id"               TEXT        NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId"           TEXT,
+  "model"            TEXT        NOT NULL,
+  "inputTokens"      INTEGER     NOT NULL,
+  "outputTokens"     INTEGER     NOT NULL,
+  "cacheReadTokens"  INTEGER     NOT NULL DEFAULT 0,
+  "cacheWriteTokens" INTEGER     NOT NULL DEFAULT 0,
+  "purpose"          TEXT        NOT NULL,
+  "costUsd"          FLOAT       NOT NULL,
+  "createdAt"        TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS "ApiUsageLog_createdAt_idx" ON "ApiUsageLog"("createdAt");
+CREATE INDEX IF NOT EXISTS "ApiUsageLog_userId_idx"    ON "ApiUsageLog"("userId");

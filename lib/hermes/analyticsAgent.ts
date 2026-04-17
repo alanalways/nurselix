@@ -29,6 +29,7 @@ export interface AnalyticsResult {
   severity: number;       // 1-5
   rootCauses: string;     // ≤200 chars, Traditional Chinese
   keyInsight: string;     // ≤100 chars, Traditional Chinese
+  _usage?: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
 }
 
 export async function runAnalyticsAgent(snapshot: SessionSnapshot): Promise<AnalyticsResult> {
@@ -82,6 +83,12 @@ Respond in JSON exactly:
   });
 
   const raw = msg.content[0]?.type === "text" ? msg.content[0].text : "{}";
+  const _usage = {
+    inputTokens: msg.usage.input_tokens,
+    outputTokens: msg.usage.output_tokens,
+    cacheReadTokens: (msg.usage as any).cache_read_input_tokens ?? 0,
+    cacheWriteTokens: (msg.usage as any).cache_creation_input_tokens ?? 0,
+  };
   try {
     const json = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? "{}");
     return {
@@ -91,8 +98,9 @@ Respond in JSON exactly:
       severity: Math.min(5, Math.max(1, Number(json.severity) || 3)),
       rootCauses: String(json.rootCauses ?? "").slice(0, 200),
       keyInsight: String(json.keyInsight ?? "").slice(0, 100),
+      _usage,
     };
   } catch {
-    return { mistakeTypes: [], behaviorPatterns: [], weakDomains, severity: 3, rootCauses: "", keyInsight: "" };
+    return { mistakeTypes: [], behaviorPatterns: [], weakDomains, severity: 3, rootCauses: "", keyInsight: "", _usage };
   }
 }

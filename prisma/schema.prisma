@@ -41,6 +41,7 @@ model User {
   betaSubscribers  BetaSubscriber[]
   orders           Order[]
   learnerProfile   LearnerProfile?
+  hermesReports    HermesReport[]
 }
 
 model Account {
@@ -542,4 +543,48 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ===== Hermes Report History =====
+
+model HermesReport {
+  id             String   @id @default(uuid())
+  userId         String
+  sessionId      String?
+  type           String   @default("session")  // "session" | "weekly"
+
+  insightSummary String?
+  nextActions    Json     @default("[]")
+  studyPlan      Json     @default("[]")
+  keyInsight     String?
+  rootCauses     String?
+  mistakeTypes   String[] @default([])
+  weakDomains    String[] @default([])
+  confidenceBand String?
+  recentTrend    String?
+
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// ===== API Usage / Cost Tracking =====
+
+model ApiUsageLog {
+  id               String   @id @default(uuid())
+  userId           String?
+  model            String
+  inputTokens      Int
+  outputTokens     Int
+  cacheReadTokens  Int      @default(0)
+  cacheWriteTokens Int      @default(0)
+  purpose          String   // "hermes_analytics" | "hermes_teaching" | "chat"
+  costUsd          Float
+
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
 }

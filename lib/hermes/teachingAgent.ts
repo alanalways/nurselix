@@ -33,6 +33,7 @@ export interface TeachingResult {
   insightSummary: string;       // ≤300 chars, Traditional Chinese
   nextActions: string[];        // 3-5 concrete actions, Traditional Chinese
   studyPlan: StudyPlanDay[];    // 3-day plan
+  _usage?: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
 }
 
 export async function runTeachingAgent(
@@ -112,6 +113,12 @@ Rules for studyPlan:
   });
 
   const raw = msg.content[0]?.type === "text" ? msg.content[0].text : "{}";
+  const _usage = {
+    inputTokens: msg.usage.input_tokens,
+    outputTokens: msg.usage.output_tokens,
+    cacheReadTokens: (msg.usage as any).cache_read_input_tokens ?? 0,
+    cacheWriteTokens: (msg.usage as any).cache_creation_input_tokens ?? 0,
+  };
 
   let insightSummary = analytics.keyInsight;
   let nextActions: string[] = [];
@@ -161,5 +168,6 @@ Rules for studyPlan:
     insightSummary,
     nextActions,
     studyPlan,
+    _usage,
   };
 }
