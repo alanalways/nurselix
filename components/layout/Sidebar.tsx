@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Brain, BookOpen, Calendar, BarChart3,
   Trophy, Bookmark, Settings, ChevronLeft, ChevronRight,
-  LogOut, Stethoscope, Star, Shield, Sparkles, Zap
+  LogOut, Star, Shield, Sparkles, Zap
 } from "lucide-react";
+import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { cn } from "@/lib/utils/cn";
 import Badge from "@/components/ui/Badge";
 import { signOut, useSession } from "next-auth/react";
@@ -50,7 +51,7 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
       {/* Logo */}
       <div className="flex items-center gap-3 p-4 border-b border-[var(--border-subtle)] h-16">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center flex-shrink-0">
-          <Stethoscope size={16} className="text-[#080E1A]" />
+          <NurslixIconSquare size={22} className="text-[#080E1A]" />
         </div>
         <AnimatePresence>
           {!collapsed && (

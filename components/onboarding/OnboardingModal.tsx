@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Stethoscope, ChevronRight, Calendar } from "lucide-react";
+import { ChevronRight, Calendar } from "lucide-react";
+import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 
@@ -75,7 +76,7 @@ export default function OnboardingModal() {
               {/* Header */}
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
-                  <Stethoscope size={20} className="text-[#080E1A]" />
+                  <NurslixIconSquare size={24} className="text-[#080E1A]" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-[var(--text-primary)]">歡迎來到 Nurslix！</h2>

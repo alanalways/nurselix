@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Mail, Lock, Stethoscope, AlertCircle } from "lucide-react";
+import { Mail, Lock, AlertCircle } from "lucide-react";
+import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { signIn } from "next-auth/react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -54,7 +55,7 @@ export default function LoginPage() {
         >
           <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
-              <Stethoscope size={24} className="text-[#080E1A]" />
+              <NurslixIconSquare size={28} className="text-[#080E1A]" />
             </div>
             <span className="text-3xl font-bold text-gradient-gold">Nurslix</span>
           </div>
@@ -124,7 +125,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
-              <Stethoscope size={20} className="text-[#080E1A]" />
+              <NurslixIconSquare size={24} className="text-[#080E1A]" />
             </div>
             <span className="text-2xl font-bold text-gradient-gold">Nurslix</span>
           </div>

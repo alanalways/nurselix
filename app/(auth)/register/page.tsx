@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, Stethoscope, AlertCircle } from "lucide-react";
+import { Mail, Lock, User, AlertCircle } from "lucide-react";
+import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { signIn } from "next-auth/react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -77,7 +78,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
-            <Stethoscope size={20} className="text-[#080E1A]" />
+            <NurslixIconSquare size={24} className="text-[#080E1A]" />
           </div>
           <span className="text-2xl font-bold text-gradient-gold">Nurslix</span>
         </div>

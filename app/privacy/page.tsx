@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Stethoscope } from "lucide-react";
+import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 
 export const metadata = {
   title: "隱私權政策 | Nurslix",
@@ -11,7 +11,7 @@ export default function PrivacyPage() {
       <nav className="border-b border-[var(--border-subtle)] px-6 py-4">
         <Link href="/" className="flex items-center gap-2 w-fit">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
-            <Stethoscope size={16} className="text-[#080E1A]" />
+            <NurslixIconSquare size={20} className="text-[#080E1A]" />
           </div>
           <span className="font-bold text-lg text-gradient-gold">Nurslix</span>
         </Link>

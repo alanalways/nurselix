@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, Star, Mail, Stethoscope, Loader2 } from "lucide-react";
+import { Check, X, Star, Mail, Loader2 } from "lucide-react";
+import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Input from "@/components/ui/Input";
@@ -191,7 +192,7 @@ export default function PricingPage() {
       <nav className="border-b border-[var(--border-subtle)] px-6 py-4 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
-            <Stethoscope size={16} className="text-[#080E1A]" />
+            <NurslixIconSquare size={20} className="text-[#080E1A]" />
           </div>
           <span className="font-bold text-lg text-gradient-gold">Nurslix</span>
         </a>

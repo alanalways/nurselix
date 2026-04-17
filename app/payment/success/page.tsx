@@ -3,7 +3,8 @@
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { CheckCircle, Stethoscope } from "lucide-react";
+import { CheckCircle } from "lucide-react";
+import { NurslixIcon } from "@/components/ui/NurslixIcon";
 import Button from "@/components/ui/Button";
 import confetti from "canvas-confetti";
 
@@ -40,7 +41,7 @@ function SuccessContent() {
         </div>
 
         <div className="flex items-center gap-2 justify-center text-[var(--gold)]">
-          <Stethoscope size={18} />
+          <NurslixIcon size={16} />
           <span className="font-semibold">Nurslix</span>
         </div>
 
