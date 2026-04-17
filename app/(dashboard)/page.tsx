@@ -11,6 +11,7 @@ import StreakCard from "@/components/dashboard/StreakCard";
 import DomainRadarChart from "@/components/dashboard/RadarChart";
 import HeatMap from "@/components/dashboard/HeatMap";
 import UpgradeBanner from "@/components/dashboard/UpgradeBanner";
+import HermesCard from "@/components/dashboard/HermesCard";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -64,6 +65,7 @@ export default function DashboardPage() {
 
         {/* Right: Sidebar Cards */}
         <div className="space-y-4">
+          <HermesCard />
           <DailyProgress />
           <ExamCountdown />
           <StreakCard />

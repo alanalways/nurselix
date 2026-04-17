@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS "HermesJob" (
 CREATE INDEX IF NOT EXISTS "HermesJob_status_createdAt_idx" ON "HermesJob"("status", "createdAt");
 CREATE INDEX IF NOT EXISTS "HermesJob_userId_idx"            ON "HermesJob"("userId");
 
+-- Phase 10b: nextActions + studyPlan on LearnerProfile
+ALTER TABLE "LearnerProfile" ADD COLUMN IF NOT EXISTS "nextActions" JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE "LearnerProfile" ADD COLUMN IF NOT EXISTS "studyPlan"   JSONB NOT NULL DEFAULT '[]';
+
 -- App-wide key/value settings (used for test account toggle etc.)
 CREATE TABLE IF NOT EXISTS "AppSetting" (
   "key"       TEXT        NOT NULL PRIMARY KEY,

@@ -2,9 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, TrendingUp, TrendingDown, Minus, Target, AlertCircle, Brain, Loader2, ArrowRight } from "lucide-react";
+import {
+  Sparkles, TrendingUp, TrendingDown, Minus, Target,
+  AlertCircle, Brain, Loader2, ArrowRight, CheckCircle2,
+  Calendar, Zap, BookOpen,
+} from "lucide-react";
 import Link from "next/link";
 import Badge from "@/components/ui/Badge";
+
+interface StudyPlanDay {
+  day: number;
+  focus: string;
+  questions: number;
+}
 
 interface Profile {
   domainMastery: Record<string, number>;
@@ -14,6 +24,8 @@ interface Profile {
   confidenceBand: "low" | "developing" | "stable" | "high";
   recentTrend: "improving" | "stable" | "declining";
   insightSummary: string | null;
+  nextActions: string[];
+  studyPlan: StudyPlanDay[];
   thetaHistory: number[];
   sessionsAnalysed: number;
   updatedAt: string;
@@ -30,18 +42,20 @@ const BEHAVIOR_LABELS: Record<string, string> = {
   med_calculation_errors: "藥物計算錯誤",
 };
 
-const CONFIDENCE_META: Record<string, { label: string; color: string; desc: string }> = {
-  low: { label: "信心偏低", color: "text-[var(--error)]", desc: "θ < −1，需要系統性補強" },
-  developing: { label: "發展中", color: "text-[var(--warning)]", desc: "−1 ≤ θ < 0，仍在建立基礎" },
-  stable: { label: "穩定", color: "text-[var(--gold)]", desc: "0 ≤ θ < 1，接近通過水準" },
-  high: { label: "高信心", color: "text-[var(--success)]", desc: "θ ≥ 1，通過機率高" },
+const CONFIDENCE_META: Record<string, { label: string; color: string; desc: string; barColor: string }> = {
+  low:        { label: "信心偏低", color: "text-[var(--error)]",   barColor: "bg-[var(--error)]",   desc: "θ < −1，需要系統性補強" },
+  developing: { label: "發展中",   color: "text-[var(--warning)]", barColor: "bg-[var(--warning)]", desc: "−1 ≤ θ < 0，仍在建立基礎" },
+  stable:     { label: "穩定",     color: "text-[var(--gold)]",    barColor: "bg-[var(--gold)]",    desc: "0 ≤ θ < 1，接近通過水準" },
+  high:       { label: "高信心",   color: "text-[var(--success)]", barColor: "bg-[var(--success)]", desc: "θ ≥ 1，通過機率高" },
 };
 
 const TREND_META: Record<string, { label: string; icon: typeof TrendingUp; color: string }> = {
-  improving: { label: "進步中", icon: TrendingUp, color: "text-[var(--success)]" },
-  stable: { label: "持平", icon: Minus, color: "text-[var(--text-secondary)]" },
-  declining: { label: "下滑", icon: TrendingDown, color: "text-[var(--error)]" },
+  improving: { label: "進步中", icon: TrendingUp,  color: "text-[var(--success)]" },
+  stable:    { label: "持平",   icon: Minus,       color: "text-[var(--text-secondary)]" },
+  declining: { label: "下滑",   icon: TrendingDown, color: "text-[var(--error)]" },
 };
+
+const DAY_LABELS = ["", "明天", "後天", "第 3 天"];
 
 export default function InsightsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -76,9 +90,12 @@ export default function InsightsPage() {
           <Sparkles className="mx-auto text-[var(--gold)] mb-4" size={32} />
           <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">Hermes AI 還沒開始分析你</h2>
           <p className="text-[var(--text-secondary)] mb-6">
-            完成至少 1 次 NCLEX 測驗後，Hermes AI 就會自動分析你的錯誤模式、信心水準與行為習慣，並生成個人化洞察。
+            完成至少 1 次 NCLEX 測驗後，Hermes AI 就會自動分析你的錯誤模式、信心水準與行為習慣，並生成個人化洞察與學習計劃。
           </p>
-          <Link href="/nclex" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-[#080E1A] font-semibold hover:opacity-90 transition">
+          <Link
+            href="/nclex"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-[#080E1A] font-semibold hover:opacity-90 transition"
+          >
             <Brain size={16} /> 開始一場測驗 <ArrowRight size={16} />
           </Link>
         </div>
@@ -98,12 +115,16 @@ export default function InsightsPage() {
     .sort((a, b) => a[1] - b[1])
     .slice(0, 5);
 
+  const nextActions = Array.isArray(profile.nextActions) ? profile.nextActions : [];
+  const studyPlan   = Array.isArray(profile.studyPlan)   ? profile.studyPlan   : [];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className="p-6 space-y-6 max-w-6xl mx-auto"
     >
+      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
           <Sparkles size={18} className="text-[#080E1A]" />
@@ -116,7 +137,7 @@ export default function InsightsPage() {
         </div>
       </div>
 
-      {/* Insight Summary */}
+      {/* AI Insight Summary */}
       {profile.insightSummary && (
         <div className="rounded-2xl border border-[var(--gold)] bg-gradient-to-br from-[var(--gold-dim)] to-[var(--bg-surface)] p-6">
           <div className="flex items-start gap-3">
@@ -129,17 +150,75 @@ export default function InsightsPage() {
         </div>
       )}
 
+      {/* Next Actions + Study Plan — two column */}
+      {(nextActions.length > 0 || studyPlan.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Today's Actions */}
+          {nextActions.length > 0 && (
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Zap size={16} className="text-[var(--gold)]" />
+                <span className="text-sm font-semibold text-[var(--text-primary)]">今日行動清單</span>
+              </div>
+              <ul className="space-y-3">
+                {nextActions.map((action, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <CheckCircle2 size={16} className="text-[var(--gold)] flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-[var(--text-primary)] leading-snug">{action}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/nclex"
+                className="mt-4 flex items-center gap-1.5 text-xs text-[var(--gold)] hover:underline"
+              >
+                馬上開始練習 <ArrowRight size={12} />
+              </Link>
+            </div>
+          )}
+
+          {/* 3-Day Study Plan */}
+          {studyPlan.length > 0 && (
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar size={16} className="text-[var(--gold)]" />
+                <span className="text-sm font-semibold text-[var(--text-primary)]">3 天學習計劃</span>
+              </div>
+              <div className="space-y-3">
+                {studyPlan.map((d) => (
+                  <div key={d.day} className="flex items-start gap-3">
+                    <div className="w-14 flex-shrink-0 text-center">
+                      <div className="text-xs font-bold text-[var(--gold)]">{DAY_LABELS[d.day] ?? `Day ${d.day}`}</div>
+                      <div className="text-xs text-[var(--text-muted)]">{d.questions} 題</div>
+                    </div>
+                    <div className="flex-1 bg-[var(--bg-elevated)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] leading-snug">
+                      {d.focus}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Confidence + Trend | Top Weaknesses */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Confidence + Trend */}
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
-          <div className="text-sm text-[var(--text-muted)] mb-3">整體狀態</div>
-          <div className="space-y-3">
+          <div className="text-sm text-[var(--text-muted)] mb-4">整體狀態</div>
+          <div className="space-y-4">
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-sm text-[var(--text-secondary)]">信心水準</span>
                 <span className={`text-sm font-semibold ${confidence.color}`}>{confidence.label}</span>
               </div>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">{confidence.desc}</p>
+              <div className="h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${confidence.barColor}`}
+                  style={{ width: profile.confidenceBand === "low" ? "25%" : profile.confidenceBand === "developing" ? "50%" : profile.confidenceBand === "stable" ? "75%" : "95%" }}
+                />
+              </div>
+              <p className="text-xs text-[var(--text-muted)] mt-1">{confidence.desc}</p>
             </div>
             <div className="pt-3 border-t border-[var(--border-subtle)]">
               <div className="flex items-center justify-between">
@@ -149,27 +228,26 @@ export default function InsightsPage() {
                 </span>
               </div>
               {profile.thetaHistory.length >= 2 && (
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                  最近 {profile.thetaHistory.length} 次 θ：{profile.thetaHistory.slice(-5).map((t) => t.toFixed(2)).join(" → ")}
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  近 {Math.min(profile.thetaHistory.length, 5)} 次 θ：{profile.thetaHistory.slice(-5).map((t) => t.toFixed(2)).join(" → ")}
                 </p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Top Weaknesses */}
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4">
             <Target size={16} className="text-[var(--error)]" />
-            <span className="text-sm text-[var(--text-muted)]">主要弱點</span>
+            <span className="text-sm text-[var(--text-muted)]">主要弱點（Top 3）</span>
           </div>
           {profile.topWeaknesses.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">尚未有足夠資料判斷</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-2.5">
               {profile.topWeaknesses.map((w, i) => (
                 <li key={w} className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
-                  <span className="w-5 h-5 rounded-full bg-[var(--error)]/15 text-[var(--error)] flex items-center justify-center text-xs font-bold">
+                  <span className="w-5 h-5 rounded-full bg-[var(--error)]/15 text-[var(--error)] flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {i + 1}
                   </span>
                   {w}
@@ -197,17 +275,20 @@ export default function InsightsPage() {
         </div>
       )}
 
+      {/* Mistake Types | Weakest Domains */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Mistake Types */}
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
-          <div className="text-sm text-[var(--text-muted)] mb-4">錯誤類型分布</div>
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen size={16} className="text-[var(--text-muted)]" />
+            <span className="text-sm text-[var(--text-muted)]">錯誤類型分布</span>
+          </div>
           {sortedMistakes.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">尚未有資料</p>
           ) : (
             <div className="space-y-3">
               {sortedMistakes.map(([type, count]) => {
                 const max = sortedMistakes[0][1] || 1;
-                const pct = (count / max) * 100;
+                const pct = Math.round((count / max) * 100);
                 return (
                   <div key={type}>
                     <div className="flex items-center justify-between text-sm mb-1">
@@ -224,7 +305,6 @@ export default function InsightsPage() {
           )}
         </div>
 
-        {/* Weakest Domains */}
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
           <div className="text-sm text-[var(--text-muted)] mb-4">最弱的 Domain（正確率）</div>
           {sortedDomains.length === 0 ? (

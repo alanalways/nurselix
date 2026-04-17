@@ -470,6 +470,12 @@ model LearnerProfile {
   // Free-text AI-generated summary (≤300 chars), refreshed after each session
   insightSummary      String?
 
+  // Today's 3-5 concrete next actions (e.g. "練 10 題 SATA")
+  nextActions         Json     @default("[]")
+
+  // 3-day study plan: [{day:1, focus:"...", questions:10}, ...]
+  studyPlan           Json     @default("[]")
+
   // Theta trajectory: last 10 theta values
   thetaHistory        Float[]  @default([])
 

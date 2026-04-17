@@ -21,6 +21,8 @@ export async function GET() {
       confidenceBand: profile.confidenceBand,
       recentTrend: profile.recentTrend,
       insightSummary: profile.insightSummary,
+      nextActions: profile.nextActions,
+      studyPlan: profile.studyPlan,
       thetaHistory: profile.thetaHistory,
       sessionsAnalysed: profile.sessionsAnalysed,
       updatedAt: profile.updatedAt,
