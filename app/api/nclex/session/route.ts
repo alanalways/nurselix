@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/nclex/sessionEngine";
 import { getClientIp, ipRateLimit, userRateLimit } from "@/lib/utils/rateLimit";
 import { getDailyUsage } from "@/lib/utils/dailyLimit";
@@ -31,8 +32,8 @@ const DEFAULT_MINI_CAT_TARGET = 15;
 const DEFAULT_ASSESSMENT_TARGET = 25;
 const DEFAULT_PRACTICE_TARGET = 10;
 
-const DEFAULT_MOCK_TIME = 5 * 60 * 60; // 5 h
-const DEFAULT_ASSESSMENT_TIME = 10 * 60; // 10 min
+const DEFAULT_MOCK_TIME = 5 * 60 * 60;
+const DEFAULT_ASSESSMENT_TIME = 10 * 60;
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -50,18 +51,46 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = schema.parse(body);
 
-    // Plan gate
-    const userPlan = (session.user.plan ?? "FREE") as Plan;
+    // Fetch fresh user from DB to enforce trial/subscription expiry
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { plan: true, trialEndsAt: true, subscriptionEndsAt: true } as any,
+    }) as { plan: string; trialEndsAt: Date | null; subscriptionEndsAt: Date | null } | null;
+
+    let effectivePlan = (session.user.plan ?? "FREE") as Plan;
+
+    if (dbUser) {
+      const now = new Date();
+      const subEndsAt = dbUser.subscriptionEndsAt as Date | null;
+      const hasActiveSub = subEndsAt && subEndsAt > now;
+      const trialExpired = dbUser.trialEndsAt && dbUser.trialEndsAt < now;
+
+      if (dbUser.plan !== "FREE" && trialExpired && !hasActiveSub) {
+        // Trial expired, no paid sub → downgrade
+        await prisma.user.update({ where: { id: session.user.id }, data: { plan: "FREE" } });
+        effectivePlan = "FREE";
+      } else if (dbUser.plan !== "FREE" && subEndsAt && subEndsAt < now) {
+        // Paid subscription expired
+        await prisma.user.update({
+          where: { id: session.user.id },
+          data: { plan: "FREE", subscriptionEndsAt: null } as any,
+        });
+        effectivePlan = "FREE";
+      } else {
+        effectivePlan = dbUser.plan as Plan;
+      }
+    }
+
     const allowed = MODE_REQUIRES[input.mode] ?? [];
-    if (!allowed.includes(userPlan)) {
+    if (!allowed.includes(effectivePlan)) {
       return NextResponse.json(
         { error: `此模式需要 ${allowed[0]} 或以上方案`, required: allowed[0] },
         { status: 403 },
       );
     }
 
-    // Daily quota check (just peek, actual consumption on answer submission)
-    const quota = await getDailyUsage(session.user.id, userPlan);
+    // Daily quota check
+    const quota = await getDailyUsage(session.user.id, effectivePlan);
     if (!quota.allowed) {
       return NextResponse.json(
         { error: `今日題數已達 ${quota.limit} 題上限`, resetAt: quota.resetAt },
@@ -69,14 +98,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Supply defaults per mode
     let targetCount = input.targetCount;
     let timeLimitSec = input.timeLimitSec;
 
     switch (input.mode) {
       case "CAT":
         targetCount ??= DEFAULT_CAT_TARGET;
-        timeLimitSec ??= 18000; // 5h
+        timeLimitSec ??= 18000;
         break;
       case "MOCK":
         targetCount ??= DEFAULT_MOCK_TARGET;

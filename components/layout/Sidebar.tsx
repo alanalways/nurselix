@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Brain, BookOpen, Calendar, BarChart3,
   Trophy, Bookmark, Settings, ChevronLeft, ChevronRight,
-  LogOut, Stethoscope, Star, Shield
+  LogOut, Stethoscope, Star, Shield, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import Badge from "@/components/ui/Badge";
@@ -36,6 +36,7 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const isElite = (session?.user as any)?.plan === "ELITE";
 
   return (
     <motion.aside
@@ -132,6 +133,26 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
 
       {/* Bottom */}
       <div className="p-3 border-t border-[var(--border-subtle)] space-y-1">
+        {isElite && (
+          <Link href="/nclex/ai-report">
+            <div
+              className={cn(
+                "sidebar-link text-[var(--gold)]",
+                pathname === "/nclex/ai-report" && "active",
+                collapsed && "justify-center px-0"
+              )}
+              title={collapsed ? "AI 分析" : undefined}
+            >
+              <Sparkles size={18} className="flex-shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1">AI 分析</span>
+                  <Badge variant="gold" className="text-[10px] px-1.5 py-0.5">Elite</Badge>
+                </>
+              )}
+            </div>
+          </Link>
+        )}
         {isAdmin && (
           <Link href="/admin">
             <div

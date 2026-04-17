@@ -78,6 +78,67 @@ export function passwordResetMail(resetUrl: string): { subject: string; html: st
   };
 }
 
+export function subscriptionConfirmedMail(params: {
+  name: string;
+  plan: string;
+  billing: string;
+  amount: number;
+  endsAt: string;
+}): { subject: string; html: string } {
+  const billingLabel = params.billing === "yearly" ? "年付" : "月付";
+  return {
+    subject: `Nurslix ${params.plan} 方案已啟用`,
+    html: `
+      <div style="font-family:'Noto Sans TC',Arial,sans-serif;max-width:540px;margin:0 auto;padding:32px;background:#0D1525;color:#EDF0F7;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="display:inline-block;padding:12px 18px;background:linear-gradient(135deg,#C9A84C,#E8C66A);border-radius:10px;font-size:22px;font-weight:700;color:#080E1A;">Nurslix</div>
+        </div>
+        <h2 style="margin:0 0 12px 0;color:#C9A84C;">🎉 訂閱成功！</h2>
+        <p style="line-height:1.7;color:#8A9BB5;">嗨 ${params.name}，你的 <strong style="color:#EDF0F7;">${params.plan} 方案</strong>（${billingLabel}）已成功啟用。</p>
+        <div style="background:#132035;border-radius:10px;padding:16px;margin:20px 0;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="color:#8A9BB5;">方案</span>
+            <span style="color:#C9A84C;font-weight:600;">${params.plan}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="color:#8A9BB5;">付款金額</span>
+            <span style="color:#EDF0F7;">NT$ ${params.amount}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="color:#8A9BB5;">下次續費日</span>
+            <span style="color:#EDF0F7;">${params.endsAt}</span>
+          </div>
+        </div>
+        <p style="text-align:center;margin:28px 0;">
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/nclex" style="display:inline-block;padding:12px 28px;background:#C9A84C;color:#080E1A;text-decoration:none;border-radius:8px;font-weight:600;">開始練習</a>
+        </p>
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:24px 0;">
+        <p style="font-size:12px;color:#4A5A70;">如有任何問題，請聯繫我們。</p>
+      </div>
+    `,
+  };
+}
+
+export function trialExpiryMail(params: {
+  name: string;
+  daysLeft: number;
+  upgradeUrl: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `你的 Nurslix Pro 試用還剩 ${params.daysLeft} 天`,
+    html: `
+      <div style="font-family:'Noto Sans TC',Arial,sans-serif;max-width:540px;margin:0 auto;padding:32px;background:#0D1525;color:#EDF0F7;border-radius:12px;">
+        <h2 style="color:#C9A84C;">⏰ 試用期即將結束</h2>
+        <p style="line-height:1.7;color:#8A9BB5;">嗨 ${params.name}，你的 7 天 Pro 免費試用還剩 <strong style="color:#EDF0F7;">${params.daysLeft} 天</strong>。</p>
+        <p style="line-height:1.7;color:#8A9BB5;">試用結束後將自動切回 Free 方案（每日 10 題），考前備考不中斷，建議現在升級。</p>
+        <p style="text-align:center;margin:28px 0;">
+          <a href="${params.upgradeUrl}" style="display:inline-block;padding:12px 28px;background:#C9A84C;color:#080E1A;text-decoration:none;border-radius:8px;font-weight:600;">立即升級方案</a>
+        </p>
+      </div>
+    `,
+  };
+}
+
 export function weeklyReportMail(stats: {
   name: string;
   questionsDone: number;

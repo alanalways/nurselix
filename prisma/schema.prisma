@@ -21,9 +21,10 @@ model User {
   lastLogin     DateTime?
   referredBy    String?
   examDate      DateTime?
-  trialUsed     Boolean   @default(false)
-  trialEndsAt   DateTime?
-  createdAt     DateTime  @default(now())
+  trialUsed            Boolean   @default(false)
+  trialEndsAt          DateTime?
+  subscriptionEndsAt   DateTime?
+  createdAt            DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   accounts         Account[]
@@ -38,6 +39,7 @@ model User {
   achievements     UserAchievement[]
   questionNotes    QuestionNote[]
   betaSubscribers  BetaSubscriber[]
+  orders           Order[]
 }
 
 model Account {
@@ -431,4 +433,9 @@ model Order {
   paymentRef  String?  // 藍新交易序號
   createdAt   DateTime @default(now())
   paidAt      DateTime?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
 }

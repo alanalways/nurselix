@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, Star, Mail, Stethoscope } from "lucide-react";
+import { Check, X, Star, Mail, Stethoscope, Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Input from "@/components/ui/Input";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 type Billing = "monthly" | "quarterly" | "yearly";
 
@@ -14,7 +16,6 @@ const plans = [
     key: "FREE",
     name: "Free",
     prices: { monthly: 0, quarterly: 0, yearly: 0 },
-    quarterlyTotal: 0,
     yearlyTotal: 0,
     description: "試用看看 Nurslix",
     features: [
@@ -33,7 +34,6 @@ const plans = [
     key: "BASIC",
     name: "Basic",
     prices: { monthly: 99, quarterly: 65, yearly: 79 },
-    quarterlyTotal: 195,
     yearlyTotal: 948,
     description: "每日穩定練習",
     features: [
@@ -52,7 +52,6 @@ const plans = [
     key: "PRO",
     name: "Pro",
     prices: { monthly: 249, quarterly: 164, yearly: 199 },
-    quarterlyTotal: 492,
     yearlyTotal: 2388,
     description: "認真備考的最佳選擇",
     features: [
@@ -71,7 +70,6 @@ const plans = [
     key: "ELITE",
     name: "Elite",
     prices: { monthly: 498, quarterly: 328, yearly: 398 },
-    quarterlyTotal: 984,
     yearlyTotal: 4776,
     description: "全方位 AI 備考支援",
     features: [
@@ -105,12 +103,64 @@ const featureTable = [
   { feature: "優先客服", free: "❌", basic: "❌", pro: "❌", elite: "✅" },
 ];
 
+const PLAN_ORDER = ["FREE", "BASIC", "PRO", "ELITE"];
+
 export default function PricingPage() {
-  const [billing, setBilling] = useState<Billing>("quarterly");
+  const { data: authSession } = useSession();
+  const router = useRouter();
+  const userPlan = (authSession?.user as any)?.plan ?? null;
+
+  const [billing, setBilling] = useState<Billing>("monthly");
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [betaEmail, setBetaEmail] = useState("");
   const [betaSubscribed, setBetaSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+
+  const handleSubscribe = async (planKey: string) => {
+    if (!authSession) {
+      router.push("/login?callbackUrl=/pricing");
+      return;
+    }
+    if (billing === "quarterly") return;
+    setLoadingPlan(planKey);
+    try {
+      const res = await fetch("/api/payment/newebpay/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planKey, billing }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "發生錯誤，請重試");
+        return;
+      }
+      // Inject form and auto-submit → redirects to NewebPay
+      const div = document.createElement("div");
+      div.innerHTML = data.formHtml;
+      document.body.appendChild(div);
+    } catch {
+      alert("網路錯誤，請稍後再試");
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  const getButtonLabel = (planKey: string) => {
+    if (!userPlan) return planKey === "FREE" ? "免費使用" : "立即訂閱";
+    if (planKey === userPlan) return "目前方案";
+    const currentIdx = PLAN_ORDER.indexOf(userPlan);
+    const targetIdx = PLAN_ORDER.indexOf(planKey);
+    if (planKey === "FREE") return "降級";
+    return targetIdx > currentIdx ? "升級" : "降級";
+  };
+
+  const isCurrentPlan = (planKey: string) => userPlan === planKey;
+  const isDisabled = (planKey: string) =>
+    billing === "quarterly" ||
+    planKey === "FREE" ||
+    isCurrentPlan(planKey) ||
+    loadingPlan !== null;
 
   const submitBeta = async () => {
     if (!betaEmail || subscribing) return;
@@ -123,10 +173,7 @@ export default function PricingPage() {
         body: JSON.stringify({ email: betaEmail }),
       });
       const body = await res.json();
-      if (!res.ok) {
-        setSubscribeError(body.error ?? "訂閱失敗");
-        return;
-      }
+      if (!res.ok) { setSubscribeError(body.error ?? "訂閱失敗"); return; }
       setBetaSubscribed(true);
     } catch (err) {
       setSubscribeError(err instanceof Error ? err.message : "網路錯誤");
@@ -137,7 +184,6 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)]">
-      {/* Nav */}
       <nav className="border-b border-[var(--border-subtle)] px-6 py-4 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
@@ -145,18 +191,18 @@ export default function PricingPage() {
           </div>
           <span className="font-bold text-lg text-gradient-gold">Nurslix</span>
         </a>
-        <a href="/login" className="text-sm text-[var(--text-secondary)] hover:text-[var(--gold)]">登入</a>
+        {authSession ? (
+          <a href="/" className="text-sm text-[var(--text-secondary)] hover:text-[var(--gold)]">← 返回主站</a>
+        ) : (
+          <a href="/login" className="text-sm text-[var(--text-secondary)] hover:text-[var(--gold)]">登入</a>
+        )}
       </nav>
 
       <div className="max-w-6xl mx-auto px-4 py-12 space-y-12">
-        {/* Header */}
         <div className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <h1 className="text-4xl font-bold text-[var(--text-primary)]">選擇你的方案</h1>
-            <Badge variant="warning">Beta 測試中</Badge>
-          </div>
+          <h1 className="text-4xl font-bold text-[var(--text-primary)] mb-3">選擇你的方案</h1>
           <p className="text-[var(--text-secondary)] max-w-xl mx-auto">
-            所有方案目前為 Beta 測試階段，付費功能即將開放
+            選擇最適合你的備考計畫，隨時可升降級
           </p>
         </div>
 
@@ -173,16 +219,14 @@ export default function PricingPage() {
               }`}
             >
               {b === "monthly" ? "月付" : b === "quarterly" ? (
-                <span className="flex items-center gap-1">季付 <Star size={12} className="text-[var(--gold)]" /> 推薦</span>
+                <span className="flex items-center gap-1">季付 <Star size={12} className="text-[var(--gold)]" /></span>
               ) : "年付"}
-              {b === "quarterly" && <span className="ml-1 text-xs text-[var(--gold)]">省 34%</span>}
               {b === "yearly" && <span className="ml-1 text-xs text-[var(--success)]">省 20%</span>}
             </button>
           ))}
         </div>
-
         {billing === "quarterly" && (
-          <p className="text-center text-sm text-[var(--text-muted)]">季付方案研擬當中，即將開放</p>
+          <p className="text-center text-sm text-[var(--text-muted)]">季付方案即將開放</p>
         )}
 
         {/* Plan Cards */}
@@ -194,12 +238,19 @@ export default function PricingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.08 }}
               className={`relative rounded-2xl border p-6 flex flex-col ${
-                plan.highlight
+                isCurrentPlan(plan.key)
+                  ? "border-[var(--success)] bg-[rgba(46,204,113,0.05)]"
+                  : plan.highlight
                   ? "border-[var(--gold)] bg-gradient-to-b from-[var(--gold-dim)] to-[var(--bg-surface)]"
                   : "border-[var(--border-default)] bg-[var(--bg-surface)]"
               }`}
             >
-              {plan.highlight && (
+              {isCurrentPlan(plan.key) && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge variant="success">✓ 目前方案</Badge>
+                </div>
+              )}
+              {!isCurrentPlan(plan.key) && plan.highlight && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge variant="gold">⭐ 推薦</Badge>
                 </div>
@@ -211,22 +262,20 @@ export default function PricingPage() {
               </div>
 
               <div className="mb-6">
-                {plan.prices[billing] === 0 ? (
+                {plan.prices[billing === "quarterly" ? "monthly" : billing] === 0 ? (
                   <div className="text-3xl font-bold text-[var(--text-primary)]">免費</div>
                 ) : (
                   <>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-bold text-[var(--text-primary)]">
-                        NT${billing === "quarterly" ? plan.quarterlyTotal : billing === "yearly" ? plan.yearlyTotal : plan.prices.monthly}
+                        NT${billing === "yearly" ? plan.yearlyTotal : plan.prices.monthly}
                       </span>
                       <span className="text-sm text-[var(--text-muted)]">
-                        /{billing === "monthly" ? "月" : billing === "quarterly" ? "季" : "年"}
+                        /{billing === "monthly" ? "月" : "年"}
                       </span>
                     </div>
-                    {billing !== "monthly" && (
-                      <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                        約 NT${plan.prices[billing]}/月
-                      </p>
+                    {billing === "yearly" && (
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">約 NT${plan.prices.yearly}/月</p>
                     )}
                   </>
                 )}
@@ -248,10 +297,13 @@ export default function PricingPage() {
 
               <Button
                 fullWidth
-                variant={plan.highlight ? "gold" : plan.key === "FREE" ? "outline" : "outline"}
-                disabled
+                variant={isCurrentPlan(plan.key) ? "outline" : plan.highlight ? "gold" : "outline"}
+                disabled={isDisabled(plan.key)}
+                onClick={() => !isDisabled(plan.key) && handleSubscribe(plan.key)}
               >
-                {plan.key === "FREE" ? "目前方案" : "即將開放"}
+                {loadingPlan === plan.key
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : getButtonLabel(plan.key)}
               </Button>
             </motion.div>
           ))}
@@ -284,8 +336,8 @@ export default function PricingPage() {
 
         {/* Beta Subscribe */}
         <div className="bg-gradient-to-r from-[var(--gold-dim)] to-[var(--blue-dim)] border border-[var(--gold)] rounded-2xl p-8 text-center">
-          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">搶先收到正式上線通知</h2>
-          <p className="text-[var(--text-secondary)] mb-6">Beta 測試期間完全免費，正式上線時通知你</p>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">收到最新消息通知</h2>
+          <p className="text-[var(--text-secondary)] mb-6">有新功能、優惠活動時第一個知道</p>
           {!betaSubscribed ? (
             <>
               <div className="flex gap-2 max-w-md mx-auto">

@@ -13,6 +13,7 @@
     "db:seed-all": "npm run db:init && npm run db:seed-admin && npm run db:seed-questions"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
