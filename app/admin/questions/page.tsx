@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Check, Archive, Eye, Loader2 } from "lucide-react";
+import { Plus, Search, Check, Archive, Eye, Loader2, Upload } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 
@@ -40,6 +40,8 @@ export default function AdminQuestionsPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [acting, setActing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -103,18 +105,68 @@ export default function AdminQuestionsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / 30));
 
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      setImporting(true);
+      setImportResult(null);
+      try {
+        const text = await file.text();
+        const questions = JSON.parse(text);
+        const arr = Array.isArray(questions) ? questions : questions.questions ?? [];
+        // Upload in batches of 500
+        let totalInserted = 0;
+        const BATCH = 500;
+        for (let i = 0; i < arr.length; i += BATCH) {
+          const res = await fetch("/api/admin/questions/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ questions: arr.slice(i, i + BATCH) }),
+          });
+          const body = await res.json();
+          if (res.ok) totalInserted += body.inserted ?? 0;
+        }
+        setImportResult(`✓ 成功匯入 ${totalInserted} / ${arr.length} 題`);
+        await load();
+      } catch (err) {
+        setImportResult(`✗ 匯入失敗：${err instanceof Error ? err.message : "未知錯誤"}`);
+      } finally {
+        setImporting(false);
+      }
+    };
+    input.click();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       className="p-6 space-y-5"
     >
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">題庫管理</h1>
-        <Button size="sm" onClick={() => router.push("/admin/questions/new")}>
-          <Plus size={14} /> 新增題目
-        </Button>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">題庫管理</h1>
+          <p className="text-sm text-[var(--text-secondary)]">共 {total} 題</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleImport} disabled={importing}>
+            {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            匯入 JSON
+          </Button>
+          <Button size="sm" onClick={() => router.push("/admin/questions/new")}>
+            <Plus size={14} /> 新增題目
+          </Button>
+        </div>
       </div>
+      {importResult && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${importResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
+          {importResult}
+        </div>
+      )}
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl px-3 py-2 flex-1 max-w-sm">

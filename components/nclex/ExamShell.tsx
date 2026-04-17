@@ -114,6 +114,10 @@ export default function ExamShell({
       };
 
       if (data.finished) {
+        if (data.stopReason === "out_of_questions") {
+          // Don't redirect — let the "no question" UI handle it
+          return;
+        }
         setFinished(true);
         await finishSession(data.stopReason ?? "completed");
         return;
@@ -364,8 +368,10 @@ export default function ExamShell({
                 <BookOpen size={32} className="text-[var(--gold)]" />
               </div>
               <div>
-                <p className="text-lg font-semibold text-[var(--text-primary)]">目前沒有可用題目</p>
-                <p className="text-sm text-[var(--text-secondary)] mt-1">請重新選擇 domain 或難易度</p>
+                <p className="text-lg font-semibold text-[var(--text-primary)]">題庫目前沒有可用題目</p>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">
+                  請確認題目已匯入且狀態為「已核准」，或嘗試調整 Domain / 難易度篩選條件。
+                </p>
               </div>
               <Button onClick={() => router.back()}>返回</Button>
             </div>
