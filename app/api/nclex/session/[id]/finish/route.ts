@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { finishSession } from "@/lib/nclex/sessionEngine";
+import { enqueueHermesJob } from "@/lib/hermes/orchestrator";
 
 const schema = z.object({ reason: z.string().optional() });
 
@@ -20,6 +21,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const res = await finishSession(params.id, session.user.id, reason);
   if (!res) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+
+  // Fire-and-forget Hermes analysis (non-blocking)
+  enqueueHermesJob(params.id, session.user.id).catch((err) => {
+    console.warn("[finish] Hermes enqueue failed:", err?.message);
+  });
+
   return NextResponse.json({
     ok: true,
     sessionId: res.id,

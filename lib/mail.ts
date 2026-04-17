@@ -172,3 +172,33 @@ export function weeklyReportMail(stats: {
     `,
   };
 }
+
+export function subscriptionCancelledMail(params: {
+  name: string;
+  plan: string;
+  endsAt: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Nurslix ${params.plan} 訂閱取消確認`,
+    html: `
+      <div style="font-family:'Noto Sans TC',Arial,sans-serif;max-width:540px;margin:0 auto;padding:32px;background:#0D1525;color:#EDF0F7;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="display:inline-block;padding:12px 18px;background:linear-gradient(135deg,#C9A84C,#E8C66A);border-radius:10px;font-size:22px;font-weight:700;color:#080E1A;">Nurslix</div>
+        </div>
+        <h2 style="margin:0 0 12px 0;color:#EDF0F7;">訂閱取消確認</h2>
+        <p style="line-height:1.7;color:#8A9BB5;">嗨 ${params.name}，你的 <strong style="color:#EDF0F7;">${params.plan} 方案</strong>已申請取消。</p>
+        <div style="background:#132035;border-radius:10px;padding:16px;margin:20px 0;">
+          <p style="margin:0;color:#8A9BB5;line-height:1.7;">
+            你仍可繼續使用所有 ${params.plan} 功能直到
+            <strong style="color:#C9A84C;">${params.endsAt}</strong>。
+            到期後帳號將自動降級為 Free 方案。
+          </p>
+        </div>
+        <p style="color:#8A9BB5;line-height:1.7;">如果你改變心意，可以隨時在設定頁重新訂閱。</p>
+        <div style="text-align:center;margin-top:24px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/pricing" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#C9A84C,#E8C66A);color:#080E1A;font-weight:700;border-radius:10px;text-decoration:none;">重新訂閱</a>
+        </div>
+      </div>
+    `,
+  };
+}

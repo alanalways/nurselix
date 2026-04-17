@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sun, Moon, Bell, CalendarDays, User, Shield, LogOut } from "lucide-react";
+import { Sun, Moon, Bell, CalendarDays, User, Shield, LogOut, CreditCard, Zap, AlertCircle } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
 import { useThemeStore } from "@/store/themeStore";
 
 export default function SettingsPage() {
@@ -16,6 +18,39 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [subscriptionEndsAt, setSubscriptionEndsAt] = useState<string | null>(null);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelDone, setCancelDone] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const plan = (session?.user as any)?.plan ?? "FREE";
+  const isPaid = plan !== "FREE";
+
+  useEffect(() => {
+    fetch("/api/user/me").then(r => r.json()).then(u => {
+      if (u.subscriptionEndsAt) setSubscriptionEndsAt(u.subscriptionEndsAt);
+      if (u.trialEndsAt) setTrialEndsAt(u.trialEndsAt);
+      if (u.settings?.dailyGoal) setDailyGoal(u.settings.dailyGoal);
+      if (u.examDate) setExamDate(u.examDate.slice(0, 10));
+    }).catch(() => {});
+  }, []);
+
+  const handleCancelSubscription = async () => {
+    if (!confirm(`確定要取消 ${plan} 訂閱嗎？到期前仍可繼續使用所有功能。`)) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const res = await fetch("/api/user/subscription/cancel", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) { setCancelError(body.error ?? "取消失敗"); return; }
+      setCancelDone(true);
+    } catch {
+      setCancelError("網路錯誤，請稍後重試");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -177,6 +212,81 @@ export default function SettingsPage() {
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${notification ? "translate-x-7" : "translate-x-1"}`} />
           </button>
         </div>
+      </section>
+
+      {/* Subscription Management */}
+      <section className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <CreditCard size={16} className="text-[var(--gold)]" />
+          <h2 className="font-semibold text-[var(--text-primary)]">方案管理</h2>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm text-[var(--text-secondary)]">目前方案</div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="font-semibold text-[var(--text-primary)]">{plan}</span>
+              <Badge variant={plan === "ELITE" ? "elite" : plan === "PRO" ? "gold" : plan === "BASIC" ? "blue" : "muted"}>
+                {plan}
+              </Badge>
+            </div>
+          </div>
+          {!isPaid && (
+            <Link href="/pricing">
+              <Button size="sm" variant="gold">
+                <Zap size={14} /> 升級方案
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        {isPaid && (subscriptionEndsAt || trialEndsAt) && (
+          <div className="bg-[var(--bg-elevated)] rounded-xl p-4 space-y-1">
+            <div className="text-xs text-[var(--text-muted)]">
+              {subscriptionEndsAt ? "訂閱到期日" : "試用到期日"}
+            </div>
+            <div className="font-semibold text-[var(--text-primary)]">
+              {new Date(subscriptionEndsAt ?? trialEndsAt!).toLocaleDateString("zh-TW", {
+                year: "numeric", month: "long", day: "numeric",
+              })}
+            </div>
+            <div className="text-xs text-[var(--text-secondary)]">
+              到期後自動降級為 Free 方案，不會自動扣款
+            </div>
+          </div>
+        )}
+
+        {cancelError && (
+          <div className="flex items-center gap-2 text-sm text-[var(--error)] bg-[rgba(231,76,60,0.10)] rounded-lg px-3 py-2">
+            <AlertCircle size={14} /> {cancelError}
+          </div>
+        )}
+
+        {cancelDone ? (
+          <div className="text-sm text-[var(--success)] bg-[rgba(46,204,113,0.10)] rounded-lg px-3 py-2">
+            ✓ 訂閱已取消，到期前仍可使用所有功能。取消確認信已寄送至你的信箱。
+          </div>
+        ) : isPaid && (
+          <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
+            <div>
+              <div className="text-sm font-medium text-[var(--text-primary)]">取消訂閱</div>
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">取消後到期前仍可繼續使用</div>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              loading={cancelling}
+              onClick={handleCancelSubscription}
+              className="text-[var(--error)] hover:text-[var(--error)] border border-[var(--error)] hover:bg-[rgba(231,76,60,0.10)]"
+            >
+              取消訂閱
+            </Button>
+          </div>
+        )}
+
+        {!isPaid && (
+          <p className="text-xs text-[var(--text-muted)]">免費方案無需取消，隨時可升級。</p>
+        )}
       </section>
 
       {/* Account */}

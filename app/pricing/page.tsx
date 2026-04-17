@@ -33,26 +33,26 @@ const plans = [
   {
     key: "BASIC",
     name: "Basic",
-    prices: { monthly: 99, quarterly: 65, yearly: 79 },
-    yearlyTotal: 948,
+    prices: { monthly: 249, quarterly: 166, yearly: 199 },
+    yearlyTotal: 2388,
     description: "每日穩定練習",
     features: [
-      { text: "每日 50 題練習", included: true },
+      { text: "每日 100 題練習", included: true },
       { text: "練習模式 + Tutor 模式", included: true },
-      { text: "錯題本（200題）", included: true },
+      { text: "錯題本（500題）", included: true },
       { text: "台美差異提示", included: true },
       { text: "考前倒數計時器", included: true },
       { text: "基本雷達圖", included: true },
       { text: "CAT / Mock 考試", included: false },
-      { text: "AI 學習計畫", included: false },
+      { text: "AI 學習分析", included: false },
     ],
     highlight: false,
   },
   {
     key: "PRO",
-    name: "Pro",
-    prices: { monthly: 249, quarterly: 164, yearly: 199 },
-    yearlyTotal: 2388,
+    name: "Plus",
+    prices: { monthly: 399, quarterly: 266, yearly: 319 },
+    yearlyTotal: 3828,
     description: "認真備考的最佳選擇",
     features: [
       { text: "無限答題", included: true },
@@ -61,25 +61,25 @@ const plans = [
       { text: "完整能力雷達圖 + 弱點分析", included: true },
       { text: "學習週報 email", included: true },
       { text: "考前倒數 + 提醒通知", included: true },
-      { text: "AI 弱點週報", included: false },
+      { text: "Hermes AI 學習分析", included: true },
       { text: "AI 個人學習計畫（每月）", included: false },
     ],
     highlight: true,
   },
   {
     key: "ELITE",
-    name: "Elite",
-    prices: { monthly: 498, quarterly: 328, yearly: 398 },
-    yearlyTotal: 4776,
+    name: "Premium",
+    prices: { monthly: 499, quarterly: 333, yearly: 399 },
+    yearlyTotal: 4788,
     description: "全方位 AI 備考支援",
     features: [
-      { text: "Pro 所有功能", included: true },
-      { text: "AI 弱點週報（每週）", included: true },
+      { text: "Plus 所有功能", included: true },
+      { text: "Hermes AI 每週弱點報告", included: true },
       { text: "AI 個人學習計畫（每月）", included: true },
       { text: "優先客服支援", included: true },
-      { text: "Elite 成就徽章", included: true },
+      { text: "Premium 成就徽章", included: true },
       { text: "早期新功能搶先體驗", included: true },
-      { text: "∞ 一切功能", included: true },
+      { text: "∞ 一切功能無上限", included: true },
       { text: "", included: true },
     ],
     highlight: false,
@@ -87,18 +87,19 @@ const plans = [
 ];
 
 const featureTable = [
-  { feature: "每日題數", free: "10 題", basic: "50 題", pro: "無限", elite: "無限" },
-  { feature: "7天 Pro 試用", free: "✅ 一次", basic: "❌", pro: "❌", elite: "❌" },
+  { feature: "每日題數", free: "10 題", basic: "100 題", pro: "無限", elite: "無限" },
+  { feature: "7天 Plus 試用", free: "✅ 一次", basic: "❌", pro: "❌", elite: "❌" },
   { feature: "Mini CAT 體驗", free: "每月一次", basic: "✅", pro: "✅", elite: "✅" },
   { feature: "練習模式", free: "✅", basic: "✅", pro: "✅", elite: "✅" },
   { feature: "Tutor 模式", free: "❌", basic: "✅", pro: "✅", elite: "✅" },
   { feature: "CAT 模式", free: "❌", basic: "❌", pro: "✅", elite: "✅" },
   { feature: "Mock 考試", free: "❌", basic: "❌", pro: "✅", elite: "✅" },
-  { feature: "錯題本", free: "50 題", basic: "200 題", pro: "無限", elite: "無限" },
+  { feature: "錯題本", free: "50 題", basic: "500 題", pro: "無限", elite: "無限" },
   { feature: "台美差異提示", free: "❌", basic: "✅", pro: "✅", elite: "✅" },
   { feature: "能力雷達圖", free: "❌", basic: "基本", pro: "完整", elite: "完整" },
   { feature: "學習週報 email", free: "❌", basic: "❌", pro: "✅", elite: "✅" },
-  { feature: "AI 弱點週報", free: "❌", basic: "❌", pro: "❌", elite: "✅" },
+  { feature: "Hermes AI 學習分析", free: "❌", basic: "❌", pro: "✅", elite: "✅" },
+  { feature: "Hermes AI 弱點週報", free: "❌", basic: "❌", pro: "❌", elite: "每週" },
   { feature: "AI 個人學習計畫", free: "❌", basic: "❌", pro: "❌", elite: "每月一份" },
   { feature: "優先客服", free: "❌", basic: "❌", pro: "❌", elite: "✅" },
 ];
@@ -316,7 +317,7 @@ export default function PricingPage() {
             <thead>
               <tr className="border-b border-[var(--border-subtle)]">
                 <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium w-1/3">功能</th>
-                {["Free", "Basic", "Pro ⭐", "Elite"].map((h) => (
+                {["Free", "Basic", "Plus ⭐", "Premium"].map((h) => (
                   <th key={h} className="py-3 px-4 text-center text-[var(--text-secondary)] font-medium">{h}</th>
                 ))}
               </tr>

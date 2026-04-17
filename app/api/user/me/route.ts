@@ -40,6 +40,7 @@ export async function GET() {
       examDate: true,
       trialUsed: true,
       trialEndsAt: true,
+      subscriptionEndsAt: true,
       createdAt: true,
       settings: true,
     },

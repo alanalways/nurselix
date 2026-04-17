@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Pause, ChevronRight, BookOpen, Loader2, AlertCircle, Lock } from "lucide-react";
+import { Pause, ChevronRight, BookOpen, Loader2, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
 import Button from "@/components/ui/Button";
 import ProgressBar from "./ProgressBar";
 import ElapsedTimer from "./ElapsedTimer";
@@ -74,6 +74,7 @@ export default function ExamShell({
 
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [timerVisible, setTimerVisible] = useState(true);
 
   const isSata = question?.questionType === "SATA";
   const questionStartRef = useRef<number>(Date.now());
@@ -298,11 +299,18 @@ export default function ExamShell({
           <span className="text-sm font-semibold text-[var(--text-primary)]">{title}</span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <ElapsedTimer />
-          {showCountdown && countdownSec && (
+        <div className="flex items-center gap-3">
+          {timerVisible && <ElapsedTimer />}
+          {timerVisible && showCountdown && countdownSec && (
             <CountdownTimer totalSec={countdownSec} onExpire={handleCountdownExpire} />
           )}
+          <button
+            onClick={() => setTimerVisible(v => !v)}
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            title={timerVisible ? "隱藏計時器" : "顯示計時器"}
+          >
+            {timerVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
