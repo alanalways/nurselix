@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2, Download } from "lucide-react";
+import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2, Download, UserPlus } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -29,6 +29,8 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<string | null>(null);
+  const [testUserLoading, setTestUserLoading] = useState(false);
+  const [testUserResult, setTestUserResult] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -121,16 +123,41 @@ export default function AdminDashboard() {
     >
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">管理總覽</h1>
-        {data && data.questions.approved === 0 && (
-          <Button size="sm" variant="gold" onClick={handleSeed} disabled={seeding}>
-            {seeding ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-            {seeding ? "匯入中（需 1-3 分鐘）..." : "一鍵匯入 14,500 題"}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={async () => {
+            if (testUserLoading) return;
+            if (!confirm("建立 / 重置藍新審核測試帳號（abcd@nurslix.com / abcdefghi / FREE）？")) return;
+            setTestUserLoading(true); setTestUserResult(null);
+            try {
+              const res = await fetch("/api/admin/seed-test-user", { method: "POST" });
+              const body = await res.json();
+              if (res.ok) setTestUserResult(`✓ 測試帳號已就緒：${body.email} / ${body.password}（${body.plan}）`);
+              else setTestUserResult(`✗ 失敗：${body.error ?? "未知錯誤"}`);
+            } catch (e: any) {
+              setTestUserResult(`✗ 網路錯誤：${e.message}`);
+            } finally {
+              setTestUserLoading(false);
+            }
+          }} disabled={testUserLoading}>
+            {testUserLoading ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+            藍新測試帳號
           </Button>
-        )}
+          {data && data.questions.approved === 0 && (
+            <Button size="sm" variant="gold" onClick={handleSeed} disabled={seeding}>
+              {seeding ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              {seeding ? "匯入中（需 1-3 分鐘）..." : "一鍵匯入 14,500 題"}
+            </Button>
+          )}
+        </div>
       </div>
       {seedResult && (
         <div className={`px-4 py-2 rounded-lg text-sm ${seedResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
           {seedResult}
+        </div>
+      )}
+      {testUserResult && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${testUserResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
+          {testUserResult}
         </div>
       )}
 

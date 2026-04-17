@@ -49,9 +49,9 @@ export async function POST(req: NextRequest) {
 
     const paidAt = new Date();
     const billing = (order as any).billing as string;
-    const subscriptionEndsAt = billing === "yearly"
-      ? new Date(paidAt.getTime() + 365 * 24 * 60 * 60 * 1000)
-      : new Date(paidAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const daysMap: Record<string, number> = { monthly: 30, quarterly: 90, yearly: 365 };
+    const days = daysMap[billing] ?? 30;
+    const subscriptionEndsAt = new Date(paidAt.getTime() + days * 24 * 60 * 60 * 1000);
 
     // Update order
     await prisma.order.update({

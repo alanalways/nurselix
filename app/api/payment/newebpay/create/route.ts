@@ -6,8 +6,14 @@ import { buildPaymentForm, PLAN_AMOUNTS, PLAN_LABELS } from "@/lib/payment/neweb
 
 const schema = z.object({
   plan: z.enum(["BASIC", "PRO", "ELITE"]),
-  billing: z.enum(["monthly", "yearly"]),
+  billing: z.enum(["monthly", "quarterly", "yearly"]),
 });
+
+const BILLING_LABEL: Record<string, string> = {
+  monthly: "月付",
+  quarterly: "季付",
+  yearly: "年付",
+};
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -38,7 +44,7 @@ export async function POST(req: NextRequest) {
     const formHtml = buildPaymentForm({
       merchantOrderNo,
       amount,
-      itemDesc: `Nurslix ${PLAN_LABELS[plan]} (${billing === "monthly" ? "月付" : "年付"})`,
+      itemDesc: `Nurslix ${PLAN_LABELS[plan]} (${BILLING_LABEL[billing]})`,
       email: session.user.email,
     });
 

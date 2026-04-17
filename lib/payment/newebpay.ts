@@ -72,13 +72,13 @@ export function buildPaymentForm(params: TradeParams): string {
 }
 
 export const PLAN_AMOUNTS: Record<string, Record<string, number>> = {
-  BASIC:  { monthly: 99,  yearly: 948  },
-  PRO:    { monthly: 249, yearly: 2388 },
-  ELITE:  { monthly: 498, yearly: 4776 },
+  BASIC:  { monthly: 299, quarterly: 807,  yearly: 2868 },
+  PRO:    { monthly: 459, quarterly: 1239, yearly: 4428 },
+  ELITE:  { monthly: 999, quarterly: 2697, yearly: 9588 },
 };
 
 export const PLAN_LABELS: Record<string, string> = {
   BASIC: "Basic 方案",
-  PRO:   "Pro 方案",
-  ELITE: "Elite 方案",
+  PRO:   "Plus 方案",
+  ELITE: "Premium 方案",
 };
