@@ -16,11 +16,12 @@ const plans = [
     key: "FREE",
     name: "Free",
     prices: { monthly: 0, quarterly: 0, yearly: 0 },
+    quarterlyTotal: 0,
     yearlyTotal: 0,
     description: "試用看看 Nurslix",
     features: [
       { text: "每日 10 題練習", included: true },
-      { text: "7天 Pro 免費試用", included: true },
+      { text: "7天 Plus 免費試用", included: true },
       { text: "Mini CAT 體驗（每月一次）", included: true },
       { text: "每日挑戰", included: true },
       { text: "練習模式", included: true },
@@ -33,8 +34,9 @@ const plans = [
   {
     key: "BASIC",
     name: "Basic",
-    prices: { monthly: 249, quarterly: 166, yearly: 199 },
-    yearlyTotal: 2388,
+    prices: { monthly: 299, quarterly: 269, yearly: 239 },
+    quarterlyTotal: 807,   // 269 × 3
+    yearlyTotal: 2868,     // 239 × 12
     description: "每日穩定練習",
     features: [
       { text: "每日 100 題練習", included: true },
@@ -51,8 +53,9 @@ const plans = [
   {
     key: "PRO",
     name: "Plus",
-    prices: { monthly: 399, quarterly: 266, yearly: 319 },
-    yearlyTotal: 3828,
+    prices: { monthly: 459, quarterly: 413, yearly: 369 },
+    quarterlyTotal: 1239,  // 413 × 3
+    yearlyTotal: 4428,     // 369 × 12
     description: "認真備考的最佳選擇",
     features: [
       { text: "無限答題", included: true },
@@ -69,8 +72,9 @@ const plans = [
   {
     key: "ELITE",
     name: "Premium",
-    prices: { monthly: 499, quarterly: 333, yearly: 399 },
-    yearlyTotal: 4788,
+    prices: { monthly: 999, quarterly: 899, yearly: 799 },
+    quarterlyTotal: 2697,  // 899 × 3
+    yearlyTotal: 9588,     // 799 × 12
     description: "全方位 AI 備考支援",
     features: [
       { text: "Plus 所有功能", included: true },
@@ -158,7 +162,6 @@ export default function PricingPage() {
 
   const isCurrentPlan = (planKey: string) => userPlan === planKey;
   const isDisabled = (planKey: string) =>
-    billing === "quarterly" ||
     planKey === "FREE" ||
     isCurrentPlan(planKey) ||
     loadingPlan !== null;
@@ -222,12 +225,13 @@ export default function PricingPage() {
               {b === "monthly" ? "月付" : b === "quarterly" ? (
                 <span className="flex items-center gap-1">季付 <Star size={12} className="text-[var(--gold)]" /></span>
               ) : "年付"}
+              {b === "quarterly" && <span className="ml-1 text-xs text-[var(--success)]">省 10%</span>}
               {b === "yearly" && <span className="ml-1 text-xs text-[var(--success)]">省 20%</span>}
             </button>
           ))}
         </div>
         {billing === "quarterly" && (
-          <p className="text-center text-sm text-[var(--text-muted)]">季付方案即將開放</p>
+          <p className="text-center text-sm text-[var(--text-muted)]">季付一次付清 3 個月，省 10%</p>
         )}
 
         {/* Plan Cards */}
@@ -263,18 +267,25 @@ export default function PricingPage() {
               </div>
 
               <div className="mb-6">
-                {plan.prices[billing === "quarterly" ? "monthly" : billing] === 0 ? (
+                {plan.prices.monthly === 0 ? (
                   <div className="text-3xl font-bold text-[var(--text-primary)]">免費</div>
                 ) : (
                   <>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-bold text-[var(--text-primary)]">
-                        NT${billing === "yearly" ? plan.yearlyTotal : plan.prices.monthly}
+                        NT${
+                          billing === "yearly" ? plan.yearlyTotal
+                          : billing === "quarterly" ? plan.quarterlyTotal
+                          : plan.prices.monthly
+                        }
                       </span>
                       <span className="text-sm text-[var(--text-muted)]">
-                        /{billing === "monthly" ? "月" : "年"}
+                        /{billing === "monthly" ? "月" : billing === "quarterly" ? "季" : "年"}
                       </span>
                     </div>
+                    {billing === "quarterly" && (
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">約 NT${plan.prices.quarterly}/月</p>
+                    )}
                     {billing === "yearly" && (
                       <p className="text-xs text-[var(--text-muted)] mt-0.5">約 NT${plan.prices.yearly}/月</p>
                     )}
