@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2, Download, UserPlus, Database } from "lucide-react";
+import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2, Download, UserPlus, Database, Award } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -34,6 +34,8 @@ export default function AdminDashboard() {
   const [testUserEnabled, setTestUserEnabled] = useState<boolean | null>(null);
   const [migrateLoading, setMigrateLoading] = useState(false);
   const [migrateResult, setMigrateResult] = useState<string | null>(null);
+  const [achLoading, setAchLoading] = useState(false);
+  const [achResult, setAchResult] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -193,6 +195,23 @@ export default function AdminDashboard() {
             {migrateLoading ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />}
             {migrateLoading ? "執行中..." : "執行 DB Migration"}
           </Button>
+          <Button size="sm" variant="outline" onClick={async () => {
+            if (achLoading) return;
+            if (!confirm("建立 / 更新所有成就定義（已存在的會略過，不影響用戶已解鎖成就）？")) return;
+            setAchLoading(true); setAchResult(null);
+            try {
+              const res = await fetch("/api/admin/seed-achievements", { method: "POST" });
+              const body = await res.json();
+              setAchResult(res.ok ? body.message : `✗ ${body.error ?? "失敗"}`);
+            } catch (e: any) {
+              setAchResult(`✗ 網路錯誤：${e.message}`);
+            } finally {
+              setAchLoading(false);
+            }
+          }} disabled={achLoading}>
+            {achLoading ? <Loader2 size={14} className="animate-spin" /> : <Award size={14} />}
+            {achLoading ? "建立中..." : "建立成就定義"}
+          </Button>
           {data && data.questions.approved === 0 && (
             <Button size="sm" variant="gold" onClick={handleSeed} disabled={seeding}>
               {seeding ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
@@ -204,6 +223,11 @@ export default function AdminDashboard() {
       {seedResult && (
         <div className={`px-4 py-2 rounded-lg text-sm ${seedResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
           {seedResult}
+        </div>
+      )}
+      {achResult && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${achResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
+          {achResult}
         </div>
       )}
       {testUserResult && (

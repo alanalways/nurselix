@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { runAnalyticsAgent, type SessionSnapshot } from "./analyticsAgent";
 import { runTeachingAgent, type ProfileSnapshot } from "./teachingAgent";
 import { calcCostUsd } from "@/lib/ai/costCalc";
+import { evaluateAfterHermes } from "@/lib/nclex/achievements";
 
 export async function runHermesForSession(sessionId: string, userId: string): Promise<void> {
   // Mark job as running
@@ -206,7 +207,10 @@ export async function runHermesForSession(sessionId: string, userId: string): Pr
       });
     }
 
-    // 11. Mark job done
+    // 11. Evaluate Hermes-based achievements (non-fatal)
+    evaluateAfterHermes(userId).catch(() => {});
+
+    // 12. Mark job done
     await prisma.hermesJob.updateMany({
       where: { sessionId, userId, status: "running" },
       data: { status: "done" },
