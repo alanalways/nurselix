@@ -1,11 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { XCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 
-export default function PaymentFailedPage() {
+function FailedContent() {
   const router = useRouter();
   const params = useSearchParams();
   const reason = params.get("reason");
@@ -42,5 +43,13 @@ export default function PaymentFailedPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function PaymentFailedPage() {
+  return (
+    <Suspense>
+      <FailedContent />
+    </Suspense>
   );
 }

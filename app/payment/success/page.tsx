@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle, Stethoscope } from "lucide-react";
 import Button from "@/components/ui/Button";
 import confetti from "canvas-confetti";
 
-export default function PaymentSuccessPage() {
+function SuccessContent() {
   const router = useRouter();
   const params = useSearchParams();
   const orderId = params.get("orderId");
@@ -54,5 +54,13 @@ export default function PaymentSuccessPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense>
+      <SuccessContent />
+    </Suspense>
   );
 }
