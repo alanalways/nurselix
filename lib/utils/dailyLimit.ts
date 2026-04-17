@@ -3,7 +3,7 @@ import type { Plan } from "@/types";
 
 export const DAILY_LIMITS: Record<Plan, number> = {
   FREE: 10,
-  BASIC: 50,
+  BASIC: 100,
   PRO: 100000,   // effectively unlimited
   ELITE: 100000, // effectively unlimited
 };

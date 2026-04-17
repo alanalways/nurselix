@@ -196,6 +196,14 @@ export default function LoginPage() {
               免費註冊
             </Link>
           </p>
+
+          <p className="text-center text-xs text-[var(--text-muted)] mt-6 leading-relaxed">
+            登入即表示你同意我們的{" "}
+            <Link href="/terms" className="text-[var(--text-secondary)] hover:text-[var(--gold)] underline">服務條款</Link>
+            {" 與 "}
+            <Link href="/privacy" className="text-[var(--text-secondary)] hover:text-[var(--gold)] underline">隱私權政策</Link>
+            。本服務為教育輔助平台，不構成醫療建議。
+          </p>
         </motion.div>
       </div>
     </div>

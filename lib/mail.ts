@@ -173,6 +173,39 @@ export function weeklyReportMail(stats: {
   };
 }
 
+export function examReminderMail(params: {
+  name: string;
+  daysLeft: number;
+  examDate: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `距離 NCLEX 考試剩 ${params.daysLeft} 天 — 最後衝刺`,
+    html: `
+      <div style="font-family:'Noto Sans TC',Arial,sans-serif;max-width:540px;margin:0 auto;padding:32px;background:#0D1525;color:#EDF0F7;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="display:inline-block;padding:12px 18px;background:linear-gradient(135deg,#C9A84C,#E8C66A);border-radius:10px;font-size:22px;font-weight:700;color:#080E1A;">Nurslix</div>
+        </div>
+        <h2 style="margin:0 0 12px 0;color:#EDF0F7;">${params.name}，剩 <span style="color:#C9A84C">${params.daysLeft}</span> 天就要考試了！</h2>
+        <div style="background:#132035;border-radius:10px;padding:16px;margin:20px 0;">
+          <p style="margin:0;color:#8A9BB5;line-height:1.7;">
+            考試日期：<strong style="color:#C9A84C;">${params.examDate}</strong>
+          </p>
+        </div>
+        <p style="color:#8A9BB5;line-height:1.7;">最後衝刺階段建議：</p>
+        <ul style="color:#8A9BB5;line-height:1.9;padding-left:20px;">
+          <li>每天完成一場 Mini CAT 保持手感</li>
+          <li>重點複習錯題本（/review）</li>
+          <li>查看 AI 洞察確認弱點（/insights）</li>
+          <li>考前一天充分休息，不要熬夜</li>
+        </ul>
+        <div style="text-align:center;margin-top:24px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/nclex" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#C9A84C,#E8C66A);color:#080E1A;font-weight:700;border-radius:10px;text-decoration:none;">進入最後衝刺</a>
+        </div>
+      </div>
+    `,
+  };
+}
+
 export function subscriptionCancelledMail(params: {
   name: string;
   plan: string;
