@@ -44,3 +44,10 @@ CREATE TABLE IF NOT EXISTS "HermesJob" (
 
 CREATE INDEX IF NOT EXISTS "HermesJob_status_createdAt_idx" ON "HermesJob"("status", "createdAt");
 CREATE INDEX IF NOT EXISTS "HermesJob_userId_idx"            ON "HermesJob"("userId");
+
+-- App-wide key/value settings (used for test account toggle etc.)
+CREATE TABLE IF NOT EXISTS "AppSetting" (
+  "key"       TEXT        NOT NULL PRIMARY KEY,
+  "value"     TEXT        NOT NULL,
+  "updatedAt" TIMESTAMP   NOT NULL DEFAULT NOW()
+);

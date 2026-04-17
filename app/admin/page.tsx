@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2, Download, UserPlus } from "lucide-react";
+import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2, Download, UserPlus, Database } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -31,15 +31,23 @@ export default function AdminDashboard() {
   const [seedResult, setSeedResult] = useState<string | null>(null);
   const [testUserLoading, setTestUserLoading] = useState(false);
   const [testUserResult, setTestUserResult] = useState<string | null>(null);
+  const [testUserEnabled, setTestUserEnabled] = useState<boolean | null>(null);
+  const [migrateLoading, setMigrateLoading] = useState(false);
+  const [migrateResult, setMigrateResult] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const [overviewRes, healthRes] = await Promise.all([
+        const [overviewRes, healthRes, testUserRes] = await Promise.all([
           fetch("/api/admin/overview", { cache: "no-store" }),
           fetch("/api/admin/agents", { cache: "no-store" }),
+          fetch("/api/admin/seed-test-user", { cache: "no-store" }),
         ]);
+        if (alive && testUserRes.ok) {
+          const t = await testUserRes.json();
+          setTestUserEnabled(t.enabled);
+        }
         if (!overviewRes.ok) {
           setError(`載入失敗 (${overviewRes.status})`);
           return;
@@ -124,23 +132,66 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">管理總覽</h1>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button size="sm" variant="outline" onClick={async () => {
-            if (testUserLoading) return;
-            if (!confirm("建立 / 重置藍新審核測試帳號（abcd@nurslix.com / abcdefghi / FREE）？")) return;
-            setTestUserLoading(true); setTestUserResult(null);
-            try {
-              const res = await fetch("/api/admin/seed-test-user", { method: "POST" });
-              const body = await res.json();
-              if (res.ok) setTestUserResult(`✓ 測試帳號已就緒：${body.email} / ${body.password}（${body.plan}）`);
-              else setTestUserResult(`✗ 失敗：${body.error ?? "未知錯誤"}`);
-            } catch (e: any) {
-              setTestUserResult(`✗ 網路錯誤：${e.message}`);
-            } finally {
-              setTestUserLoading(false);
-            }
-          }} disabled={testUserLoading}>
+          <Button
+            size="sm"
+            variant={testUserEnabled ? "gold" : "outline"}
+            onClick={async () => {
+              if (testUserLoading || testUserEnabled === null) return;
+              const target = !testUserEnabled;
+              const confirmMsg = target
+                ? "啟用藍新審核測試帳號（abcd@nurslix.com / abcdefghi / FREE）？"
+                : "停用藍新測試帳號（登入將被拒絕）？";
+              if (!confirm(confirmMsg)) return;
+              setTestUserLoading(true); setTestUserResult(null);
+              try {
+                const res = await fetch("/api/admin/seed-test-user", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ enabled: target }),
+                });
+                const body = await res.json();
+                if (res.ok) {
+                  setTestUserEnabled(body.enabled);
+                  setTestUserResult(body.message);
+                } else {
+                  setTestUserResult(`✗ 失敗：${body.error ?? "未知錯誤"}`);
+                }
+              } catch (e: any) {
+                setTestUserResult(`✗ 網路錯誤：${e.message}`);
+              } finally {
+                setTestUserLoading(false);
+              }
+            }}
+            disabled={testUserLoading || testUserEnabled === null}
+          >
             {testUserLoading ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-            藍新測試帳號
+            {testUserEnabled === null
+              ? "載入中..."
+              : testUserEnabled
+              ? "停用藍新測試帳號"
+              : "啟用藍新測試帳號"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={async () => {
+            if (migrateLoading) return;
+            if (!confirm("執行 DB migration（建立 LearnerProfile / SessionDiagnosis / HermesJob / AppSetting 表）？安全可重複執行。")) return;
+            setMigrateLoading(true); setMigrateResult(null);
+            try {
+              const res = await fetch("/api/admin/migrate", { method: "POST" });
+              const body = await res.json();
+              if (res.ok) {
+                setMigrateResult(`✓ DB migration 完成：${body.results.map((r: any) => r.file).join(", ")}`);
+              } else {
+                const fails = (body.results ?? []).filter((r: any) => !r.ok).map((r: any) => `${r.file}: ${r.error}`).join("; ");
+                setMigrateResult(`✗ 失敗：${fails || body.error}`);
+              }
+            } catch (e: any) {
+              setMigrateResult(`✗ 網路錯誤：${e.message}`);
+            } finally {
+              setMigrateLoading(false);
+            }
+          }} disabled={migrateLoading}>
+            {migrateLoading ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />}
+            {migrateLoading ? "執行中..." : "執行 DB Migration"}
           </Button>
           {data && data.questions.approved === 0 && (
             <Button size="sm" variant="gold" onClick={handleSeed} disabled={seeding}>
@@ -158,6 +209,11 @@ export default function AdminDashboard() {
       {testUserResult && (
         <div className={`px-4 py-2 rounded-lg text-sm ${testUserResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
           {testUserResult}
+        </div>
+      )}
+      {migrateResult && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${migrateResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
+          {migrateResult}
         </div>
       )}
 

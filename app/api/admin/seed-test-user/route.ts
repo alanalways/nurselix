@@ -1,51 +1,51 @@
 /**
- * 建立/重置測試帳號（藍新金流審核用）
- * 帳號：abcd@nurslix.com / abcdefghi / FREE
- * 僅限 admin 呼叫
+ * 藍新審核測試帳號的後台控制。
+ * GET  → 查詢目前是否啟用
+ * POST → { enabled: boolean } 切換啟用狀態
+ * 帳密為硬編碼（lib/testAccount.ts），僅在此開關開啟時可登入。
  */
-import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { TEST_ACCOUNT, isTestAccountEnabled, setTestAccountEnabled } from "@/lib/testAccount";
 
-const TEST_EMAIL = "abcd@nurslix.com";
-const TEST_PASSWORD = "abcdefghi";
-const TEST_NAME = "藍新測試帳號";
-
-export async function POST() {
+export async function GET() {
   const session = await auth();
   if (session?.user?.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const hashed = await bcrypt.hash(TEST_PASSWORD, 12);
-
-  const user = await prisma.user.upsert({
-    where: { email: TEST_EMAIL },
-    create: {
-      email: TEST_EMAIL,
-      name: TEST_NAME,
-      password: hashed,
-      role: "STUDENT",
-      plan: "FREE",
-      emailVerified: new Date(),
-      trialUsed: false,
-    },
-    update: {
-      password: hashed,
-      plan: "FREE",
-      trialUsed: false,
-      trialEndsAt: null,
-      subscriptionEndsAt: null,
-    },
+  const enabled = await isTestAccountEnabled();
+  return NextResponse.json({
+    enabled,
+    email: TEST_ACCOUNT.email,
+    password: TEST_ACCOUNT.password,
+    plan: "FREE",
   });
+}
+
+const schema = z.object({ enabled: z.boolean() });
+
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (session?.user?.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body: unknown;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Bad request" }, { status: 400 });
+
+  await setTestAccountEnabled(parsed.data.enabled);
 
   return NextResponse.json({
     ok: true,
-    email: TEST_EMAIL,
-    password: TEST_PASSWORD,
-    plan: user.plan,
-    userId: user.id,
-    message: "測試帳號已建立 / 重置。請將此帳密提供給藍新金流審核。",
+    enabled: parsed.data.enabled,
+    email: TEST_ACCOUNT.email,
+    password: TEST_ACCOUNT.password,
+    message: parsed.data.enabled
+      ? "✓ 測試帳號已啟用，藍新審核可登入"
+      : "✓ 測試帳號已停用，無人可登入此帳號",
   });
 }

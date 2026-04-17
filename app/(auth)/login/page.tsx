@@ -45,39 +45,72 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex bg-[var(--bg-base)]">
       {/* Left Panel */}
-      <div className="hidden lg:flex flex-1 flex-col justify-center items-center p-12 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)]">
+      <div className="hidden lg:flex flex-1 flex-col justify-between p-12 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-md"
+          className="max-w-md mx-auto w-full"
         >
-          <div className="flex items-center gap-3 mb-10">
+          <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
               <Stethoscope size={24} className="text-[#080E1A]" />
             </div>
             <span className="text-3xl font-bold text-gradient-gold">Nurslix</span>
           </div>
-          <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-4 leading-tight">
-            台灣護理師<br />NCLEX 備考平台
+          <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-3 leading-tight">
+            台灣護理師<br />NCLEX-RN 備考平台
           </h2>
-          <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
-            智能自適應測驗系統，精準評估你的 NCLEX 能力值，找出弱點，高效備考。
+          <p className="text-[var(--text-secondary)] mb-6 leading-relaxed text-sm">
+            Nurslix 是專為想赴美執業的台灣護理師設計的 NCLEX 智能備考平台。結合 IRT 自適應測驗與 Claude AI，精準評估你的實力，找出盲點，用最少時間通過考試。
           </p>
-          <div className="space-y-3">
-            {[
-              "CAT 自適應考試系統（IRT 三參數模型）",
-              "八大 Domain 能力雷達圖",
-              "SM-2 演算法錯題複習",
-              "台美臨床差異提示",
-            ].map((f) => (
-              <div key={f} className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <span className="w-5 h-5 rounded-full bg-[var(--gold-dim)] flex items-center justify-center text-[var(--gold)] text-xs">✓</span>
-                {f}
-              </div>
-            ))}
+
+          <div className="mb-6">
+            <div className="text-xs text-[var(--text-muted)] mb-3 uppercase tracking-wider">產品亮點</div>
+            <div className="space-y-2.5">
+              {[
+                { t: "CAT 自適應測驗", d: "IRT 三參數模型，如真實 NCLEX" },
+                { t: "Hermes AI 學習分析", d: "Claude Haiku + Sonnet 找出你的弱點" },
+                { t: "八大 Domain 能力雷達圖", d: "實時追蹤每個領域的掌握度" },
+                { t: "SM-2 錯題間隔複習", d: "科學遺忘曲線，記住就不再錯" },
+                { t: "台美臨床差異提示", d: "標註每題在台灣 vs. 美國的做法不同處" },
+                { t: "14,500+ 題庫", d: "全英文題幹、繁中解析" },
+              ].map((f) => (
+                <div key={f.t} className="flex items-start gap-2 text-sm">
+                  <span className="w-5 h-5 rounded-full bg-[var(--gold-dim)] flex items-center justify-center text-[var(--gold)] text-xs flex-shrink-0 mt-0.5">✓</span>
+                  <div>
+                    <div className="text-[var(--text-primary)] font-medium">{f.t}</div>
+                    <div className="text-xs text-[var(--text-muted)]">{f.d}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4">
+            <div className="text-xs text-[var(--gold)] font-semibold mb-1">7 天 Plus 免費試用</div>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              註冊即可體驗完整 Plus 方案 7 天，含 CAT、Mock、Hermes AI 分析。無需信用卡。
+            </p>
           </div>
         </motion.div>
+
+        {/* Disclaimer */}
+        <div className="max-w-md mx-auto w-full mt-8 pt-6 border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)] leading-relaxed space-y-2">
+          <p className="font-semibold text-[var(--text-secondary)]">免責聲明</p>
+          <p>
+            Nurslix 為教育輔助平台，提供模擬試題與學習分析，<span className="text-[var(--text-secondary)]">不保證通過 NCLEX-RN 考試</span>，通過率因個人努力而異。
+          </p>
+          <p>
+            本站所有臨床情境題目僅為考試練習，<span className="text-[var(--text-secondary)]">不構成任何醫療建議</span>，不得作為實際臨床決策依據。
+          </p>
+          <p>
+            NCLEX-RN® 為美國 NCSBN 的註冊商標，本平台與 NCSBN 無任何官方關係。
+          </p>
+          <p className="text-[var(--text-muted)]">
+            © 2026 Nurslix · <a href="/pricing" className="hover:text-[var(--gold)]">方案</a> · <a href="/terms" className="hover:text-[var(--gold)]">服務條款</a> · <a href="/privacy" className="hover:text-[var(--gold)]">隱私權</a>
+          </p>
+        </div>
       </div>
 
       {/* Right Panel */}

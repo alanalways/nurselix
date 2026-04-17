@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/lib/auth.config";
+import { authorizeTestAccount } from "@/lib/testAccount";
 import type { Role, Plan } from "@/types";
 
 /**
@@ -57,6 +58,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // 硬編碼的藍新測試帳號（依 AppSetting 可被後台啟用/停用）
+        const testUser = await authorizeTestAccount(String(credentials.email), String(credentials.password));
+        if (testUser) {
+          return {
+            id: testUser.id,
+            email: testUser.email,
+            name: testUser.name,
+            image: null,
+            role: testUser.role as Role,
+            plan: testUser.plan as Plan,
+          };
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: String(credentials.email) },
