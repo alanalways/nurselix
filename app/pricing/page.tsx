@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, Star, Mail, Loader2 } from "lucide-react";
+import { Check, X, Star, Mail, Loader2, Sparkles } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -12,6 +12,20 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 type Billing = "monthly" | "quarterly" | "yearly";
+
+// Beta free-access window. Prices go live at this instant (Asia/Taipei).
+const BETA_END_MS = new Date("2026-05-01T00:00:00+08:00").getTime();
+
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return "已結束";
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${days} 天 ${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+}
 
 const plans = [
   {
@@ -124,9 +138,25 @@ export default function PricingPage() {
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
+  // null = pre-hydration; we assume beta is active until we can compare on the
+  // client so SSR + client render agree (Date.now() on the server would drift).
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const betaActive = now === null ? true : now < BETA_END_MS;
+  const remaining = now === null ? BETA_END_MS - Date.now() : BETA_END_MS - now;
+
   const handleSubscribe = async (planKey: string) => {
     if (!authSession) {
       router.push("/login?callbackUrl=/pricing");
+      return;
+    }
+    // Beta: no checkout call; everyone gets full access on the site.
+    if (betaActive) {
+      router.push("/");
       return;
     }
     if (billing === "quarterly") return;
@@ -154,6 +184,7 @@ export default function PricingPage() {
   };
 
   const getButtonLabel = (planKey: string) => {
+    if (betaActive && planKey !== "FREE") return "Beta 免費體驗";
     if (!userPlan) return planKey === "FREE" ? "免費使用" : "立即訂閱";
     if (planKey === userPlan) return "目前方案";
     const currentIdx = PLAN_ORDER.indexOf(userPlan);
@@ -163,10 +194,11 @@ export default function PricingPage() {
   };
 
   const isCurrentPlan = (planKey: string) => userPlan === planKey;
-  const isDisabled = (planKey: string) =>
-    planKey === "FREE" ||
-    isCurrentPlan(planKey) ||
-    loadingPlan !== null;
+  const isDisabled = (planKey: string) => {
+    if (loadingPlan !== null) return true;
+    if (betaActive) return false; // beta: always clickable (routes to app)
+    return planKey === "FREE" || isCurrentPlan(planKey);
+  };
 
   const submitBeta = async () => {
     if (!betaEmail || subscribing) return;
@@ -211,6 +243,23 @@ export default function PricingPage() {
             選擇最適合你的備考計畫，隨時可升降級
           </p>
         </div>
+
+        {betaActive && (
+          <div className="rounded-2xl border border-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] to-[var(--blue-dim)] px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
+            <div className="flex items-center gap-2">
+              <Sparkles size={18} className="text-[var(--gold)]" />
+              <span className="font-semibold text-[var(--text-primary)]">
+                Beta 階段限時免費體驗，全功能開放至 5/1
+              </span>
+            </div>
+            <span className="text-sm text-[var(--text-secondary)]">
+              距離正式定價還有{" "}
+              <span className="font-mono font-semibold text-[var(--gold)]">
+                {formatRemaining(remaining)}
+              </span>
+            </span>
+          </div>
+        )}
 
         {/* Billing Toggle */}
         <div className="flex items-center justify-center gap-2">
@@ -271,6 +320,25 @@ export default function PricingPage() {
               <div className="mb-6">
                 {plan.prices.monthly === 0 ? (
                   <div className="text-3xl font-bold text-[var(--text-primary)]">免費</div>
+                ) : betaActive ? (
+                  <div className="space-y-1">
+                    <div className="flex items-baseline gap-1 select-none" aria-hidden="true">
+                      <span className="text-3xl font-bold text-[var(--text-muted)] blur-sm line-through opacity-60">
+                        NT${
+                          billing === "yearly" ? plan.yearlyTotal
+                          : billing === "quarterly" ? plan.quarterlyTotal
+                          : plan.prices.monthly
+                        }
+                      </span>
+                      <span className="text-sm text-[var(--text-muted)] blur-sm opacity-60">
+                        /{billing === "monthly" ? "月" : billing === "quarterly" ? "季" : "年"}
+                      </span>
+                    </div>
+                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--gold-dim)] border border-[var(--gold)]">
+                      <Sparkles size={12} className="text-[var(--gold)]" />
+                      <span className="text-sm font-semibold text-[var(--gold)]">Beta 限時免費</span>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <div className="flex items-baseline gap-1">
