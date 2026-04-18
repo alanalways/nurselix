@@ -89,6 +89,26 @@ export default function AdminQuestionsPage() {
   const [keysCount, setKeysCount] = useState<number | null>(null);
   const stopRef = useRef(false);
 
+  // Background job state
+  const [bgTarget, setBgTarget] = useState(11000);
+  const [bgJob, setBgJob] = useState<{
+    id: string;
+    status: "RUNNING" | "STOPPED" | "COMPLETED" | "FAILED";
+    target: number;
+    model: string;
+    domain: string;
+    batchCount: number;
+    inserted: number;
+    rejected: number;
+    duplicates: number;
+    errors: number;
+    lastMessage: string | null;
+    startedAt: string;
+    updatedAt: string;
+    inMemoryActive?: boolean;
+  } | null>(null);
+  const [bgStarting, setBgStarting] = useState(false);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
@@ -129,12 +149,60 @@ export default function AdminQuestionsPage() {
     }
   }, []);
 
+  const loadBgJob = useCallback(async () => {
+    const res = await fetch("/api/admin/questions/generate/job", { cache: "no-store" });
+    if (res.ok) {
+      const body = await res.json();
+      setBgJob(body.job ?? null);
+    }
+  }, []);
+
   useEffect(() => {
     if (genOpen) {
       loadStats();
       loadGenConfig();
+      loadBgJob();
     }
-  }, [genOpen, loadStats, loadGenConfig]);
+  }, [genOpen, loadStats, loadGenConfig, loadBgJob]);
+
+  // Poll job status + stats when a background job is running
+  useEffect(() => {
+    if (!genOpen) return;
+    if (!bgJob || bgJob.status !== "RUNNING") return;
+    const t = setInterval(() => {
+      loadBgJob();
+      loadStats();
+    }, 3000);
+    return () => clearInterval(t);
+  }, [genOpen, bgJob, loadBgJob, loadStats]);
+
+  const handleStartBg = async () => {
+    if (bgStarting) return;
+    setBgStarting(true);
+    try {
+      const res = await fetch("/api/admin/questions/generate/job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target: bgTarget, model: genModel, domain: genDomain }),
+      });
+      const body = await res.json();
+      if (res.ok) {
+        setBgJob(body.job);
+      } else {
+        const ts = new Date().toLocaleTimeString("zh-TW");
+        setGenLog((prev) => [`[${ts}] ✗ 啟動背景任務失敗：${body.error}`, ...prev.slice(0, 49)]);
+      }
+    } finally {
+      setBgStarting(false);
+    }
+  };
+
+  const handleStopBg = async () => {
+    const res = await fetch("/api/admin/questions/generate/job", { method: "DELETE" });
+    if (res.ok) {
+      await loadBgJob();
+    }
+  };
 
   const bulkUpdate = async (newStatus: "APPROVED" | "ARCHIVED") => {
     if (selected.size === 0 || acting) return;
@@ -416,12 +484,103 @@ export default function AdminQuestionsPage() {
                 size="sm"
                 variant={autoMode ? "danger" : "outline"}
                 onClick={handleAutoGen}
-                disabled={(keysCount ?? 0) === 0}
+                disabled={(keysCount ?? 0) === 0 || bgJob?.status === "RUNNING"}
               >
                 {autoMode
                   ? <><StopCircle size={14} /> 停止連續</>
-                  : "連續生成"}
+                  : "連續生成（前景）"}
               </Button>
+            </div>
+
+            {/* Background job panel */}
+            <div className="bg-[var(--bg-overlay)] border border-[var(--border-subtle)] rounded-lg p-3 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">
+                    背景任務（關閉瀏覽器也繼續跑）
+                  </span>
+                  {bgJob && (
+                    <Badge
+                      variant={
+                        bgJob.status === "RUNNING" ? "gold"
+                        : bgJob.status === "COMPLETED" ? "success"
+                        : bgJob.status === "FAILED" ? "error"
+                        : "muted"
+                      }
+                    >
+                      {bgJob.status === "RUNNING" ? "執行中"
+                       : bgJob.status === "COMPLETED" ? "已完成"
+                       : bgJob.status === "FAILED" ? "已失敗"
+                       : "已停止"}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-[var(--text-muted)]">目標題數</label>
+                  <input
+                    type="number"
+                    value={bgTarget}
+                    onChange={(e) => setBgTarget(Math.max(1, Number(e.target.value) || 1))}
+                    disabled={bgJob?.status === "RUNNING"}
+                    className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-md px-2 py-1 text-sm text-[var(--text-primary)] outline-none w-24 font-mono disabled:opacity-60"
+                  />
+                  {bgJob?.status === "RUNNING" ? (
+                    <Button size="sm" variant="danger" onClick={handleStopBg}>
+                      <StopCircle size={14} /> 停止背景
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="blue"
+                      onClick={handleStartBg}
+                      disabled={bgStarting || (keysCount ?? 0) === 0}
+                    >
+                      {bgStarting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                      啟動背景任務
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {bgJob && (
+                <div className="text-xs space-y-1">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono">
+                    <div>
+                      <span className="text-[var(--text-muted)]">批次</span>{" "}
+                      <span className="text-[var(--text-primary)]">{bgJob.batchCount}</span>
+                    </div>
+                    <div>
+                      <span className="text-[var(--text-muted)]">入庫</span>{" "}
+                      <span className="text-[var(--success)]">{bgJob.inserted}</span>
+                    </div>
+                    <div>
+                      <span className="text-[var(--text-muted)]">過濾</span>{" "}
+                      <span className="text-[var(--warning)]">{bgJob.rejected}</span>
+                    </div>
+                    <div>
+                      <span className="text-[var(--text-muted)]">重複</span>{" "}
+                      <span className="text-[var(--text-muted)]">{bgJob.duplicates}</span>
+                      {bgJob.errors > 0 && (
+                        <>
+                          {" · "}
+                          <span className="text-[var(--error)]">錯 {bgJob.errors}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {bgJob.lastMessage && (
+                    <p className="text-[var(--text-secondary)] font-mono">{bgJob.lastMessage}</p>
+                  )}
+                  <p className="text-[var(--text-muted)]">
+                    模型 {bgJob.model} · Domain {bgJob.domain} · 目標 {bgJob.target.toLocaleString()} 題
+                    {bgJob.status === "RUNNING" && !bgJob.inMemoryActive && (
+                      <span className="text-[var(--error)] ml-2">
+                        ⚠️ 背景程序未在執行（可能被重啟），請重新啟動
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* No API key warning */}
@@ -433,7 +592,7 @@ export default function AdminQuestionsPage() {
                   GEMINI_API_KEY_1 = AIza...<br />
                   GEMINI_API_KEY_2 = AIza...<br />
                   GEMINI_API_KEY_3 = AIza...<br />
-                  （最多 GEMINI_API_KEY_6）
+                  （最多 GEMINI_API_KEY_10，逐一輪替）
                 </code>
                 <p className="text-xs text-[var(--text-muted)] pt-1">
                   取得方式：<strong>aistudio.google.com</strong> → Get API Key → Create API Key（每個 Google Project 各建一組）

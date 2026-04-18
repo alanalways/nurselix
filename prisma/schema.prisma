@@ -570,6 +570,27 @@ model HermesReport {
   @@index([userId, createdAt(sort: Desc)])
 }
 
+// ===== Background AI Question Generation Job =====
+
+model GenerationJob {
+  id          String   @id @default(uuid())
+  status      String   // RUNNING | STOPPED | COMPLETED | FAILED
+  target      Int
+  model       String
+  domain      String   // "auto" or specific domain name
+  batchCount  Int      @default(0)
+  inserted    Int      @default(0)
+  rejected    Int      @default(0)
+  duplicates  Int      @default(0)
+  errors      Int      @default(0)
+  lastMessage String?
+  createdBy   String?
+  startedAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, startedAt(sort: Desc)])
+}
+
 // ===== API Usage / Cost Tracking =====
 
 model ApiUsageLog {
