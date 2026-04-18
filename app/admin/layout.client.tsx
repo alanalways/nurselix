@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, BookOpen, Users, BarChart3,
-  Flag, MessageSquare, Bot, LogOut, Sparkles
+  Flag, MessageSquare, Bot, LogOut, Sparkles, Activity
 } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { cn } from "@/lib/utils/cn";
@@ -15,6 +15,7 @@ import ThemeToggle from "@/components/ui/ThemeToggle";
 
 const adminNav = [
   { href: "/admin", icon: LayoutDashboard, label: "總覽" },
+  { href: "/admin/live", icon: Activity, label: "即時監控" },
   { href: "/admin/questions", icon: BookOpen, label: "題庫管理" },
   { href: "/admin/questions/quality", icon: Sparkles, label: "題目品質" },
   { href: "/admin/users", icon: Users, label: "用戶管理" },

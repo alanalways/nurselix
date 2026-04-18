@@ -23,6 +23,11 @@ export const authConfig = {
         return true;
       }
 
+      // Password reset: must be reachable without a session
+      if (pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password")) {
+        return true;
+      }
+
       // Fully public pages
       if (pathname === "/pricing") return true;
       if (pathname === "/terms" || pathname === "/privacy") return true;
