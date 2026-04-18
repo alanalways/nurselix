@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Check, Loader2, Sparkles, Wand2, X } from "lucide-react";
+import { AlertCircle, Archive, Check, Loader2, Sparkles, Wand2, X } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 
@@ -23,6 +23,7 @@ interface Summary {
   shortExplanation: number;
   missingRationales: number;
   missingStemZh: number;
+  garbledChinese: number;
 }
 
 interface EnhancePreview {
@@ -47,6 +48,7 @@ const ISSUE_LABELS: Record<string, string> = {
   short_explanation: "解析過短",
   missing_rationales: "缺選項分析",
   missing_stem_zh: "缺中文題幹",
+  garbled_chinese: "中文亂碼",
 };
 
 const ISSUE_COLORS: Record<string, "error" | "warning" | "muted"> = {
@@ -54,6 +56,7 @@ const ISSUE_COLORS: Record<string, "error" | "warning" | "muted"> = {
   short_explanation: "warning",
   missing_rationales: "warning",
   missing_stem_zh: "muted",
+  garbled_chinese: "error",
 };
 
 export default function QuestionQualityPage() {
@@ -64,6 +67,8 @@ export default function QuestionQualityPage() {
   const [enhancing, setEnhancing] = useState<string | null>(null);
   const [preview, setPreview] = useState<EnhancePreview | null>(null);
   const [applying, setApplying] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveResult, setArchiveResult] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -131,7 +136,77 @@ export default function QuestionQualityPage() {
     { key: "short_explanation",   label: "解析過短", count: summary?.shortExplanation },
     { key: "missing_rationales",  label: "缺選項分析", count: summary?.missingRationales },
     { key: "missing_stem_zh",     label: "缺中文題幹", count: summary?.missingStemZh },
+    { key: "garbled_chinese",     label: "中文亂碼", count: summary?.garbledChinese },
   ];
+
+  const handleArchiveCurrent = async () => {
+    if (!summary) return;
+    const count =
+      issueFilter === "missing_explanation" ? summary.missingExplanation :
+      issueFilter === "short_explanation"   ? summary.shortExplanation :
+      issueFilter === "missing_rationales"  ? summary.missingRationales :
+      issueFilter === "missing_stem_zh"     ? summary.missingStemZh :
+      issueFilter === "garbled_chinese"     ? summary.garbledChinese :
+      0;
+    if (count === 0) { alert("此類別沒有題目"); return; }
+    if (!confirm(`確定要將這 ${count} 道「${ISSUE_LABELS[issueFilter]}」的題目全部封存嗎？\n\n封存後題目不會出現在練習與評估，但仍可從後台還原。`)) return;
+
+    setArchiving(true);
+    setArchiveResult(null);
+    try {
+      const res = await fetch("/api/admin/questions/archive-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issues: [issueFilter] }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setArchiveResult(`✅ 已封存 ${data.archived} 道題目`);
+        await load();
+      } else {
+        setArchiveResult(`❌ 封存失敗：${data.error ?? "unknown"}`);
+      }
+    } catch (e: any) {
+      setArchiveResult(`❌ 網路錯誤：${e.message}`);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const handleArchiveAll = async () => {
+    if (!summary) return;
+    const total =
+      summary.missingExplanation +
+      summary.shortExplanation +
+      summary.missingRationales +
+      summary.missingStemZh +
+      summary.garbledChinese;
+    if (total === 0) { alert("目前沒有問題題目"); return; }
+    if (!confirm(`確定要將所有問題題目（總計約 ${total} 道，可能有重複）全部封存嗎？\n\n封存後題目不會出現在練習與評估，但仍可從後台還原。`)) return;
+
+    setArchiving(true);
+    setArchiveResult(null);
+    try {
+      const res = await fetch("/api/admin/questions/archive-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issues: ["missing_explanation", "short_explanation", "missing_rationales", "missing_stem_zh", "garbled_chinese"],
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setArchiveResult(`✅ 已封存 ${data.archived} 道題目（去除重複後）`);
+        await load();
+      } else {
+        setArchiveResult(`❌ 封存失敗：${data.error ?? "unknown"}`);
+      }
+    } catch (e: any) {
+      setArchiveResult(`❌ 網路錯誤：${e.message}`);
+    } finally {
+      setArchiving(false);
+    }
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="p-6 space-y-6">
@@ -149,7 +224,7 @@ export default function QuestionQualityPage() {
 
       {/* Summary cards */}
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-4">
             <div className="text-2xl font-bold text-[var(--text-primary)]">{summary.totalApproved}</div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">已核准題目</div>
@@ -170,6 +245,39 @@ export default function QuestionQualityPage() {
             <div className="text-2xl font-bold text-[var(--text-muted)]">{summary.missingStemZh}</div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">缺中文題幹</div>
           </div>
+          <div className="rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-4">
+            <div className="text-2xl font-bold text-[var(--error)]">{summary.garbledChinese}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">中文亂碼</div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch archive actions */}
+      {summary && (
+        <div className="flex items-center gap-2 flex-wrap p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+          <AlertCircle size={18} className="text-[var(--warning)]" />
+          <span className="text-sm text-[var(--text-secondary)]">批次處理：</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleArchiveCurrent}
+            disabled={archiving}
+          >
+            {archiving
+              ? <><Loader2 size={14} className="animate-spin" /> 處理中</>
+              : <><Archive size={14} /> 封存此類別</>}
+          </Button>
+          <Button
+            size="sm"
+            variant="gold"
+            onClick={handleArchiveAll}
+            disabled={archiving}
+          >
+            <Archive size={14} /> 封存所有問題題目
+          </Button>
+          {archiveResult && (
+            <span className="text-xs text-[var(--text-secondary)] ml-2">{archiveResult}</span>
+          )}
         </div>
       )}
 
