@@ -1,7 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function AppError({
@@ -12,10 +10,6 @@ export default function AppError({
   reset: () => void;
 }) {
   const router = useRouter();
-
-  useEffect(() => {
-    Sentry.captureException(error);
-  }, [error]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-5 p-6 text-center bg-[var(--bg-base)]">

@@ -1,7 +1,6 @@
 import withPWAInit from "next-pwa";
 import { fileURLToPath } from "url";
 import path from "path";
-import { withSentryConfig } from "@sentry/nextjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,18 +50,4 @@ const withPWA = withPWAInit({
   ],
 });
 
-const withSentry = (cfg) =>
-  withSentryConfig(cfg, {
-    org: process.env.SENTRY_ORG,
-    project: process.env.SENTRY_PROJECT,
-    // Disable source-map upload during dev / when SENTRY_AUTH_TOKEN absent
-    silent: !process.env.SENTRY_AUTH_TOKEN,
-    // Don't block builds if Sentry isn't configured
-    dryRun: !process.env.SENTRY_AUTH_TOKEN,
-    telemetry: false,
-    // Keep bundle size sane: only include Sentry if DSN is set
-    disableClientWebpackPlugin: !process.env.NEXT_PUBLIC_SENTRY_DSN,
-    disableServerWebpackPlugin: !process.env.SENTRY_DSN && !process.env.NEXT_PUBLIC_SENTRY_DSN,
-  });
-
-export default withSentry(withPWA(nextConfig));
+export default withPWA(nextConfig);
