@@ -43,6 +43,8 @@ export default function AdminQuestionsPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
   const [truncating, setTruncating] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [importingUrl, setImportingUrl] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -126,6 +128,31 @@ export default function AdminQuestionsPage() {
     }
   };
 
+  const handleImportUrl = async () => {
+    if (!urlInput.trim() || importingUrl) return;
+    setImportingUrl(true);
+    setImportResult(null);
+    try {
+      const res = await fetch("/api/admin/questions/import-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: urlInput.trim() }),
+      });
+      const body = await res.json();
+      if (res.ok) {
+        setImportResult(`✓ 匯入 ${body.inserted} 題（過濾 ${body.rejected} 題壞題）`);
+        setUrlInput("");
+        await load();
+      } else {
+        setImportResult(`✗ 失敗：${body.error}`);
+      }
+    } catch (err) {
+      setImportResult(`✗ 失敗：${err instanceof Error ? err.message : "未知錯誤"}`);
+    } finally {
+      setImportingUrl(false);
+    }
+  };
+
   const handleImport = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -187,8 +214,26 @@ export default function AdminQuestionsPage() {
           </Button>
         </div>
       </div>
+      {/* URL import row */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl px-3 py-2 flex-1">
+          <Upload size={14} className="text-[var(--text-muted)] shrink-0" />
+          <input
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleImportUrl(); }}
+            placeholder="貼上 Google Drive 分享連結，自動過濾壞題後匯入..."
+            className="bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none flex-1"
+          />
+        </div>
+        <Button size="sm" variant="blue" onClick={handleImportUrl} disabled={importingUrl || !urlInput.trim()}>
+          {importingUrl ? <Loader2 size={14} className="animate-spin" /> : null}
+          {importingUrl ? "匯入中..." : "從網址匯入"}
+        </Button>
+      </div>
+
       {importResult && (
-        <div className={`px-4 py-2 rounded-lg text-sm ${importResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
+        <div className={`px-4 py-2 rounded-lg text-sm ${importResult.startsWith("✓") || importResult.startsWith("🗑") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
           {importResult}
         </div>
       )}
