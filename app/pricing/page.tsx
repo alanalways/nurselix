@@ -151,7 +151,9 @@ export default function PricingPage() {
 
   const handleSubscribe = async (planKey: string) => {
     if (!authSession) {
-      router.push("/login?callbackUrl=/pricing");
+      // During beta everything is free — send straight to the app after sign-in.
+      const callbackUrl = betaActive ? "/" : "/pricing";
+      router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
       return;
     }
     // Beta: no checkout call; everyone gets full access on the site.
