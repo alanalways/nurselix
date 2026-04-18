@@ -291,7 +291,13 @@ export default function ExamShell({
   // ==========================================================================
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--bg-base)] overflow-hidden">
+    <div
+      className="flex flex-col h-screen bg-[var(--bg-base)] overflow-hidden notranslate exam-no-translate"
+      translate="no"
+      onContextMenu={(e) => e.preventDefault()}
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+    >
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 md:px-6 py-3 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex-shrink-0">
         <div className="flex items-center gap-3">

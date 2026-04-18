@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  TrendingUp, MapPin, Clock, DollarSign, AlertCircle, CheckCircle2,
-  BookOpen, Heart, Users, Globe, ArrowRight, Brain
+  TrendingUp, Clock, DollarSign, AlertCircle, CheckCircle2,
+  BookOpen, Heart, Globe, ArrowRight, Brain, Sparkles
 } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import Button from "@/components/ui/Button";
@@ -13,70 +13,78 @@ import Button from "@/components/ui/Button";
 export default function NursingCareerPage() {
   const [activeTab, setActiveTab] = useState<"salary" | "environment" | "nclex" | "comparison">("salary");
 
+  // Salary ranges are approximations compiled from public sources (BLS OES,
+  // state nursing boards, job-posting aggregators). Real packages vary by
+  // hospital, shift differential, union status, and overtime.
   const salaryData = [
-    { state: "加州 (California)", newGrad: "$75-85K", mid: "$95-110K", senior: "$130-160K", index: "全美最高" },
-    { state: "紐約 (New York)", newGrad: "$65-75K", mid: "$85-100K", senior: "$120-150K", index: "高" },
-    { state: "德州 (Texas)", newGrad: "$58-68K", mid: "$75-90K", senior: "$105-130K", index: "中偏高" },
-    { state: "佛州 (Florida)", newGrad: "$55-65K", mid: "$70-85K", senior: "$100-125K", index: "中" },
-    { state: "全美平均", newGrad: "$60-70K", mid: "$80-95K", senior: "$110-135K", index: "參考值" },
+    { state: "加州 (California)", newGrad: "$80–100K", mid: "$110–140K", senior: "$140–180K", index: "全美最高之一" },
+    { state: "紐約 (New York)", newGrad: "$70–90K", mid: "$95–120K", senior: "$120–160K", index: "高" },
+    { state: "麻州 (Massachusetts)", newGrad: "$75–90K", mid: "$95–115K", senior: "$120–150K", index: "高" },
+    { state: "德州 (Texas)", newGrad: "$60–75K", mid: "$80–95K", senior: "$95–125K", index: "中偏高" },
+    { state: "佛州 (Florida)", newGrad: "$55–70K", mid: "$70–90K", senior: "$90–115K", index: "中" },
+    { state: "全美中位數", newGrad: "$65–80K", mid: "$80–100K", senior: "$100–130K", index: "參考值" },
   ];
 
+  // Note: removed bogus "satisfaction %" — those are fabricated and not
+  // sourced from any survey. We describe pace/intensity qualitatively instead.
   const environmentData = [
     {
       type: "急診室 (ER)",
-      shift: "24小時輪班制（通常 8-12 小時）",
-      workload: "高壓、緊急情況多",
-      satisfaction: "65%",
-      notes: "刺激高報酬，但身心負荷大"
+      shift: "12 小時輪班，含夜班與週末",
+      workload: "高強度、患者流量大、急救情境頻繁",
+      pace: "極快",
+      notes: "適合反應快、抗壓性強者；夜班 / 危險津貼較高"
     },
     {
       type: "加護病房 (ICU)",
-      shift: "12 小時輪班（日班/夜班交替）",
-      workload: "極高難度、高責任感",
-      satisfaction: "70%",
-      notes: "薪資最高，但是最累的科室之一"
+      shift: "12 小時輪班（日 / 夜輪替）",
+      workload: "高難度、高技術門檻；患者比例約 1:1–1:2",
+      pace: "高",
+      notes: "薪資較高，需具備重症照護能力；常見科別包含 MICU、SICU、CVICU"
     },
     {
-      type: "一般病房 (Medical-Surgical)",
-      shift: "8-12 小時輪班",
-      workload: "中等（多數患者症狀穩定）",
-      satisfaction: "75%",
-      notes: "新手友善，適合初級護理師"
+      type: "一般內外科病房 (Med-Surg)",
+      shift: "8 或 12 小時輪班",
+      workload: "中等；患者比例約 1:4–1:6（依州法與醫院）",
+      pace: "中",
+      notes: "新人最常見的起點，能廣泛接觸各類疾病"
     },
     {
-      type: "手術室 (OR)",
-      shift: "多為日班（7-15:30），周末通常不上班",
-      workload: "中到高（需專注力）",
-      satisfaction: "78%",
-      notes: "規律班表，薪資中等偏高"
+      type: "手術室 (OR / PACU)",
+      shift: "多為日班，週末多採 on-call 制",
+      workload: "中至高，需高度專注與團隊配合",
+      pace: "中",
+      notes: "班表相對規律，較少夜班；需通過 perioperative 訓練"
     },
     {
-      type: "社區護理 (Home Health)",
-      shift: "日班為主（8-17:00）",
-      workload: "低到中（更多溝通與教學）",
-      satisfaction: "82%",
-      notes: "最平衡的工作環境，但患者接觸較少"
+      type: "居家照護 (Home Health)",
+      shift: "日班為主，按訪視排程",
+      workload: "中；獨立作業，須自行管理時間",
+      pace: "低至中",
+      notes: "工作生活平衡較佳；需自備交通與良好溝通能力"
     },
   ];
 
   const nclexInfo = [
-    { item: "考試費用", value: "$200", note: "2026 年報價" },
-    { item: "準備時間", value: "3-6 個月", note: "取決於基礎與投入度" },
-    { item: "通過率（全球考生）", value: "~85%", note: "第一次通過率" },
-    { item: "台灣護理師通過率", value: "~90%", note: "通常高於平均" },
-    { item: "執照費用（首年）", value: "$150-200", note: "各州略異" },
-    { item: "執照更新周期", value: "2-3 年", note: "各州規定不同" },
+    { item: "考試報名費", value: "US$200", note: "NCSBN 公告，需另付執照申請費" },
+    { item: "建議準備時間", value: "3–6 個月", note: "依英語能力與每日投入時數" },
+    { item: "首次受試通過率", value: "約 80–90%", note: "美國本國畢業生整體區間（NCSBN 統計）" },
+    { item: "國際畢業生通過率", value: "約 45–55%", note: "整體；個人差異大，與英語能力關聯高" },
+    { item: "州執照申請費", value: "US$100–300", note: "各州差異大，部分州另需 CGFNS 認證" },
+    { item: "執照更新周期", value: "每 2–3 年", note: "各州規定不同，多需 CE 學分" },
   ];
 
+  // Approximate comparison — figures vary widely by hospital, region, year and
+  // contract type. Use as orientation only.
   const comparisonData = [
-    { aspect: "初階年薪", tw: "$25-35K USD", us: "$60-70K USD", advantage: "🇺🇸 US 高 2 倍" },
-    { aspect: "資深年薪（10年）", tw: "$45-55K USD", us: "$110-135K USD", advantage: "🇺🇸 US 高 2-3 倍" },
-    { aspect: "工作時數", tw: "12 小時輪班（台灣常超時）", us: "8-12 小時（法律保障）", advantage: "🇺🇸 US 更規律" },
-    { aspect: "患者比例", tw: "1:12-15", us: "1:4-6", advantage: "🇺🇸 US 更安全" },
-    { aspect: "福利", tw: "基本健保", us: "健保 + 401k + 簽証贊助", advantage: "🇺🇸 US 更優" },
-    { aspect: "升職機會", tw: "有限（阿長制度）", us: "多元（臨床師、管理、專科）", advantage: "🇺🇸 US 多元" },
-    { aspect: "生活成本", tw: "NT$2K/月", us: "$1.5-3K USD/月", advantage: "🟰 相當" },
-    { aspect: "簽証", tw: "需 H-1B", us: "通常雇主贊助", advantage: "🇺🇸 有幫助" },
+    { aspect: "初階年薪（折算 USD）", tw: "約 US$22–32K", us: "約 US$65–80K", advantage: "🇺🇸 約高 2 倍" },
+    { aspect: "資深年薪（10 年以上）", tw: "約 US$35–55K", us: "約 US$100–140K", advantage: "🇺🇸 約高 2–3 倍" },
+    { aspect: "標準輪班", tw: "8–12 小時，常見加班", us: "8 或 12 小時，加班需另計", advantage: "🇺🇸 較規律" },
+    { aspect: "護病比", tw: "急性病房常見 1:8–1:12", us: "1:4–1:6（加州 ICU 法定 1:2）", advantage: "🇺🇸 較低" },
+    { aspect: "福利", tw: "勞健保 / 退休金", us: "醫療保險、401(k)、PTO、CE 補助", advantage: "🇺🇸 通常較完整" },
+    { aspect: "升遷路徑", tw: "護理長 / 督導為主", us: "Charge / Educator / NP / CNS / 行政", advantage: "🇺🇸 路徑多元" },
+    { aspect: "生活成本", tw: "相對低", us: "依城市差異極大", advantage: "視城市而定" },
+    { aspect: "工作簽證", tw: "—", us: "多透過 EB-3 / H-1B（雇主贊助為主）", advantage: "需提早規劃" },
   ];
 
   const tabButtons = [
@@ -105,9 +113,15 @@ export default function NursingCareerPage() {
             深入了解美國護理師的薪資、工作環境、執照要求，以及與台灣的差異。幫助你做出明智的職涯決定。
           </p>
 
-          <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-            <CheckCircle2 size={16} className="text-[var(--success)]" />
-            <span>數據更新於 2026 年，基於美國護理師協會 (ANA) 與勞工統計局 (BLS)</span>
+          <div className="flex items-start gap-2 text-sm text-[var(--text-muted)] max-w-3xl">
+            <AlertCircle size={16} className="text-[var(--warning)] flex-shrink-0 mt-0.5" />
+            <span>
+              本頁資訊綜合自公開資料整理，數字皆為大致範圍，僅供參考。實際薪資、班表與工作條件因州別、醫院、年資、科別與市場狀況而異。決策前請以
+              <a href="https://www.bls.gov/oes/current/oes291141.htm" target="_blank" rel="noopener noreferrer" className="text-[var(--gold)] underline mx-1">美國勞工統計局 (BLS)</a>
+              、
+              <a href="https://www.ncsbn.org/exams/exam-statistics-and-publications.page" target="_blank" rel="noopener noreferrer" className="text-[var(--gold)] underline mx-1">NCSBN 官方統計</a>
+              與目標雇主之最新公告為準。
+            </span>
           </div>
         </div>
       </div>
@@ -183,9 +197,9 @@ export default function NursingCareerPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { label: "年薪成長速度", value: "3-5% 年增", note: "全美經濟平均 2%" },
-                { label: "需求量", value: "極高缺口", note: "2026 預計短缺 50 萬護理師" },
-                { label: "工作安全性", value: "99%", note: "職位穩定，不易被裁員" },
+                { label: "BLS 預估職位成長", value: "約 6% (10 年)", note: "高於全美職業平均" },
+                { label: "整體缺口", value: "顯著", note: "多家機構預估未來十年將短缺數十萬名護理師" },
+                { label: "工作型態", value: "彈性多元", note: "醫院、診所、居家、學校、travel nurse 皆有" },
               ].map((stat, i) => (
                 <div key={i} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
                   <div className="text-sm text-[var(--text-muted)] mb-1">{stat.label}</div>
@@ -193,6 +207,10 @@ export default function NursingCareerPage() {
                   <div className="text-xs text-[var(--text-secondary)]">{stat.note}</div>
                 </div>
               ))}
+            </div>
+
+            <div className="text-xs text-[var(--text-muted)] italic">
+              ※ 以上薪資為公開資料整理之大致範圍，未涵蓋夜班 / 假日 / 加班等津貼。實際 offer 請以雇主合約為準。
             </div>
           </motion.div>
         )}
@@ -212,10 +230,10 @@ export default function NursingCareerPage() {
             <div className="space-y-4">
               {environmentData.map((dept, i) => (
                 <div key={i} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-6 hover:border-[var(--gold)] transition-colors">
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-4 gap-3">
                     <h3 className="text-lg font-semibold text-[var(--text-primary)]">{dept.type}</h3>
-                    <div className="text-sm font-semibold px-3 py-1 rounded-lg bg-[var(--success)]/20 text-[var(--success)]">
-                      滿意度 {dept.satisfaction}
+                    <div className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-default)] flex-shrink-0">
+                      節奏：{dept.pace}
                     </div>
                   </div>
 
@@ -230,7 +248,7 @@ export default function NursingCareerPage() {
                     <div className="flex items-start gap-3">
                       <TrendingUp size={16} className="text-[var(--warning)] flex-shrink-0 mt-0.5" />
                       <div>
-                        <span className="text-[var(--text-secondary)]">工作量：</span>
+                        <span className="text-[var(--text-secondary)]">工作內容：</span>
                         <span className="text-[var(--text-primary)]">{dept.workload}</span>
                       </div>
                     </div>
@@ -332,8 +350,11 @@ export default function NursingCareerPage() {
                 <Globe className="text-[var(--blue)]" />
                 台灣 vs 美國 護理師職涯對比
               </h2>
-              <p className="text-[var(--text-secondary)] mb-6">
-                看看出國工作能帶來的改變：
+              <p className="text-[var(--text-secondary)] mb-2">
+                以下為一般性對比，幫助你建立全貌。
+              </p>
+              <p className="text-xs text-[var(--text-muted)] mb-6">
+                ※ 數字為公開資料整理之大致範圍，個人實際結果差異甚大；本對比不構成財務、法律或就業建議。
               </p>
             </div>
 
@@ -385,11 +406,11 @@ export default function NursingCareerPage() {
             </div>
 
             <div className="bg-gradient-to-r from-[var(--gold-dim)] to-[var(--bg-elevated)] border border-[var(--gold)] rounded-xl p-8 text-center">
-              <div className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-                平均薪資提升：200% 以上
+              <div className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-2">
+                美國 RN 平均薪資水準約為台灣的 2–3 倍
               </div>
-              <p className="text-[var(--text-secondary)] mb-6">
-                10 年工作下來，美國護理師累計薪資可高出台灣 $500K+ USD
+              <p className="text-[var(--text-secondary)] mb-6 text-sm">
+                以上為公開資料整理之大致範圍，不構成就業或財務建議。實際結果依個人條件、雇主、地區與市場狀況而異。
               </p>
               <Link href="/pricing">
                 <Button variant="gold">
@@ -423,10 +444,10 @@ export default function NursingCareerPage() {
 
             <div className="space-y-4">
               {[
-                { icon: Users, text: "已幫助 5,000+ 台灣護理師" },
-                { icon: TrendingUp, text: "平均通過率 92%（vs 全球 85%）" },
-                { icon: CheckCircle2, text: "25,479 題精選題庫" },
-                { icon: Brain, text: "Hermes AI 智能學習分析" },
+                { icon: Brain, text: "IRT 三參數電腦適應測驗（CAT），擬真 NCLEX 體驗" },
+                { icon: BookOpen, text: "25,000+ 題庫，涵蓋八大 NCLEX-RN 領域" },
+                { icon: CheckCircle2, text: "SATA / SBA / 案例題型完整支援" },
+                { icon: Sparkles, text: "Hermes AI 學習分析，找出弱點對症下藥" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-3 text-[var(--text-secondary)]">
                   <item.icon size={20} className="text-[var(--gold)]" />
