@@ -140,7 +140,10 @@ export default function AdminQuestionsPage() {
       });
       const body = await res.json();
       if (res.ok) {
-        setImportResult(`✓ 匯入 ${body.inserted} 題（過濾 ${body.rejected} 題壞題）`);
+        const parts = [`✓ 匯入 ${body.inserted} 題`];
+        if (body.rejected) parts.push(`過濾 ${body.rejected} 題壞題`);
+        if (body.duplicates) parts.push(`跳過 ${body.duplicates} 題重複`);
+        setImportResult(parts.join("，"));
         setUrlInput("");
         await load();
       } else {

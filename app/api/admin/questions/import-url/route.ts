@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Difficulty } from "@prisma/client";
+import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 
@@ -97,6 +98,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No valid questions found", badReasons }, { status: 400 });
   }
 
+  // Dedup: load all existing stem hashes from DB
+  const stemHash = (s: string) => createHash("sha1").update(s.trim().toLowerCase()).digest("hex");
+
+  const existingHashes = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const batch = await prisma.question.findMany({
+      select: { id: true, stem: true },
+      take: 2000,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { id: "asc" },
+    });
+    for (const q of batch) existingHashes.add(stemHash(q.stem));
+    cursor = batch.length === 2000 ? batch[batch.length - 1].id : undefined;
+  } while (cursor);
+
+  const deduped: Record<string, unknown>[] = [];
+  let duplicates = 0;
+  for (const q of good) {
+    if (existingHashes.has(stemHash(String(q.stem)))) {
+      duplicates++;
+    } else {
+      deduped.push(q);
+    }
+  }
+
+  if (deduped.length === 0) {
+    return NextResponse.json({ error: "All questions are duplicates already in DB", total: raw.length, rejected: badReasons.length, duplicates, inserted: 0, skipped: 0 }, { status: 200 });
+  }
+
   // Insert in chunks
   const adminId = (guard as { user?: { id?: string } }).user?.id ?? "admin";
   const now = new Date();
@@ -108,8 +139,8 @@ export async function POST(req: NextRequest) {
   let inserted = 0;
   let skipped = 0;
 
-  for (let i = 0; i < good.length; i += CHUNK) {
-    const chunk = good.slice(i, i + CHUNK);
+  for (let i = 0; i < deduped.length; i += CHUNK) {
+    const chunk = deduped.slice(i, i + CHUNK);
     try {
       const result = await prisma.question.createMany({
         data: chunk.map((q) => {
@@ -157,6 +188,7 @@ export async function POST(req: NextRequest) {
     total: raw.length,
     passed: good.length,
     rejected: badReasons.length,
+    duplicates,
     inserted,
     skipped,
     badReasons: badReasons.slice(0, 10),
