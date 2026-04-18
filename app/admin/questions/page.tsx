@@ -47,6 +47,8 @@ const DOMAIN_TARGETS: Record<string, number> = {
 
 // Free-tier RPD per project per model
 const MODEL_RPD: Record<string, number> = {
+  "gemini-3.1-flash-lite-preview": 1500,
+  "gemini-3-flash-preview": 1500,
   "gemini-2.5-flash-lite": 1000,
   "gemini-2.5-flash": 20,
   "gemini-2.5-pro": 100,
@@ -78,7 +80,7 @@ export default function AdminQuestionsPage() {
 
   // AI generation state
   const [genOpen, setGenOpen] = useState(false);
-  const [genModel, setGenModel] = useState("gemini-2.5-flash-lite");
+  const [genModel, setGenModel] = useState("gemini-3.1-flash-lite-preview");
   const [genDomain, setGenDomain] = useState("auto");
   const [generating, setGenerating] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
@@ -381,9 +383,11 @@ export default function AdminQuestionsPage() {
                 onChange={(e) => setGenModel(e.target.value)}
                 className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] outline-none"
               >
-                <option value="gemini-2.5-flash-lite">Flash Lite（1,000 RPD/key）</option>
-                <option value="gemini-2.5-flash">Flash（20 RPD/key）</option>
-                <option value="gemini-2.5-pro">Pro（100 RPD/key）</option>
+                <option value="gemini-3.1-flash-lite-preview">3.1 Flash Lite Preview（1,500 RPD/key，最新）</option>
+                <option value="gemini-3-flash-preview">3 Flash Preview（1,500 RPD/key）</option>
+                <option value="gemini-2.5-flash-lite">2.5 Flash Lite（1,000 RPD/key）</option>
+                <option value="gemini-2.5-flash">2.5 Flash（20 RPD/key）</option>
+                <option value="gemini-2.5-pro">2.5 Pro（100 RPD/key）</option>
               </select>
 
               <select

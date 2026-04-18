@@ -30,6 +30,8 @@ const DOMAIN_TARGETS: Record<string, number> = {
 
 // RPD per project per model (free tier)
 const MODEL_RPD: Record<string, number> = {
+  "gemini-3.1-flash-lite-preview": 1500,
+  "gemini-3-flash-preview": 1500,
   "gemini-2.5-flash-lite": 1000,
   "gemini-2.5-flash": 20,
   "gemini-2.5-pro": 100,
@@ -191,7 +193,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    model = String(body.model ?? "gemini-2.5-flash-lite");
+    model = String(body.model ?? "gemini-3.1-flash-lite-preview");
     const rawDomain = String(body.domain ?? "auto");
 
     if (rawDomain === "auto" || !rawDomain) {
