@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Check, Archive, Eye, Loader2, Upload, Trash2 } from "lucide-react";
+import {
+  Plus, Search, Check, Archive, Eye, Loader2, Upload, Trash2, Sparkles, ChevronDown, StopCircle,
+} from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 
@@ -21,12 +23,40 @@ interface QuestionRow {
   createdAt: string;
 }
 
+const VALID_DOMAINS = [
+  "Management of Care",
+  "Safety & Infection Control",
+  "Health Promotion & Maintenance",
+  "Psychosocial Integrity",
+  "Basic Care & Comfort",
+  "Pharmacological and Parenteral Therapies",
+  "Reduction of Risk Potential",
+  "Physiological Adaptation",
+];
+
+const DOMAIN_TARGETS: Record<string, number> = {
+  "Management of Care": 1540,
+  "Safety & Infection Control": 1210,
+  "Health Promotion & Maintenance": 1210,
+  "Psychosocial Integrity": 990,
+  "Basic Care & Comfort": 990,
+  "Pharmacological and Parenteral Therapies": 1540,
+  "Reduction of Risk Potential": 1540,
+  "Physiological Adaptation": 1980,
+};
+
+// Free-tier RPD per project per model
+const MODEL_RPD: Record<string, number> = {
+  "gemini-2.5-flash-lite": 1000,
+  "gemini-2.5-flash": 20,
+  "gemini-2.5-pro": 100,
+};
+
 const statusBadge = {
   APPROVED: "success" as const,
   DRAFT: "warning" as const,
   ARCHIVED: "muted" as const,
 };
-
 const diffBadge = { EASY: "success" as const, MEDIUM: "gold" as const, HARD: "error" as const };
 
 export default function AdminQuestionsPage() {
@@ -46,6 +76,17 @@ export default function AdminQuestionsPage() {
   const [urlInput, setUrlInput] = useState("");
   const [importingUrl, setImportingUrl] = useState(false);
 
+  // AI generation state
+  const [genOpen, setGenOpen] = useState(false);
+  const [genModel, setGenModel] = useState("gemini-2.5-flash-lite");
+  const [genDomain, setGenDomain] = useState("auto");
+  const [generating, setGenerating] = useState(false);
+  const [autoMode, setAutoMode] = useState(false);
+  const [genLog, setGenLog] = useState<string[]>([]);
+  const [domainCounts, setDomainCounts] = useState<Record<string, number>>({});
+  const [keysCount, setKeysCount] = useState<number | null>(null);
+  const stopRef = useRef(false);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
@@ -53,13 +94,9 @@ export default function AdminQuestionsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({
-      page: String(page),
-      pageSize: "30",
-    });
+    const params = new URLSearchParams({ page: String(page), pageSize: "30" });
     if (debouncedSearch) params.set("q", debouncedSearch);
     if (statusFilter !== "全部") params.set("status", statusFilter);
-
     try {
       const res = await fetch(`/api/admin/questions?${params}`, { cache: "no-store" });
       if (res.ok) {
@@ -74,6 +111,29 @@ export default function AdminQuestionsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const loadStats = useCallback(async () => {
+    const res = await fetch("/api/admin/questions?stats=1", { cache: "no-store" });
+    if (res.ok) {
+      const body = await res.json();
+      setDomainCounts(body.domains ?? {});
+    }
+  }, []);
+
+  const loadGenConfig = useCallback(async () => {
+    const res = await fetch("/api/admin/questions/generate", { cache: "no-store" });
+    if (res.ok) {
+      const body = await res.json();
+      setKeysCount(body.keys ?? 0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (genOpen) {
+      loadStats();
+      loadGenConfig();
+    }
+  }, [genOpen, loadStats, loadGenConfig]);
+
   const bulkUpdate = async (newStatus: "APPROVED" | "ARCHIVED") => {
     if (selected.size === 0 || acting) return;
     setActing(true);
@@ -83,28 +143,19 @@ export default function AdminQuestionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: Array.from(selected), status: newStatus }),
       });
-      if (res.ok) {
-        setSelected(new Set());
-        await load();
-      }
-    } finally {
-      setActing(false);
-    }
+      if (res.ok) { setSelected(new Set()); await load(); }
+    } finally { setActing(false); }
   };
 
-  const toggleOne = (id: string) => {
+  const toggleOne = (id: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
 
-  const toggleAll = () => {
-    if (selected.size === rows.length) setSelected(new Set());
-    else setSelected(new Set(rows.map((r) => r.id)));
-  };
+  const toggleAll = () =>
+    setSelected(selected.size === rows.length ? new Set() : new Set(rows.map((r) => r.id)));
 
   const totalPages = Math.max(1, Math.ceil(total / 30));
 
@@ -115,17 +166,11 @@ export default function AdminQuestionsPage() {
     try {
       const res = await fetch("/api/admin/questions?confirm=TRUNCATE_ALL", { method: "DELETE" });
       const body = await res.json();
-      if (res.ok) {
-        setImportResult(`🗑 已刪除 ${body.deleted} 題`);
-        await load();
-      } else {
-        setImportResult(`✗ 刪除失敗：${body.error}`);
-      }
+      setImportResult(res.ok ? `🗑 已刪除 ${body.deleted} 題` : `✗ 刪除失敗：${body.error}`);
+      if (res.ok) await load();
     } catch (err) {
       setImportResult(`✗ 刪除失敗：${err instanceof Error ? err.message : "未知錯誤"}`);
-    } finally {
-      setTruncating(false);
-    }
+    } finally { setTruncating(false); }
   };
 
   const handleImportUrl = async () => {
@@ -151,9 +196,7 @@ export default function AdminQuestionsPage() {
       }
     } catch (err) {
       setImportResult(`✗ 失敗：${err instanceof Error ? err.message : "未知錯誤"}`);
-    } finally {
-      setImportingUrl(false);
-    }
+    } finally { setImportingUrl(false); }
   };
 
   const handleImport = () => {
@@ -169,7 +212,6 @@ export default function AdminQuestionsPage() {
         const text = await file.text();
         const questions = JSON.parse(text);
         const arr = Array.isArray(questions) ? questions : questions.questions ?? [];
-        // Upload in batches of 500
         let totalInserted = 0;
         const BATCH = 500;
         for (let i = 0; i < arr.length; i += BATCH) {
@@ -185,12 +227,73 @@ export default function AdminQuestionsPage() {
         await load();
       } catch (err) {
         setImportResult(`✗ 匯入失敗：${err instanceof Error ? err.message : "未知錯誤"}`);
-      } finally {
-        setImporting(false);
-      }
+      } finally { setImporting(false); }
     };
     input.click();
   };
+
+  const runOneBatch = async (): Promise<boolean> => {
+    const res = await fetch("/api/admin/questions/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain: genDomain, model: genModel }),
+    });
+    const body = await res.json();
+    const ts = new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    if (res.ok) {
+      const msg = `[${ts}] ✓ ${body.domain} · 生成${body.total} 通過${body.passed} 入庫${body.inserted} 過濾${body.rejected} 重複${body.duplicates}`;
+      setGenLog((prev) => [msg, ...prev.slice(0, 49)]);
+      await loadStats();
+      await load();
+      return true;
+    } else {
+      setGenLog((prev) => [`[${ts}] ✗ ${body.error ?? "未知錯誤"}`, ...prev.slice(0, 49)]);
+      return false;
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (generating) return;
+    setGenerating(true);
+    stopRef.current = false;
+    try {
+      await runOneBatch();
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleAutoGen = async () => {
+    if (autoMode) {
+      stopRef.current = true;
+      setAutoMode(false);
+      return;
+    }
+    setAutoMode(true);
+    stopRef.current = false;
+    setGenerating(true);
+    try {
+      while (!stopRef.current) {
+        const ok = await runOneBatch();
+        if (!ok) break;
+        if (stopRef.current) break;
+        // Small pause between batches to avoid hammering
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    } finally {
+      setGenerating(false);
+      setAutoMode(false);
+    }
+  };
+
+  const totalTarget = 11000;
+  const totalGenerated = Object.values(domainCounts).reduce((a, b) => a + b, 0);
+  const overallPct = Math.min(100, Math.round((totalGenerated / totalTarget) * 100));
+
+  const capacityPerDay =
+    keysCount != null && keysCount > 0
+      ? `${(keysCount * (MODEL_RPD[genModel] ?? 20) * 50).toLocaleString()} 題/天`
+      : null;
 
   return (
     <motion.div
@@ -217,6 +320,7 @@ export default function AdminQuestionsPage() {
           </Button>
         </div>
       </div>
+
       {/* URL import row */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl px-3 py-2 flex-1">
@@ -236,11 +340,155 @@ export default function AdminQuestionsPage() {
       </div>
 
       {importResult && (
-        <div className={`px-4 py-2 rounded-lg text-sm ${importResult.startsWith("✓") || importResult.startsWith("🗑") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
+        <div className={`px-4 py-2 rounded-lg text-sm ${
+          importResult.startsWith("✓") || importResult.startsWith("🗑")
+            ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]"
+            : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"
+        }`}>
           {importResult}
         </div>
       )}
 
+      {/* AI Generation Panel */}
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+        <button
+          onClick={() => setGenOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--bg-elevated)] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles size={15} className="text-[var(--gold)]" />
+            <span className="font-semibold text-sm text-[var(--text-primary)]">AI 自動生成題目</span>
+            {keysCount != null && genOpen && (
+              <span className="text-xs text-[var(--text-muted)] ml-1">
+                {keysCount > 0
+                  ? `${keysCount} 組 Key · ${capacityPerDay}`
+                  : "⚠️ 未設定 API Key"}
+              </span>
+            )}
+          </div>
+          <ChevronDown
+            size={15}
+            className={`text-[var(--text-muted)] transition-transform ${genOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {genOpen && (
+          <div className="px-4 pb-4 space-y-4 border-t border-[var(--border-subtle)]">
+            {/* Controls */}
+            <div className="flex flex-wrap gap-2 pt-3">
+              <select
+                value={genModel}
+                onChange={(e) => setGenModel(e.target.value)}
+                className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] outline-none"
+              >
+                <option value="gemini-2.5-flash-lite">Flash Lite（1,000 RPD/key）</option>
+                <option value="gemini-2.5-flash">Flash（20 RPD/key）</option>
+                <option value="gemini-2.5-pro">Pro（100 RPD/key）</option>
+              </select>
+
+              <select
+                value={genDomain}
+                onChange={(e) => setGenDomain(e.target.value)}
+                className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] outline-none flex-1 min-w-0"
+              >
+                <option value="auto">自動（最缺的 Domain）</option>
+                {VALID_DOMAINS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+
+              <Button
+                size="sm"
+                onClick={handleGenerate}
+                disabled={generating || (keysCount ?? 0) === 0}
+              >
+                {generating && !autoMode
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Sparkles size={14} />}
+                生成一批 (50題)
+              </Button>
+
+              <Button
+                size="sm"
+                variant={autoMode ? "danger" : "outline"}
+                onClick={handleAutoGen}
+                disabled={(keysCount ?? 0) === 0}
+              >
+                {autoMode
+                  ? <><StopCircle size={14} /> 停止連續</>
+                  : "連續生成"}
+              </Button>
+            </div>
+
+            {/* No API key warning */}
+            {keysCount === 0 && (
+              <div className="bg-[rgba(231,76,60,0.08)] border border-[rgba(231,76,60,0.2)] rounded-lg px-4 py-3 text-sm space-y-1">
+                <p className="font-semibold text-[var(--error)]">未設定 Gemini API Key</p>
+                <p className="text-[var(--text-secondary)]">請在 Zeabur 環境變數加入：</p>
+                <code className="block bg-[var(--bg-overlay)] rounded px-3 py-2 text-xs font-mono text-[var(--text-primary)] mt-1">
+                  GEMINI_API_KEY_1 = AIza...<br />
+                  GEMINI_API_KEY_2 = AIza...<br />
+                  GEMINI_API_KEY_3 = AIza...<br />
+                  （最多 GEMINI_API_KEY_6）
+                </code>
+                <p className="text-xs text-[var(--text-muted)] pt-1">
+                  取得方式：<strong>aistudio.google.com</strong> → Get API Key → Create API Key（每個 Google Project 各建一組）
+                </p>
+              </div>
+            )}
+
+            {/* Overall progress */}
+            <div>
+              <div className="flex justify-between text-xs text-[var(--text-muted)] mb-1">
+                <span>總進度</span>
+                <span className="font-mono">{totalGenerated.toLocaleString()} / {totalTarget.toLocaleString()} 題 ({overallPct}%)</span>
+              </div>
+              <div className="w-full bg-[var(--bg-overlay)] rounded-full h-2">
+                <div
+                  className="bg-[var(--gold)] h-2 rounded-full transition-all"
+                  style={{ width: `${overallPct}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Per-domain progress */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {VALID_DOMAINS.map((d) => {
+                const count = domainCounts[d] ?? 0;
+                const target = DOMAIN_TARGETS[d];
+                const pct = Math.min(100, Math.round((count / target) * 100));
+                return (
+                  <div key={d} className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--text-muted)] truncate w-44 shrink-0">{d}</span>
+                    <div className="flex-1 bg-[var(--bg-overlay)] rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full transition-all ${pct >= 100 ? "bg-[var(--success)]" : "bg-[var(--gold)]"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-mono text-[var(--text-secondary)] w-20 text-right shrink-0">
+                      {count}/{target}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Generation log */}
+            {genLog.length > 0 && (
+              <div className="bg-[var(--bg-overlay)] rounded-lg p-3 space-y-0.5 max-h-32 overflow-y-auto">
+                {genLog.map((log, i) => (
+                  <p key={i} className={`text-xs font-mono ${log.includes("✓") ? "text-[var(--success)]" : "text-[var(--error)]"}`}>
+                    {log}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Search and filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl px-3 py-2 flex-1 max-w-sm">
           <Search size={14} className="text-[var(--text-muted)]" />
@@ -257,7 +505,9 @@ export default function AdminQuestionsPage() {
               key={s}
               onClick={() => { setStatusFilter(s); setPage(1); }}
               className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
-                statusFilter === s ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--border-default)] text-[var(--text-muted)]"
+                statusFilter === s
+                  ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]"
+                  : "border-[var(--border-default)] text-[var(--text-muted)]"
               }`}
             >
               {s === "全部" ? "全部" : s === "APPROVED" ? "已審核" : s === "DRAFT" ? "草稿" : "封存"}
@@ -284,9 +534,7 @@ export default function AdminQuestionsPage() {
             <p className="text-sm text-[var(--text-secondary)]">載入中...</p>
           </div>
         ) : rows.length === 0 ? (
-          <div className="py-16 text-center text-[var(--text-muted)] text-sm">
-            沒有符合的題目
-          </div>
+          <div className="py-16 text-center text-[var(--text-muted)] text-sm">沒有符合的題目</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--border-subtle)]">

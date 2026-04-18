@@ -8,6 +8,23 @@ export async function GET(req: NextRequest) {
   if (guard instanceof NextResponse) return guard;
 
   const url = new URL(req.url);
+
+  if (url.searchParams.get("stats") === "1") {
+    const [domainRows, total] = await Promise.all([
+      prisma.question.groupBy({
+        by: ["domain"],
+        _count: { id: true },
+        where: { domain: { not: null } },
+      }),
+      prisma.question.count(),
+    ]);
+    const domains: Record<string, number> = {};
+    for (const row of domainRows) {
+      if (row.domain) domains[row.domain] = row._count.id;
+    }
+    return NextResponse.json({ total, domains });
+  }
+
   const search = url.searchParams.get("q")?.trim() ?? "";
   const status = url.searchParams.get("status") ?? "";
   const domain = url.searchParams.get("domain") ?? "";

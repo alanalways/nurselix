@@ -1,0 +1,393 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/admin";
+import { Difficulty } from "@prisma/client";
+
+export const maxDuration = 120;
+
+const VALID_DOMAINS = [
+  "Management of Care",
+  "Safety & Infection Control",
+  "Health Promotion & Maintenance",
+  "Psychosocial Integrity",
+  "Basic Care & Comfort",
+  "Pharmacological and Parenteral Therapies",
+  "Reduction of Risk Potential",
+  "Physiological Adaptation",
+];
+
+const DOMAIN_TARGETS: Record<string, number> = {
+  "Management of Care": 1540,
+  "Safety & Infection Control": 1210,
+  "Health Promotion & Maintenance": 1210,
+  "Psychosocial Integrity": 990,
+  "Basic Care & Comfort": 990,
+  "Pharmacological and Parenteral Therapies": 1540,
+  "Reduction of Risk Potential": 1540,
+  "Physiological Adaptation": 1980,
+};
+
+// RPD per project per model (free tier)
+export const MODEL_RPD: Record<string, number> = {
+  "gemini-2.5-flash-lite": 1000,
+  "gemini-2.5-flash": 20,
+  "gemini-2.5-pro": 100,
+};
+
+const IRT: Record<string, { a: number; b: number }> = {
+  EASY: { a: 0.8, b: -1.0 },
+  MEDIUM: { a: 1.0, b: 0.0 },
+  HARD: { a: 1.2, b: 1.0 },
+};
+
+const ADVERB_RE =
+  /(aggressively|fiercely|deeply|essentially|completely|entirely|absolutely|violently|purely|flawlessly|strictly|exclusively|thoroughly|directly|heavily|perfectly|smoothly|cleanly|safely|incredibly|seamlessly|magically)/gi;
+
+function isGibberish(en: string) {
+  return (en.match(ADVERB_RE) ?? []).length > 15 || en.length > 800;
+}
+
+function validate(q: Record<string, unknown>): string | null {
+  if (!q.stem || !q.optionA || !q.optionB || !q.optionC || !q.optionD)
+    return "missing required fields";
+  if (!q.explanationZh) return "missing explanationZh";
+  if (!q.usTwDifference) return "missing usTwDifference";
+  if (q.domain && !VALID_DOMAINS.includes(q.domain as string))
+    return `invalid domain: ${q.domain}`;
+  if (q.questionType === "MCQ" && q.correctAnswers !== null && q.correctAnswers !== undefined)
+    return "MCQ correctAnswers must be null";
+  if (q.questionType === "SATA" && q.correctAnswer !== null && q.correctAnswer !== undefined)
+    return "SATA correctAnswer must be null";
+  if (
+    q.questionType === "SATA" &&
+    (!Array.isArray(q.correctAnswers) || (q.correctAnswers as string[]).length < 2)
+  )
+    return "SATA needs ≥2 correctAnswers";
+  const rationales = q.optionRationales as Record<string, { en?: string }> | undefined;
+  if (rationales) {
+    for (const letter of ["A", "B", "C", "D", "E"]) {
+      const en = rationales[letter]?.en ?? "";
+      if (isGibberish(en)) return `option ${letter} rationale gibberish`;
+    }
+  }
+  return null;
+}
+
+function getApiKeys(): string[] {
+  const keys: string[] = [];
+  for (let i = 1; i <= 10; i++) {
+    const k = process.env[`GEMINI_API_KEY_${i}`]?.trim();
+    if (k) keys.push(k);
+  }
+  const single = process.env.GEMINI_API_KEY?.trim();
+  if (single && !keys.includes(single)) keys.push(single);
+  return keys;
+}
+
+function buildPrompt(domain: string, count: number): string {
+  const sataCount = Math.round(count * 0.2);
+  const mcqCount = count - sataCount;
+  return `你是一位 NCLEX-RN 護理考題命題專家。請生成 ${count} 道高品質護理考題，輸出 JSON 物件 { "questions": [...] }。
+
+【題目分配】
+- ${mcqCount} 題 MCQ（單選），${sataCount} 題 SATA（多選，Select All That Apply）
+- 難度比例：EASY 30% / MEDIUM 50% / HARD 20%
+- Domain：${domain}
+
+【JSON Schema — 每題必須完全符合此格式】
+
+MCQ 範例：
+{
+  "stem": "A nurse is caring for a 68-year-old male client admitted with COPD exacerbation. SpO2 is 87%. Which action should the nurse take first?",
+  "stemZh": "一位 68 歲男性因慢性阻塞性肺病急性發作入院，SpO2 87%。護理師應優先採取哪項措施？",
+  "questionType": "MCQ",
+  "domain": "${domain}",
+  "difficulty": "MEDIUM",
+  "optionA": "Administer oxygen at 2 L/min via nasal cannula",
+  "optionB": "Prepare for immediate intubation",
+  "optionC": "Notify the physician",
+  "optionD": "Obtain an arterial blood gas sample",
+  "optionE": null,
+  "correctAnswer": "A",
+  "correctAnswers": null,
+  "explanationZh": "COPD 病人使用低流量氧氣可改善低氧血症，同時避免抑制缺氧驅動呼吸。SpO2 目標為 88-92%。",
+  "optionRationales": {
+    "A": { "en": "Low-flow oxygen corrects hypoxemia while preserving the hypoxic drive in COPD.", "zh": "低流量氧氣改善低氧血症，同時保留缺氧驅動。" },
+    "B": { "en": "Immediate intubation is not indicated; conservative management should be tried first.", "zh": "立即插管不適當，應先嘗試保守治療。" },
+    "C": { "en": "Physician notification is important but not the first action; oxygen delivery is the priority.", "zh": "通知醫師重要，但不是首要步驟。" },
+    "D": { "en": "ABG is valuable but obtaining oxygen first addresses the immediate hypoxemia.", "zh": "血氣分析有價值，但先給氧才能處理當下低氧。" }
+  },
+  "usTwDifference": "美國護理師可依醫囑直接調整氧流量；台灣需依醫囑執行，部分機構需通知醫師確認。",
+  "irtA": 1.0, "irtB": 0.0, "irtC": 0.20
+}
+
+SATA 範例：
+{
+  "stem": "A nurse is reviewing discharge instructions for a client with heart failure. Which instructions should the nurse include? (Select all that apply.)",
+  "stemZh": "護理師向心臟衰竭病人進行出院指導，應包含哪些內容？（選所有適合的）",
+  "questionType": "SATA",
+  "domain": "${domain}",
+  "difficulty": "MEDIUM",
+  "optionA": "Weigh yourself daily at the same time each morning",
+  "optionB": "Limit fluid intake to 2 liters per day",
+  "optionC": "Discontinue diuretics if dizziness occurs",
+  "optionD": "Report weight gain of more than 2 lbs in 24 hours",
+  "optionE": "Reduce sodium intake to less than 2 g per day",
+  "correctAnswer": null,
+  "correctAnswers": ["A", "B", "D", "E"],
+  "explanationZh": "心臟衰竭出院指導：每天同時間量體重、限制液體攝取、限鈉、體重24小時增加超過2磅應回報。不可自行停用利尿劑。",
+  "optionRationales": {
+    "A": { "en": "Daily weight monitoring detects fluid retention early.", "zh": "每日量重可早期發現水分滯留。" },
+    "B": { "en": "Fluid restriction prevents fluid overload in heart failure.", "zh": "限制液體攝取預防液體過負荷。" },
+    "C": { "en": "Diuretics must not be stopped without provider guidance.", "zh": "不可自行停藥。" },
+    "D": { "en": "Weight gain >2 lbs in 24 hours indicates fluid retention.", "zh": "24小時增重超過2磅代表液體滯留。" },
+    "E": { "en": "Low-sodium diet reduces fluid retention.", "zh": "低鈉飲食減少液體滯留。" }
+  },
+  "usTwDifference": "美國心臟衰竭管理強調病人自我監測與回報；台灣部分醫院以門診追蹤為主。",
+  "irtA": 1.0, "irtB": 0.0, "irtC": 0.20
+}
+
+【IRT 規則（必須嚴格遵守）】
+- EASY：irtA=0.8, irtB=-1.0, irtC=0.20
+- MEDIUM：irtA=1.0, irtB=0.0, irtC=0.20
+- HARD：irtA=1.2, irtB=1.0, irtC=0.20
+
+【必填規則】
+- MCQ：correctAnswer=單一字母（A/B/C/D），correctAnswers=null，optionE=null
+- SATA：correctAnswer=null，correctAnswers=[至少2個字母]，optionE 必須有內容
+- 每題都必須有：stem、stemZh、questionType、domain、difficulty、optionA-D、correctAnswer、correctAnswers、explanationZh、optionRationales（A-D 各含 en 和 zh）、usTwDifference、irtA、irtB、irtC
+
+【禁止事項】
+- 每題 usTwDifference 必須獨特，描述內容不可重複
+- explanationZh 開頭不可都一樣
+- optionRationales 的 en 欄位每個不可超過 150 字
+- 不可使用填空式題幹（如 "37F presents with..."）
+
+請直接輸出 JSON 物件，從 { 開始，到 } 結束，不要任何前後說明。`;
+}
+
+const stemHash = (s: string) =>
+  createHash("sha1").update(s.trim().toLowerCase()).digest("hex");
+
+export async function GET() {
+  const guard = await requireAdmin();
+  if (guard instanceof NextResponse) return guard;
+  return NextResponse.json({
+    keys: getApiKeys().length,
+    models: Object.entries(MODEL_RPD).map(([id, rpd]) => ({ id, rpd })),
+    domains: VALID_DOMAINS,
+    domainTargets: DOMAIN_TARGETS,
+  });
+}
+
+export async function POST(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (guard instanceof NextResponse) return guard;
+
+  let domain: string;
+  let model: string;
+  const count = 50;
+
+  try {
+    const body = await req.json();
+    model = String(body.model ?? "gemini-2.5-flash-lite");
+    const rawDomain = String(body.domain ?? "auto");
+
+    if (rawDomain === "auto" || !rawDomain) {
+      const counts = await prisma.question.groupBy({
+        by: ["domain"],
+        _count: { id: true },
+        where: { domain: { not: null } },
+      });
+      const countMap: Record<string, number> = {};
+      for (const row of counts) {
+        if (row.domain) countMap[row.domain] = row._count.id;
+      }
+      let minPct = Infinity;
+      domain = VALID_DOMAINS[0];
+      for (const [d, target] of Object.entries(DOMAIN_TARGETS)) {
+        const pct = (countMap[d] ?? 0) / target;
+        if (pct < minPct) {
+          minPct = pct;
+          domain = d;
+        }
+      }
+    } else {
+      domain = rawDomain;
+    }
+
+    if (!VALID_DOMAINS.includes(domain)) {
+      return NextResponse.json({ error: `Invalid domain: ${domain}` }, { status: 400 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const apiKeys = getApiKeys();
+  if (!apiKeys.length) {
+    return NextResponse.json(
+      {
+        error:
+          "未設定 Gemini API Key。請在 Zeabur 加入環境變數 GEMINI_API_KEY_1 ~ GEMINI_API_KEY_6。",
+      },
+      { status: 400 }
+    );
+  }
+
+  const prompt = buildPrompt(domain, count);
+  let rawText = "";
+  let lastError = "";
+
+  for (const key of apiKeys) {
+    try {
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.9,
+              maxOutputTokens: 65536,
+              responseMimeType: "application/json",
+            },
+          }),
+          signal: AbortSignal.timeout(110_000),
+        }
+      );
+
+      if (resp.status === 429) {
+        lastError = `key ${key.slice(0, 8)}… rate limited`;
+        continue;
+      }
+      if (!resp.ok) {
+        const errBody = await resp.text().catch(() => "");
+        lastError = `key ${key.slice(0, 8)}… HTTP ${resp.status}: ${errBody.slice(0, 200)}`;
+        continue;
+      }
+
+      const data = await resp.json();
+      rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      if (rawText) break;
+      lastError = "empty response from Gemini";
+    } catch (err) {
+      lastError = String(err);
+    }
+  }
+
+  if (!rawText) {
+    return NextResponse.json(
+      { error: `所有 API Key 都失敗。最後錯誤：${lastError}` },
+      { status: 503 }
+    );
+  }
+
+  let questions: Record<string, unknown>[] = [];
+  try {
+    const parsed = JSON.parse(rawText);
+    questions = Array.isArray(parsed) ? parsed : (parsed.questions ?? []);
+  } catch {
+    return NextResponse.json(
+      { error: "Gemini 回傳的 JSON 解析失敗", raw: rawText.slice(0, 500) },
+      { status: 500 }
+    );
+  }
+
+  const good: Record<string, unknown>[] = [];
+  const badReasons: { idx: number; reason: string }[] = [];
+  for (let i = 0; i < questions.length; i++) {
+    const reason = validate(questions[i]);
+    if (reason) badReasons.push({ idx: i, reason });
+    else good.push(questions[i]);
+  }
+
+  // Dedup against DB
+  const existingHashes = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const batch = await prisma.question.findMany({
+      select: { id: true, stem: true },
+      take: 2000,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { id: "asc" },
+    });
+    for (const q of batch) existingHashes.add(stemHash(q.stem));
+    cursor = batch.length === 2000 ? batch[batch.length - 1].id : undefined;
+  } while (cursor);
+
+  const deduped: Record<string, unknown>[] = [];
+  let duplicates = 0;
+  for (const q of good) {
+    if (existingHashes.has(stemHash(String(q.stem)))) duplicates++;
+    else deduped.push(q);
+  }
+
+  let inserted = 0;
+  if (deduped.length > 0) {
+    const adminId = (guard as { user?: { id?: string } }).user?.id ?? "admin";
+    const now = new Date();
+    try {
+      const result = await prisma.question.createMany({
+        data: deduped.map((q) => {
+          const diff: Difficulty = (
+            ["EASY", "MEDIUM", "HARD"].includes(q.difficulty as string) ? q.difficulty : "MEDIUM"
+          ) as Difficulty;
+          const irt = IRT[diff];
+          const cas =
+            Array.isArray(q.correctAnswers) && (q.correctAnswers as string[]).length
+              ? (q.correctAnswers as string[]).map((s) => s.toUpperCase())
+              : String(q.correctAnswer ?? "A")
+                  .toUpperCase()
+                  .split(",")
+                  .map((s) => s.trim());
+          const ca = (q.correctAnswer as string | null)?.toUpperCase() ?? cas.join(",");
+          return {
+            stem: String(q.stem),
+            stemZh: (q.stemZh as string) ?? null,
+            optionA: String(q.optionA),
+            optionB: String(q.optionB),
+            optionC: String(q.optionC),
+            optionD: String(q.optionD),
+            optionE: (q.optionE as string) ?? null,
+            correctAnswer: ca,
+            correctAnswers: cas,
+            explanationZh: String(q.explanationZh),
+            optionRationales: (q.optionRationales as object) ?? undefined,
+            usTwDifference: (q.usTwDifference as string) ?? null,
+            domain: (q.domain as string) ?? null,
+            questionType: q.questionType === "SATA" ? "SATA" : "MCQ",
+            difficulty: diff,
+            tags: [],
+            irtA: (q.irtA as number) ?? irt.a,
+            irtB: (q.irtB as number) ?? irt.b,
+            irtC: 0.2,
+            status: "APPROVED" as const,
+            createdBy: adminId,
+            createdAt: now,
+            updatedAt: now,
+          };
+        }),
+        skipDuplicates: true,
+      });
+      inserted = result.count;
+    } catch (err) {
+      return NextResponse.json(
+        { error: `DB 寫入失敗：${String(err)}` },
+        { status: 500 }
+      );
+    }
+  }
+
+  return NextResponse.json({
+    domain,
+    model,
+    total: questions.length,
+    passed: good.length,
+    rejected: badReasons.length,
+    duplicates,
+    inserted,
+    badReasons: badReasons.slice(0, 5),
+  });
+}
