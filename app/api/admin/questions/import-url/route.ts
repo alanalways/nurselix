@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Difficulty } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
 
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
     try {
       const result = await prisma.question.createMany({
         data: chunk.map((q) => {
-          const diff = (["EASY","MEDIUM","HARD"].includes(q.difficulty as string) ? q.difficulty : "MEDIUM") as string;
+          const diff: Difficulty = (["EASY","MEDIUM","HARD"].includes(q.difficulty as string) ? q.difficulty : "MEDIUM") as Difficulty;
           const irt = IRT[diff];
           const cas = Array.isArray(q.correctAnswers) && (q.correctAnswers as string[]).length
             ? (q.correctAnswers as string[]).map((s) => s.toUpperCase())
