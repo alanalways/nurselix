@@ -29,7 +29,7 @@ const DOMAIN_TARGETS: Record<string, number> = {
 };
 
 // RPD per project per model (free tier)
-export const MODEL_RPD: Record<string, number> = {
+const MODEL_RPD: Record<string, number> = {
   "gemini-2.5-flash-lite": 1000,
   "gemini-2.5-flash": 20,
   "gemini-2.5-pro": 100,
