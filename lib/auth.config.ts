@@ -25,6 +25,7 @@ export const authConfig = {
 
       // Fully public pages
       if (pathname === "/pricing") return true;
+      if (pathname === "/terms" || pathname === "/privacy") return true;
 
       // API routes handle their own auth
       if (pathname.startsWith("/api/")) return true;
