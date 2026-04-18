@@ -90,8 +90,14 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Pass ?confirm=TRUNCATE_ALL to confirm" }, { status: 400 });
   }
 
-  const result = await prisma.question.deleteMany({});
-  return NextResponse.json({ deleted: result.count });
+  try {
+    const before = await prisma.question.count();
+    await prisma.$executeRawUnsafe(`TRUNCATE "Question" CASCADE`);
+    return NextResponse.json({ deleted: before });
+  } catch (err) {
+    console.error("[DELETE /api/admin/questions]", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 
 // Create a new question (admin only)
