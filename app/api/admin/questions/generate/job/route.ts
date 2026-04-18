@@ -43,7 +43,10 @@ export async function GET() {
 
 const startSchema = z.object({
   target: z.number().int().min(1).max(100_000),
-  model: z.string().refine((m) => m in MODEL_RPD, "unknown model"),
+  model: z.string().refine(
+    (m) => m === "auto" || m in MODEL_RPD,
+    "unknown model"
+  ),
   domain: z.string().refine(
     (d) => d === "auto" || VALID_DOMAINS.includes(d),
     "unknown domain"

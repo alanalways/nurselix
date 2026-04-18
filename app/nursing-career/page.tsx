@@ -25,6 +25,27 @@ export default function NursingCareerPage() {
     { state: "全美中位數", newGrad: "$65–80K", mid: "$80–100K", senior: "$100–130K", index: "參考值" },
   ];
 
+  // Approximate annual RN salary ranges by specialty, US-wide.
+  // Ranges span new-grad → senior levels; certifications (CCRN, CEN, OCN 等)
+  // often add 5–15% premium. Travel / contract roles far exceed staff rates.
+  const specialtySalaryData = [
+    { specialty: "加護病房 RN (ICU / CVICU / MICU)", range: "$85K–130K", premium: "+10–15%", note: "CCRN 認證、夜班、高患者敏銳度加乘" },
+    { specialty: "急診 RN (ER / Trauma)", range: "$80K–120K", premium: "+8–12%", note: "CEN / TCRN 認證；危險津貼普遍" },
+    { specialty: "手術室 RN (OR / PACU)", range: "$80K–110K", premium: "+5–10%", note: "CNOR / Perioperative 101 訓練後薪資上行" },
+    { specialty: "內外科 RN (Med-Surg)", range: "$70K–95K", premium: "—", note: "新手最常見起點；CMSRN 可小幅加薪" },
+    { specialty: "婦產 / 產房 RN (L&D / Mother-Baby)", range: "$75K–105K", premium: "+5%", note: "RNC-OB 認證；夜班與 on-call 常見" },
+    { specialty: "兒科 / PICU RN", range: "$75K–110K", premium: "+5–10%", note: "CPN / CCRN-Pediatric 加成；兒童醫院較競爭" },
+    { specialty: "精神科 RN (Psych / Mental Health)", range: "$75K–100K", premium: "—", note: "危險津貼與 acuity 津貼依機構而定" },
+    { specialty: "腫瘤科 RN (Oncology)", range: "$80K–110K", premium: "+5–10%", note: "OCN 認證；化療給藥技能為門檻" },
+    { specialty: "心導管 / 電生理 RN (Cath Lab / EP)", range: "$90K–125K", premium: "+10%", note: "on-call 與程序津貼較高" },
+    { specialty: "洗腎 RN (Dialysis)", range: "$75K–100K", premium: "—", note: "班表規律；CDN / CNN 認證加成" },
+    { specialty: "居家照護 RN (Home Health)", range: "$70K–95K", premium: "—", note: "按訪視計酬者收入浮動；通常較少夜班" },
+    { specialty: "長照 / 安寧 RN (LTC / Hospice)", range: "$65K–90K", premium: "—", note: "CHPN 認證可加成；入行門檻較低" },
+    { specialty: "學校護理師 (School Nurse)", range: "$50K–75K", premium: "—", note: "薪資較低但班表規律、暑假不上班" },
+    { specialty: "差旅護理師 (Travel Nurse)", range: "$90K–180K+", premium: "依合約", note: "13 週合約制；住宿津貼常另計，變動大" },
+    { specialty: "開業護理師 (Nurse Practitioner, NP)", range: "$110K–150K", premium: "—", note: "需 MSN / DNP；家醫、精神、急重症等次專長" },
+  ];
+
   // Note: removed bogus "satisfaction %" — those are fabricated and not
   // sourced from any survey. We describe pace/intensity qualitatively instead.
   const environmentData = [
@@ -211,6 +232,43 @@ export default function NursingCareerPage() {
 
             <div className="text-xs text-[var(--text-muted)] italic">
               ※ 以上薪資為公開資料整理之大致範圍，未涵蓋夜班 / 假日 / 加班等津貼。實際 offer 請以雇主合約為準。
+            </div>
+
+            <div>
+              <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2 flex items-center gap-2 mt-10">
+                <Heart size={20} className="text-[var(--gold)]" />
+                各科別 RN 年薪差異（全美概況）
+              </h3>
+              <p className="text-sm text-[var(--text-secondary)] mb-4">
+                同樣是 RN，不同科別的薪資落差可達 2–3 倍。認證（CCRN、CEN、OCN 等）、夜班 / 假日津貼與 on-call 都會再往上疊加。
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)]">
+                    <th className="text-left py-3 px-4 font-semibold text-[var(--text-primary)]">科別</th>
+                    <th className="text-center py-3 px-4 font-semibold text-[var(--text-secondary)]">年薪範圍</th>
+                    <th className="text-center py-3 px-4 font-semibold text-[var(--text-secondary)]">認證加成</th>
+                    <th className="text-left py-3 px-4 font-semibold text-[var(--text-secondary)] hidden md:table-cell">備註</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {specialtySalaryData.map((row, i) => (
+                    <tr key={i} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)]">
+                      <td className="py-3 px-4 font-medium text-[var(--text-primary)]">{row.specialty}</td>
+                      <td className="py-3 px-4 text-center text-[var(--gold)] font-semibold whitespace-nowrap">{row.range}</td>
+                      <td className="py-3 px-4 text-center text-[var(--text-secondary)] text-sm whitespace-nowrap">{row.premium}</td>
+                      <td className="py-3 px-4 text-xs text-[var(--text-muted)] hidden md:table-cell">{row.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="text-xs text-[var(--text-muted)] italic">
+              ※ 科別薪資整理自 BLS OES、醫院官方招募頁、Nurse.org / Indeed 等公開來源的概略範圍，未計入差旅 / 簽約金 / 股權等一次性給付。差旅護理師（Travel）收入波動極大，表列僅供參考。
             </div>
           </motion.div>
         )}

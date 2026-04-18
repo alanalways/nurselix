@@ -32,6 +32,16 @@ export const MODEL_RPD: Record<string, number> = {
   "gemini-2.5-pro": 100,
 };
 
+// Auto-mode priority: smartest first, fallback to faster/cheaper tiers on
+// rate-limit. Keeps output quality high when quota is available.
+export const AUTO_MODEL_PRIORITY = [
+  "gemini-2.5-pro",
+  "gemini-3-flash-preview",
+  "gemini-2.5-flash",
+  "gemini-3.1-flash-lite-preview",
+  "gemini-2.5-flash-lite",
+];
+
 const IRT: Record<string, { a: number; b: number }> = {
   EASY: { a: 0.8, b: -1.0 },
   MEDIUM: { a: 1.0, b: 0.0 },
@@ -204,17 +214,17 @@ export interface BatchResult {
 
 export async function runOneBatch(params: {
   domain: string;
-  model: string;
+  model: string; // specific id or "auto"
   count?: number;
   adminId?: string;
 }): Promise<BatchResult> {
   const count = params.count ?? 50;
-  const model = params.model;
+  const requestedModel = params.model;
   const domain = params.domain;
 
   const base: Omit<BatchResult, "ok"> = {
     domain,
-    model,
+    model: requestedModel,
     total: 0,
     passed: 0,
     rejected: 0,
@@ -235,50 +245,64 @@ export async function runOneBatch(params: {
     };
   }
 
+  const modelQueue =
+    requestedModel === "auto"
+      ? [...AUTO_MODEL_PRIORITY]
+      : [requestedModel];
+
   const prompt = buildPrompt(domain, count);
   let rawText = "";
   let lastError = "";
+  let usedModel = requestedModel;
 
-  for (const key of apiKeys) {
-    try {
-      const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.9,
-              maxOutputTokens: 65536,
-              responseMimeType: "application/json",
-            },
-          }),
-          signal: AbortSignal.timeout(110_000),
+  outer: for (const model of modelQueue) {
+    for (const key of apiKeys) {
+      try {
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.9,
+                maxOutputTokens: 65536,
+                responseMimeType: "application/json",
+              },
+            }),
+            signal: AbortSignal.timeout(110_000),
+          }
+        );
+
+        if (resp.status === 429) {
+          lastError = `${model} key ${key.slice(0, 8)}… rate limited`;
+          continue;
         }
-      );
+        if (!resp.ok) {
+          const errBody = await resp.text().catch(() => "");
+          lastError = `${model} key ${key.slice(0, 8)}… HTTP ${resp.status}: ${errBody.slice(0, 200)}`;
+          continue;
+        }
 
-      if (resp.status === 429) {
-        lastError = `key ${key.slice(0, 8)}… rate limited`;
-        continue;
+        const data = await resp.json();
+        rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        if (rawText) {
+          usedModel = model;
+          break outer;
+        }
+        lastError = `${model}: empty response`;
+      } catch (err) {
+        lastError = `${model}: ${String(err)}`;
       }
-      if (!resp.ok) {
-        const errBody = await resp.text().catch(() => "");
-        lastError = `key ${key.slice(0, 8)}… HTTP ${resp.status}: ${errBody.slice(0, 200)}`;
-        continue;
-      }
-
-      const data = await resp.json();
-      rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      if (rawText) break;
-      lastError = "empty response from Gemini";
-    } catch (err) {
-      lastError = String(err);
     }
+    // All keys exhausted for this model; in auto mode try the next tier.
   }
 
+  base.model = usedModel;
+
   if (!rawText) {
-    return { ...base, ok: false, error: `所有 API Key 都失敗：${lastError}` };
+    return { ...base, ok: false, error: `所有 API Key / 模型都失敗：${lastError}` };
   }
 
   let questions: Record<string, unknown>[] = [];
@@ -373,7 +397,7 @@ export async function runOneBatch(params: {
   return {
     ok: true,
     domain,
-    model,
+    model: usedModel,
     total: questions.length,
     passed: good.length,
     rejected: badReasons.length,

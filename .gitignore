@@ -35,3 +35,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 nclex_core_questions.json
+
+# Build-generated source maps (PWA + Sentry emit on each build)
+public/*.js.map
+.sentryclirc
+.env.sentry-build-plugin

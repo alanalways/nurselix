@@ -9,12 +9,18 @@ const registerSchema = z.object({
   password: z.string().min(8, "密碼至少需要 8 個字元"),
   examDate: z.string().optional(),
   dailyGoal: z.number().int().min(5).max(100).default(10),
+  nursingStatus: z.string().max(30).optional(),
+  specialty: z.string().max(60).optional(),
+  yearsOfExperience: z.number().int().min(0).max(60).optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, password, examDate, dailyGoal } = registerSchema.parse(body);
+    const {
+      name, email, password, examDate, dailyGoal,
+      nursingStatus, specialty, yearsOfExperience,
+    } = registerSchema.parse(body);
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -33,6 +39,9 @@ export async function POST(req: NextRequest) {
         email,
         password: hashedPassword,
         examDate: examDate ? new Date(examDate) : null,
+        nursingStatus: nursingStatus || null,
+        specialty: specialty || null,
+        yearsOfExperience: yearsOfExperience ?? null,
         trialUsed: true,
         trialEndsAt,
         plan: "BASIC", // 7-day trial at BASIC tier

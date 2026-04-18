@@ -25,6 +25,9 @@ export default function RegisterPage() {
   // Step 2 fields
   const [examDate, setExamDate] = useState("");
   const [dailyGoal, setDailyGoal] = useState(10);
+  const [nursingStatus, setNursingStatus] = useState("");
+  const [specialty, setSpecialty] = useState("");
+  const [yearsOfExperience, setYearsOfExperience] = useState<number | "">("");
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +51,14 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, examDate: examDate || undefined, dailyGoal }),
+      body: JSON.stringify({
+        name, email, password,
+        examDate: examDate || undefined,
+        dailyGoal,
+        nursingStatus: nursingStatus || undefined,
+        specialty: specialty || undefined,
+        yearsOfExperience: typeof yearsOfExperience === "number" ? yearsOfExperience : undefined,
+      }),
     });
 
     const data = await res.json();
@@ -182,6 +192,75 @@ export default function RegisterPage() {
 
         {step === 2 && (
           <form onSubmit={handleStep2} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">
+                目前身份
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {["護生", "RN", "LPN", "NP", "轉職中", "其他"].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setNursingStatus(s)}
+                    className={`py-2 rounded-xl border text-sm transition-colors ${
+                      nursingStatus === s
+                        ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]"
+                        : "border-[var(--border-default)] text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">
+                主要科別（選填）
+              </label>
+              <select
+                value={specialty}
+                onChange={(e) => setSpecialty(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-primary)] outline-none focus:border-[var(--gold)] transition-colors"
+              >
+                <option value="">不指定</option>
+                <option value="ICU">加護病房 (ICU)</option>
+                <option value="ER">急診 (ER)</option>
+                <option value="Med-Surg">內外科 (Med-Surg)</option>
+                <option value="Pediatrics">兒科 (Pediatrics)</option>
+                <option value="OB">婦產 (OB/L&D)</option>
+                <option value="OR">手術室 (OR/PACU)</option>
+                <option value="Psych">精神科 (Psych)</option>
+                <option value="Oncology">腫瘤科 (Oncology)</option>
+                <option value="LTC">長照 (LTC)</option>
+                <option value="Public Health">公衛 / 居家護理</option>
+                <option value="Student">在學中</option>
+                <option value="Other">其他</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">
+                年資（選填）
+              </label>
+              <div className="grid grid-cols-6 gap-2">
+                {[0, 1, 3, 5, 10, 15].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setYearsOfExperience(n)}
+                    className={`py-2 rounded-xl border text-sm transition-colors ${
+                      yearsOfExperience === n
+                        ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]"
+                        : "border-[var(--border-default)] text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    {n === 0 ? "無" : n === 15 ? "15+" : `${n}年`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="text-sm font-medium text-[var(--text-secondary)] block mb-2">
                 考試預定日期（選填）

@@ -1,6 +1,7 @@
 import withPWAInit from "next-pwa";
 import { fileURLToPath } from "url";
 import path from "path";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,4 +51,18 @@ const withPWA = withPWAInit({
   ],
 });
 
-export default withPWA(nextConfig);
+const pwaWrapped = withPWA(nextConfig);
+
+// Sentry is only wired when a DSN is configured. The wrapper is cheap when the
+// auth token is missing — it just skips source-map upload. At runtime,
+// Sentry.init() in sentry.*.config.ts no-ops if the DSN env var is unset.
+export default withSentryConfig(pwaWrapped, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+  disableLogger: true,
+  widenClientFileUpload: true,
+  tunnelRoute: "/monitoring",
+  hideSourceMaps: true,
+});

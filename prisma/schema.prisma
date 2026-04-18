@@ -21,6 +21,12 @@ model User {
   lastLogin     DateTime?
   referredBy    String?
   examDate      DateTime?
+
+  // Nursing profile (collected at registration)
+  nursingStatus      String?   // 護生 | RN | LPN | NP | 其他
+  specialty          String?   // ICU | ER | Med-Surg | Pediatrics | OB | OR | ...
+  yearsOfExperience  Int?      // 0, 1, 3, 5, 10...
+
   trialUsed            Boolean   @default(false)
   trialEndsAt          DateTime?
   subscriptionEndsAt   DateTime?

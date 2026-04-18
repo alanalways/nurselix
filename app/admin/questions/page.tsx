@@ -80,7 +80,7 @@ export default function AdminQuestionsPage() {
 
   // AI generation state
   const [genOpen, setGenOpen] = useState(false);
-  const [genModel, setGenModel] = useState("gemini-3.1-flash-lite-preview");
+  const [genModel, setGenModel] = useState("auto");
   const [genDomain, setGenDomain] = useState("auto");
   const [generating, setGenerating] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
@@ -360,9 +360,13 @@ export default function AdminQuestionsPage() {
   const totalGenerated = Object.values(domainCounts).reduce((a, b) => a + b, 0);
   const overallPct = Math.min(100, Math.round((totalGenerated / totalTarget) * 100));
 
+  const modelRpd =
+    genModel === "auto"
+      ? Object.values(MODEL_RPD).reduce((a, b) => a + b, 0)
+      : MODEL_RPD[genModel] ?? 20;
   const capacityPerDay =
     keysCount != null && keysCount > 0
-      ? `${(keysCount * (MODEL_RPD[genModel] ?? 20) * 50).toLocaleString()} 題/天`
+      ? `最多 ${(keysCount * modelRpd * 50).toLocaleString()} 題/天`
       : null;
 
   return (
@@ -451,11 +455,12 @@ export default function AdminQuestionsPage() {
                 onChange={(e) => setGenModel(e.target.value)}
                 className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] outline-none"
               >
-                <option value="gemini-3.1-flash-lite-preview">3.1 Flash Lite Preview（1,500 RPD/key，最新）</option>
+                <option value="auto">自動（最聰明 → 最快，遞補）</option>
+                <option value="gemini-2.5-pro">2.5 Pro（最聰明，100 RPD/key）</option>
                 <option value="gemini-3-flash-preview">3 Flash Preview（1,500 RPD/key）</option>
-                <option value="gemini-2.5-flash-lite">2.5 Flash Lite（1,000 RPD/key）</option>
                 <option value="gemini-2.5-flash">2.5 Flash（20 RPD/key）</option>
-                <option value="gemini-2.5-pro">2.5 Pro（100 RPD/key）</option>
+                <option value="gemini-3.1-flash-lite-preview">3.1 Flash Lite Preview（1,500 RPD/key，最新 Lite）</option>
+                <option value="gemini-2.5-flash-lite">2.5 Flash Lite（1,000 RPD/key）</option>
               </select>
 
               <select
