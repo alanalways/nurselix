@@ -208,6 +208,20 @@ export function selectSeedQuestion(
  *   - SBA/MCQ: exact-letter match
  *   - SATA:    full set match (partial credit NOT counted as correct for CAT)
  */
+/** Normalise a correctAnswers array, handling the edge case where it was stored
+ *  as a single-element array containing a comma-separated string (e.g. ["A,B,C"]). */
+function normaliseCorrectSet(correctAnswer: string, correctAnswers: string[] | undefined): Set<string> {
+  let arr: string[];
+  if (correctAnswers && correctAnswers.length > 0) {
+    arr = correctAnswers.length === 1 && correctAnswers[0].includes(",")
+      ? correctAnswers[0].split(",")
+      : correctAnswers;
+  } else {
+    arr = correctAnswer.split(",");
+  }
+  return new Set(arr.map((s) => s.trim().toUpperCase()).filter(Boolean));
+}
+
 export function isAnswerCorrect(
   questionType: string,
   correctAnswer: string,
@@ -217,12 +231,7 @@ export function isAnswerCorrect(
   if (!selected) return false;
 
   if (questionType === "SATA") {
-    const correctSet = new Set(
-      (correctAnswers && correctAnswers.length > 0
-        ? correctAnswers
-        : correctAnswer.split(",")
-      ).map((s) => s.trim().toUpperCase()).filter(Boolean),
-    );
+    const correctSet = normaliseCorrectSet(correctAnswer, correctAnswers);
     const selSet = new Set(
       selected.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
     );
@@ -253,12 +262,7 @@ export function gradePartialCredit(
     return isAnswerCorrect(questionType, correctAnswer, correctAnswers, selected) ? 1 : 0;
   }
 
-  const correctSet = new Set(
-    (correctAnswers && correctAnswers.length > 0
-      ? correctAnswers
-      : correctAnswer.split(",")
-    ).map((s) => s.trim().toUpperCase()).filter(Boolean),
-  );
+  const correctSet = normaliseCorrectSet(correctAnswer, correctAnswers);
   const selArr = selected.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
 
   let score = 0;

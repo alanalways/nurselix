@@ -221,7 +221,7 @@ export default function ExamShell({
     );
   }, [question]);
 
-  const getOptionState = (key: string): "default" | "selected" | "correct" | "incorrect" => {
+  const getOptionState = (key: string): "default" | "selected" | "correct" | "incorrect" | "missed" => {
     if (!question) return "default";
     if (!confirmed) {
       return selected.includes(key) ? "selected" : "default";
@@ -230,12 +230,18 @@ export default function ExamShell({
     if (!showExplanationAfterAnswer || !lastAnswer) {
       return selected.includes(key) ? "selected" : "default";
     }
-    const correctSet = new Set(lastAnswer.correctAnswers.length > 0
-      ? lastAnswer.correctAnswers
-      : lastAnswer.correctAnswer.split(","),
-    );
-    if (correctSet.has(key)) return "correct";
-    if (selected.includes(key)) return "incorrect";
+    // Normalise correctAnswers: guard against ["A,B,C"] stored as single-element with commas
+    const rawCorrect = lastAnswer.correctAnswers.length > 0
+      ? (lastAnswer.correctAnswers.length === 1 && lastAnswer.correctAnswers[0].includes(",")
+          ? lastAnswer.correctAnswers[0].split(",")
+          : lastAnswer.correctAnswers)
+      : lastAnswer.correctAnswer.split(",");
+    const correctSet = new Set(rawCorrect.map((s) => s.trim().toUpperCase()).filter(Boolean));
+    const userSelected = selected.includes(key);
+    const isCorrectOption = correctSet.has(key);
+    if (userSelected && isCorrectOption) return "correct";   // ✓ selected & right
+    if (userSelected && !isCorrectOption) return "incorrect"; // ✗ selected & wrong
+    if (!userSelected && isCorrectOption) return "missed";    // ○ skipped correct answer
     return "default";
   };
 
@@ -432,6 +438,33 @@ export default function ExamShell({
                     ⚡ 本題為 SATA（Select All That Apply），請選擇所有正確答案，可複選。
                   </div>
                 )}
+                {/* SATA result breakdown after submit */}
+                {isSata && confirmed && lastAnswer && (() => {
+                  const rawCorrect = lastAnswer.correctAnswers.length > 0
+                    ? (lastAnswer.correctAnswers.length === 1 && lastAnswer.correctAnswers[0].includes(",")
+                        ? lastAnswer.correctAnswers[0].split(",")
+                        : lastAnswer.correctAnswers)
+                    : lastAnswer.correctAnswer.split(",");
+                  const correctSet = new Set(rawCorrect.map(s => s.trim().toUpperCase()).filter(Boolean));
+                  const selSet = new Set(selected.map(s => s.toUpperCase()));
+                  const missed = rawCorrect.map(s => s.trim().toUpperCase()).filter(k => k && !selSet.has(k));
+                  const wrong = selected.map(s => s.toUpperCase()).filter(k => !correctSet.has(k));
+                  if (missed.length === 0 && wrong.length === 0) return null;
+                  return (
+                    <div className="rounded-lg border border-[var(--warning)] bg-[rgba(255,180,0,0.07)] px-4 py-3 text-sm space-y-1">
+                      {missed.length > 0 && (
+                        <div className="text-[var(--warning)]">
+                          ⚠ 漏選了正確答案：<strong>{missed.join("、")}</strong>（橘色選項）
+                        </div>
+                      )}
+                      {wrong.length > 0 && (
+                        <div className="text-[var(--error)]">
+                          ✗ 多選了錯誤答案：<strong>{wrong.join("、")}</strong>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="space-y-3">
                   {options.map((opt) => (

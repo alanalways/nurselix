@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils/cn";
 interface OptionButtonProps {
   label: string;
   text: string;
-  state?: "default" | "selected" | "correct" | "incorrect";
+  state?: "default" | "selected" | "correct" | "incorrect" | "missed";
   disabled?: boolean;
   onClick?: () => void;
 }
@@ -17,6 +17,8 @@ export default function OptionButton({ label, text, state = "default", disabled,
     selected: "selected",
     correct: "correct",
     incorrect: "incorrect",
+    // "missed" = correct answer the user did NOT select
+    missed: "border-[var(--warning)] bg-[rgba(255,180,0,0.07)]",
   }[state];
 
   const labelBg = {
@@ -24,6 +26,7 @@ export default function OptionButton({ label, text, state = "default", disabled,
     selected: "bg-[var(--gold)] text-[#080E1A]",
     correct: "bg-[var(--success)] text-white",
     incorrect: "bg-[var(--error)] text-white",
+    missed: "bg-[var(--warning)] text-[#080E1A]",
   }[state];
 
   return (
