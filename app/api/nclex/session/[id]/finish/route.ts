@@ -22,10 +22,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const res = await finishSession(params.id, session.user.id, reason);
   if (!res) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
-  // Fire-and-forget Hermes analysis (non-blocking)
-  enqueueHermesJob(params.id, session.user.id).catch((err) => {
-    console.warn("[finish] Hermes enqueue failed:", err?.message);
-  });
+  // Fire-and-forget Hermes analysis (non-blocking).
+  // Disable during beta by setting HERMES_ENABLED=false in env.
+  if (process.env.HERMES_ENABLED !== "false") {
+    enqueueHermesJob(params.id, session.user.id).catch((err) => {
+      console.warn("[finish] Hermes enqueue failed:", err?.message);
+    });
+  }
 
   return NextResponse.json({
     ok: true,
