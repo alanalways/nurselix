@@ -7,6 +7,7 @@ import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Input from "@/components/ui/Input";
+import Footer from "@/components/ui/Footer";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -377,6 +378,8 @@ export default function PricingPage() {
           )}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

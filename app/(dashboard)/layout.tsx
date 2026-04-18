@@ -5,6 +5,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 import MobileNav from "@/components/layout/MobileNav";
 import OnboardingModal from "@/components/onboarding/OnboardingModal";
+import Footer from "@/components/ui/Footer";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -19,6 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <TopBar />
         <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
           {children}
+          <Footer variant="compact" />
         </main>
       </div>
 

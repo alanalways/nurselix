@@ -231,6 +231,13 @@ export default function RegisterPage() {
             立即登入
           </Link>
         </p>
+
+        <p className="text-center text-xs text-[var(--text-muted)] mt-8">
+          註冊即表示您同意我們的{" "}
+          <Link href="/terms" className="text-[var(--gold)] hover:underline">服務條款</Link>
+          {" "}與{" "}
+          <Link href="/privacy" className="text-[var(--gold)] hover:underline">隱私權政策</Link>
+        </p>
       </motion.div>
     </div>
   );
