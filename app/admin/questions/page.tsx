@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Check, Archive, Eye, Loader2, Upload } from "lucide-react";
+import { Plus, Search, Check, Archive, Eye, Loader2, Upload, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 
@@ -42,6 +42,7 @@ export default function AdminQuestionsPage() {
   const [acting, setActing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+  const [truncating, setTruncating] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -105,6 +106,26 @@ export default function AdminQuestionsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / 30));
 
+  const handleTruncate = async () => {
+    if (!window.confirm(`⚠️ 確定要刪除全部 ${total} 道題目嗎？此操作無法復原！`)) return;
+    setTruncating(true);
+    setImportResult(null);
+    try {
+      const res = await fetch("/api/admin/questions?confirm=TRUNCATE_ALL", { method: "DELETE" });
+      const body = await res.json();
+      if (res.ok) {
+        setImportResult(`🗑 已刪除 ${body.deleted} 題`);
+        await load();
+      } else {
+        setImportResult(`✗ 刪除失敗：${body.error}`);
+      }
+    } catch (err) {
+      setImportResult(`✗ 刪除失敗：${err instanceof Error ? err.message : "未知錯誤"}`);
+    } finally {
+      setTruncating(false);
+    }
+  };
+
   const handleImport = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -153,6 +174,10 @@ export default function AdminQuestionsPage() {
           <p className="text-sm text-[var(--text-secondary)]">共 {total} 題</p>
         </div>
         <div className="flex gap-2">
+          <Button size="sm" variant="danger" onClick={handleTruncate} disabled={truncating || total === 0}>
+            {truncating ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            清空題庫
+          </Button>
           <Button size="sm" variant="outline" onClick={handleImport} disabled={importing}>
             {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
             匯入 JSON

@@ -79,6 +79,21 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+// Truncate all questions (danger — admin only)
+export async function DELETE(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (guard instanceof NextResponse) return guard;
+
+  const url = new URL(req.url);
+  const confirm = url.searchParams.get("confirm");
+  if (confirm !== "TRUNCATE_ALL") {
+    return NextResponse.json({ error: "Pass ?confirm=TRUNCATE_ALL to confirm" }, { status: 400 });
+  }
+
+  const result = await prisma.question.deleteMany({});
+  return NextResponse.json({ deleted: result.count });
+}
+
 // Create a new question (admin only)
 const createSchema = z.object({
   stem: z.string().min(5),

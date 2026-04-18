@@ -14,7 +14,7 @@ const questionSchema = z.object({
   optionD: z.string().min(1),
   optionE: z.string().optional(),
   optionF: z.string().optional(),
-  correctAnswer: z.string().min(1).max(20),
+  correctAnswer: z.string().min(1).max(20).optional().nullable(),
   correctAnswers: z.array(z.string()).optional(),
   explanationZh: z.string().min(1),
   explanationEn: z.string().optional(),
@@ -70,8 +70,8 @@ export async function POST(req: NextRequest) {
     try {
       const result = await prisma.question.createMany({
         data: chunk.map((q) => {
-          const ca = q.correctAnswer.toUpperCase();
-          const cas = q.correctAnswers?.map((s) => s.toUpperCase()) ?? ca.split(",").map((s) => s.trim());
+          const cas = q.correctAnswers?.map((s) => s.toUpperCase()) ?? (q.correctAnswer ?? "A").toUpperCase().split(",").map((s) => s.trim());
+          const ca = q.correctAnswer?.toUpperCase() ?? cas.join(",");
           return {
             stem: q.stem,
             stemZh: q.stemZh,
