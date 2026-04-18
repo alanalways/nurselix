@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, BookOpen, Users, BarChart3,
-  Flag, MessageSquare, Bot, LogOut, Sparkles, Activity
+  Flag, MessageSquare, Bot, LogOut, Sparkles, Activity, FlaskConical
 } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { cn } from "@/lib/utils/cn";
@@ -18,6 +18,7 @@ const adminNav = [
   { href: "/admin/live", icon: Activity, label: "即時監控" },
   { href: "/admin/questions", icon: BookOpen, label: "題庫管理" },
   { href: "/admin/questions/quality", icon: Sparkles, label: "題目品質" },
+  { href: "/admin/questions/spot-check", icon: FlaskConical, label: "人工抽查" },
   { href: "/admin/users", icon: Users, label: "用戶管理" },
   { href: "/admin/analytics", icon: BarChart3, label: "數據分析" },
   { href: "/admin/reports", icon: Flag, label: "題目回報" },
