@@ -394,28 +394,62 @@ export default function PricingPage() {
         </div>
 
         {/* Feature Table */}
-        <div className="overflow-x-auto">
+        <div>
           <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">完整功能對照</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)]">
-                <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium w-1/3">功能</th>
-                {["Free", "Basic", "Plus ⭐", "Premium"].map((h) => (
-                  <th key={h} className="py-3 px-4 text-center text-[var(--text-secondary)] font-medium">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {featureTable.map((row, i) => (
-                <tr key={row.feature} className={`border-b border-[var(--border-subtle)] ${i % 2 === 0 ? "bg-[var(--bg-surface)]" : ""}`}>
-                  <td className="py-3 px-4 text-[var(--text-secondary)]">{row.feature}</td>
-                  {[row.free, row.basic, row.pro, row.elite].map((val, vi) => (
-                    <td key={vi} className="py-3 px-4 text-center text-[var(--text-secondary)]">{val}</td>
+
+          {/* Mobile: stacked cards */}
+          <div className="md:hidden space-y-4">
+            {["Free", "Basic", "Plus", "Premium"].map((planName, pi) => {
+              const key = (["free", "basic", "pro", "elite"] as const)[pi];
+              const highlight = planName === "Plus";
+              return (
+                <div
+                  key={planName}
+                  className={`rounded-xl border p-4 ${
+                    highlight
+                      ? "border-[var(--gold)] bg-[var(--gold-dim)]/30"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-surface)]"
+                  }`}
+                >
+                  <div className="font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-1.5">
+                    {planName} {highlight && <span className="text-[var(--gold)]">⭐</span>}
+                  </div>
+                  <ul className="space-y-2 text-sm">
+                    {featureTable.map((row) => (
+                      <li key={row.feature} className="flex justify-between items-start gap-3">
+                        <span className="text-[var(--text-muted)]">{row.feature}</span>
+                        <span className="text-[var(--text-primary)] font-medium text-right shrink-0">{row[key]}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: comparison table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border-subtle)]">
+                  <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium w-1/3">功能</th>
+                  {["Free", "Basic", "Plus ⭐", "Premium"].map((h) => (
+                    <th key={h} className="py-3 px-4 text-center text-[var(--text-secondary)] font-medium">{h}</th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {featureTable.map((row, i) => (
+                  <tr key={row.feature} className={`border-b border-[var(--border-subtle)] ${i % 2 === 0 ? "bg-[var(--bg-surface)]" : ""}`}>
+                    <td className="py-3 px-4 text-[var(--text-secondary)]">{row.feature}</td>
+                    {[row.free, row.basic, row.pro, row.elite].map((val, vi) => (
+                      <td key={vi} className="py-3 px-4 text-center text-[var(--text-secondary)]">{val}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Beta Subscribe */}

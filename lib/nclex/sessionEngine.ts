@@ -631,10 +631,18 @@ export async function finishSession(sessionId: string, userId: string, reason = 
   if (!session || session.userId !== userId) return null;
   if (session.endedAt) return session;
 
-  // For CAT/MOCK/MINI_CAT/ASSESSMENT compute pass/fail (theta > 0 ≈ passing)
+  // For CAT/MOCK/MINI_CAT/ASSESSMENT compute pass/fail. Passing requires BOTH
+  // a meaningful sample size (≥ MIN_QUESTIONS_FOR_PASS answered) AND theta ≥ 0.
+  // Previously an unanswered session defaulted to theta=0 → "PASS", which was
+  // obviously wrong; empty/near-empty submissions now always FAIL.
+  const MIN_QUESTIONS_FOR_PASS = 10;
   let passFail: string | null = session.passFail;
   if (!passFail && ["CAT", "MOCK", "MINI_CAT", "ASSESSMENT"].includes(session.mode)) {
-    passFail = session.theta >= 0 ? "PASS" : "FAIL";
+    if (session.totalQuestions < MIN_QUESTIONS_FOR_PASS) {
+      passFail = "FAIL";
+    } else {
+      passFail = session.theta >= 0 ? "PASS" : "FAIL";
+    }
   }
 
   const result = await prisma.userSession.update({
