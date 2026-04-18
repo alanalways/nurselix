@@ -12,7 +12,9 @@
     "db:seed-questions": "node scripts/seed-questions.js",
     "db:seed-all": "npm run db:init && npm run db:seed-admin && npm run db:seed-questions",
     "enhance:dry-run": "node scripts/batch-enhance-questions.js --dry-run",
-    "enhance:questions": "node scripts/batch-enhance-questions.js"
+    "enhance:questions": "node scripts/batch-enhance-questions.js",
+    "db:import-core": "node scripts/import-core-questions.js",
+    "db:import-core-dry": "node scripts/import-core-questions.js --dry-run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
