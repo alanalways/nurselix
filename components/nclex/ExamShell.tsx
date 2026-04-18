@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Pause, ChevronRight, BookOpen, Loader2, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
+import { Pause, ChevronRight, BookOpen, Loader2, AlertCircle, Lock, Eye, EyeOff, Coffee } from "lucide-react";
 import Button from "@/components/ui/Button";
 import ProgressBar from "./ProgressBar";
 import ElapsedTimer from "./ElapsedTimer";
@@ -75,6 +75,12 @@ export default function ExamShell({
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [finished, setFinished] = useState(false);
   const [timerVisible, setTimerVisible] = useState(true);
+
+  // Consecutive-wrong pacing: after 3 in a row, gently offer a break so users
+  // don't spiral. Counter resets on any correct answer or on modal dismiss.
+  const [consecutiveWrong, setConsecutiveWrong] = useState(0);
+  const [showBreakModal, setShowBreakModal] = useState(false);
+  const pendingAdvanceRef = useRef(false);
 
   const isSata = question?.questionType === "SATA";
   const questionStartRef = useRef<number>(Date.now());
@@ -175,10 +181,19 @@ export default function ExamShell({
       setSe(result.progress.se);
       setConfirmed(true);
 
+      const nextWrongStreak = result.isCorrect ? 0 : consecutiveWrong + 1;
+      setConsecutiveWrong(nextWrongStreak);
+      const shouldPace = nextWrongStreak >= 3;
+      if (shouldPace) setShowBreakModal(true);
+
       // In CAT / Mock / Assessment / Mini-CAT we auto-advance without showing result
       const autoAdvance = !showExplanationAfterAnswer;
       if (autoAdvance) {
-        setTimeout(() => { loadNextQuestion(); }, 400);
+        if (shouldPace) {
+          pendingAdvanceRef.current = true; // resume after user dismisses modal
+        } else {
+          setTimeout(() => { loadNextQuestion(); }, 400);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "網路錯誤");
@@ -532,6 +547,57 @@ export default function ExamShell({
             <Button fullWidth variant="ghost" onClick={pauseAndExit}>離開（保留進度）</Button>
             <Button fullWidth variant="outline" onClick={() => finishSession("user_abandon")}>
               直接結束考試
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Pacing break modal — shown after 3 wrong in a row */}
+      <Modal
+        open={showBreakModal}
+        onClose={() => {
+          setShowBreakModal(false);
+          setConsecutiveWrong(0);
+          if (pendingAdvanceRef.current) {
+            pendingAdvanceRef.current = false;
+            setTimeout(() => { loadNextQuestion(); }, 200);
+          }
+        }}
+        title="要不要先喘口氣？"
+      >
+        <div className="space-y-4 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-[var(--gold-dim)] flex items-center justify-center mx-auto">
+            <Coffee size={28} className="text-[var(--gold)]" />
+          </div>
+          <p className="text-[var(--text-secondary)] leading-relaxed">
+            練習就是會遇到卡關的題目，你已經離掌握這個盲點更近一步了。<br />
+            要不要先休息幾分鐘，或換個心情再繼續？
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              fullWidth
+              variant="gold"
+              onClick={() => {
+                setShowBreakModal(false);
+                setConsecutiveWrong(0);
+                if (pendingAdvanceRef.current) {
+                  pendingAdvanceRef.current = false;
+                  setTimeout(() => { loadNextQuestion(); }, 200);
+                }
+              }}
+            >
+              繼續練習
+            </Button>
+            <Button
+              fullWidth
+              variant="ghost"
+              onClick={() => {
+                setShowBreakModal(false);
+                pendingAdvanceRef.current = false;
+                pauseAndExit();
+              }}
+            >
+              休息一下（保留進度，下次再繼續）
             </Button>
           </div>
         </div>

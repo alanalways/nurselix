@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Target, Clock, Flame } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, Flame } from "lucide-react";
 
 interface StatsData {
   streak: number;
@@ -25,7 +25,10 @@ export default function StatsOverview() {
 
   const today = data?.heatmap.at(-1);
   const todayCount = today?.count ?? 0;
-  const todayMin = today?.count ? Math.round((today.count * 1) / 1) : 0; // derived client-side isn't exact; keep a rough estimate
+
+  const weeklyMastered = data
+    ? data.heatmap.slice(-7).reduce((sum, d) => sum + Math.round((d.count * d.accuracy) / 100), 0)
+    : 0;
 
   const stats = [
     {
@@ -37,10 +40,10 @@ export default function StatsOverview() {
       bg: "bg-[var(--blue-dim)]",
     },
     {
-      icon: Target,
-      label: "整體正確率",
-      value: data && data.totalQuestions > 0 ? `${data.accuracy}%` : "--",
-      sub: data && data.totalQuestions > 0 ? `${data.totalCorrect}/${data.totalQuestions} 題` : "尚無資料",
+      icon: CheckCircle2,
+      label: "累計掌握",
+      value: data && data.totalQuestions > 0 ? `${data.totalCorrect}` : "--",
+      sub: data && data.totalQuestions > 0 ? `本週 +${weeklyMastered} 題` : "尚無資料",
       color: "text-[var(--success)]",
       bg: "bg-[rgba(46,204,113,0.15)]",
     },

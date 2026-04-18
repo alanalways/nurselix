@@ -328,7 +328,7 @@ export default function InsightsPage() {
         </div>
 
         <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
-          <div className="text-sm text-[var(--text-muted)] mb-4">最弱的 Domain（正確率）</div>
+          <div className="text-sm text-[var(--text-muted)] mb-4">下一步可突破的 Domain</div>
           {sortedDomains.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)]">尚未有資料</p>
           ) : (
@@ -339,11 +339,11 @@ export default function InsightsPage() {
                   <div key={domain}>
                     <div className="flex items-center justify-between text-sm mb-1">
                       <span className="text-[var(--text-primary)]">{domain}</span>
-                      <span className={pct < 60 ? "text-[var(--error)]" : "text-[var(--text-muted)]"}>{pct}%</span>
+                      <span className="text-[var(--text-muted)]">掌握度 {pct}%</span>
                     </div>
                     <div className="h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${pct < 60 ? "bg-[var(--error)]" : pct < 80 ? "bg-[var(--warning)]" : "bg-[var(--success)]"}`}
+                        className={`h-full rounded-full ${pct < 60 ? "bg-[var(--warning)]" : pct < 80 ? "bg-[var(--gold)]" : "bg-[var(--success)]"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>

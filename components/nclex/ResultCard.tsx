@@ -56,8 +56,8 @@ export default function ResultCard({ mode, totalQuestions, correctCount, totalTi
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { icon: Target, label: "正確率", value: `${accuracy}%`, color: "text-[var(--success)]", bg: "bg-[rgba(46,204,113,0.15)]" },
-          { icon: CheckCircle, label: "答對題數", value: `${correctCount}/${totalQuestions}`, color: "text-[var(--blue)]", bg: "bg-[var(--blue-dim)]" },
+          { icon: CheckCircle, label: "本次掌握", value: `${correctCount} 題`, color: "text-[var(--success)]", bg: "bg-[rgba(46,204,113,0.15)]" },
+          { icon: Target, label: "掌握度", value: `${accuracy}%`, color: "text-[var(--blue)]", bg: "bg-[var(--blue-dim)]" },
           { icon: Clock, label: "總用時", value: formatTime(totalTimeSec), color: "text-[var(--gold)]", bg: "bg-[var(--gold-dim)]" },
           ...(theta !== undefined ? [{ icon: TrendingUp, label: "能力值 θ", value: theta.toFixed(2), color: "text-[var(--text-primary)]", bg: "bg-[var(--bg-overlay)]" }] : []),
         ].map((s) => (
@@ -74,7 +74,7 @@ export default function ResultCard({ mode, totalQuestions, correctCount, totalTi
       {/* Domain Breakdown */}
       {domainStats && (
         <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
-          <h3 className="font-semibold text-[var(--text-primary)] mb-4">各 Domain 成績</h3>
+          <h3 className="font-semibold text-[var(--text-primary)] mb-4">各 Domain 掌握度</h3>
           <div className="space-y-3">
             {domainStats.map((d) => {
               const pct = Math.round((d.correct / d.total) * 100);
@@ -82,11 +82,11 @@ export default function ResultCard({ mode, totalQuestions, correctCount, totalTi
                 <div key={d.domain}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-[var(--text-secondary)]">{d.domain}</span>
-                    <span className={`font-semibold font-mono ${pct >= 70 ? "text-[var(--success)]" : pct >= 50 ? "text-[var(--warning)]" : "text-[var(--error)]"}`}>
-                      {d.correct}/{d.total} ({pct}%)
+                    <span className={`font-semibold font-mono ${pct >= 70 ? "text-[var(--success)]" : pct >= 50 ? "text-[var(--gold)]" : "text-[var(--warning)]"}`}>
+                      已掌握 {d.correct}/{d.total}
                     </span>
                   </div>
-                  <Progress value={pct} size="sm" color={pct >= 70 ? "success" : pct >= 50 ? "gold" : "error"} />
+                  <Progress value={pct} size="sm" color={pct >= 70 ? "success" : "gold"} />
                 </div>
               );
             })}

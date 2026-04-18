@@ -89,8 +89,8 @@ export default function StatsPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {[
+          { label: "累計掌握", value: data.totalCorrect.toLocaleString() },
           { label: "總答題數", value: data.totalQuestions.toLocaleString() },
-          { label: "整體正確率", value: data.totalQuestions > 0 ? `${data.accuracy}%` : "--" },
           { label: "連續天數", value: `${data.streak} 天` },
           { label: "本週學習", value: `${weekStudyDays}/7 天` },
           { label: "累計時長", value: `${Math.round(data.totalMinutes / 60)} 時` },
@@ -123,7 +123,7 @@ export default function StatsPage() {
       )}
 
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
-        <h3 className="font-semibold text-[var(--text-primary)] mb-2">各 Domain 正確率</h3>
+        <h3 className="font-semibold text-[var(--text-primary)] mb-2">各 Domain 掌握度</h3>
         <p className="text-xs text-[var(--text-muted)] mb-4">
           {data.totalQuestions === 0 ? "答題後此圖將自動更新" : `基於近 30 天 ${data.totalQuestions} 題練習`}
         </p>
@@ -137,15 +137,12 @@ export default function StatsPage() {
                 <div className="flex-1 h-5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all ${
-                      (found?.accuracy ?? 0) >= 70 ? "bg-[var(--success)]" : (found?.accuracy ?? 0) >= 50 ? "bg-[var(--warning)]" : "bg-[var(--error)]"
+                      (found?.accuracy ?? 0) >= 70 ? "bg-[var(--success)]" : (found?.accuracy ?? 0) >= 50 ? "bg-[var(--gold)]" : "bg-[var(--warning)]"
                     }`}
                     style={{ width: `${found?.accuracy ?? 0}%` }}
                   />
                 </div>
-                <span className="text-xs font-mono text-[var(--text-muted)] w-10 text-right">
-                  {found ? `${found.accuracy}%` : "--"}
-                </span>
-                <span className="text-xs text-[var(--text-muted)] w-14 text-right">
+                <span className="text-xs font-mono text-[var(--text-muted)] w-16 text-right">
                   {found ? `${found.correct}/${found.done}` : "--"}
                 </span>
               </div>
@@ -162,7 +159,7 @@ export default function StatsPage() {
               <PolarGrid stroke="var(--border-default)" />
               <PolarAngleAxis dataKey="domain" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
               <Radar
-                name="正確率"
+                name="掌握度"
                 dataKey="value"
                 stroke="var(--gold)"
                 fill="var(--gold)"

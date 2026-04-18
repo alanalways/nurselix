@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Mail, Lock, AlertCircle } from "lucide-react";
+import { Mail, Lock, AlertCircle, Sparkles } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { signIn } from "next-auth/react";
 import Button from "@/components/ui/Button";
@@ -44,8 +44,42 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[var(--bg-base)]">
-      {/* Left Panel */}
+    <div className="min-h-screen flex flex-col lg:flex-row bg-[var(--bg-base)]">
+      {/* Mobile Splash (lg:hidden) */}
+      <div className="relative lg:hidden overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[var(--gold)]/25 via-[var(--bg-elevated)] to-[var(--bg-base)]" />
+        <motion.div
+          aria-hidden
+          className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-[var(--gold)]/20 blur-3xl"
+          animate={{ scale: [1, 1.15, 1], opacity: [0.35, 0.55, 0.35] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          aria-hidden
+          className="absolute -bottom-20 -left-10 w-64 h-64 rounded-full bg-[var(--gold-light)]/15 blur-3xl"
+          animate={{ scale: [1.1, 1, 1.1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        />
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative px-6 pt-12 pb-16 flex flex-col items-center text-center"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center shadow-2xl shadow-[var(--gold)]/30 mb-4">
+            <NurslixIconSquare size={44} className="text-[#080E1A]" />
+          </div>
+          <span className="text-4xl font-bold text-gradient-gold mb-2">Nurslix</span>
+          <p className="text-[var(--text-primary)] font-medium text-base mb-1">赴美 NCLEX 最短路徑</p>
+          <div className="inline-flex items-center gap-1.5 text-xs text-[var(--gold)] bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-full px-3 py-1 mt-3">
+            <Sparkles size={12} />
+            7 天 Plus 免費試用 · 無需信用卡
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Left Panel (desktop only) */}
       <div className="hidden lg:flex flex-1 flex-col justify-between p-12 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
@@ -114,22 +148,14 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6">
+      {/* Right Panel / Mobile Form Card */}
+      <div className="flex-1 flex items-start lg:items-center justify-center p-6 pt-0 lg:pt-6 -mt-8 lg:mt-0 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="w-full max-w-md"
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="w-full max-w-md rounded-t-3xl lg:rounded-none bg-[var(--bg-surface)] lg:bg-transparent border border-b-0 border-[var(--border-subtle)] lg:border-0 shadow-2xl lg:shadow-none px-6 pt-8 pb-10 lg:p-0"
         >
-          {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
-              <NurslixIconSquare size={24} className="text-[#080E1A]" />
-            </div>
-            <span className="text-2xl font-bold text-gradient-gold">Nurslix</span>
-          </div>
-
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">歡迎回來</h1>
           <p className="text-[var(--text-secondary)] mb-8">登入繼續你的備考旅程</p>
 
