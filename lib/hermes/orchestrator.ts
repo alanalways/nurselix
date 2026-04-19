@@ -177,7 +177,7 @@ export async function runHermesForSession(sessionId: string, userId: string): Pr
 
     // 10. Log API usage costs
     const analyticsModel = "claude-haiku-4-5-20251001";
-    const teachingModel  = "claude-sonnet-4-6";
+    const teachingModel  = "claude-haiku-4-5-20251001"; // beta: both agents on haiku
     if (analytics._usage) {
       await prisma.apiUsageLog.create({
         data: {

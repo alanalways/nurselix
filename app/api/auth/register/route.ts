@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Beta period: all users get PRO until May 1 2026; trial-expiry cron auto-downgrades
+    const BETA_ENDS = new Date("2026-05-01T00:00:00Z");
+    const trialEndsAt = BETA_ENDS;
 
     await prisma.user.create({
       data: {
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
         yearsOfExperience: yearsOfExperience ?? null,
         trialUsed: true,
         trialEndsAt,
-        plan: "BASIC", // 7-day trial at BASIC tier
+        plan: "PRO", // Beta: everyone gets Plus until BETA_ENDS
         settings: {
           create: { dailyGoal },
         },

@@ -106,7 +106,7 @@ Rules for studyPlan:
 - questions must match the learner's confidence band (low=10, developing=15, stable=20, high=25)`;
 
   const msg = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001", // beta: downgraded from sonnet to reduce cost
     max_tokens: 600,
     system: [{ type: "text", text: TAXONOMY_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: prompt }],
