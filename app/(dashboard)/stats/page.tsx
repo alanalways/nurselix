@@ -55,7 +55,7 @@ export default function StatsPage() {
     );
   }
 
-  if (!data) return <div className="p-6 text-[var(--error)]">載入失敗</div>;
+  if (!data) return <div className="p-6 text-[var(--text-muted)] text-sm">載入失敗，請重新整理</div>;
 
   // Radar chart data: fill zero for domains not yet attempted
   const radarData = ALL_DOMAINS.map((en) => {
@@ -154,20 +154,28 @@ export default function StatsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
           <h3 className="font-semibold text-[var(--text-primary)] mb-3">八大 Domain 雷達圖</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="var(--border-default)" />
-              <PolarAngleAxis dataKey="domain" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
-              <Radar
-                name="掌握度"
-                dataKey="value"
-                stroke="var(--gold)"
-                fill="var(--gold)"
-                fillOpacity={0.25}
-                strokeWidth={2}
-              />
-            </RadarChart>
-          </ResponsiveContainer>
+          {data.totalQuestions === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+              <div className="text-4xl mb-1">🎯</div>
+              <p className="text-sm font-medium text-[var(--text-primary)]">完成第一題後雷達圖就會出現</p>
+              <p className="text-xs text-[var(--text-muted)]">持續練習，追蹤你八大 Domain 的掌握度</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="var(--border-default)" />
+                <PolarAngleAxis dataKey="domain" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
+                <Radar
+                  name="掌握度"
+                  dataKey="value"
+                  stroke="var(--gold)"
+                  fill="var(--gold)"
+                  fillOpacity={0.25}
+                  strokeWidth={2}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">

@@ -6,6 +6,7 @@ import TopBar from "@/components/layout/TopBar";
 import MobileNav from "@/components/layout/MobileNav";
 import OnboardingModal from "@/components/onboarding/OnboardingModal";
 import Footer from "@/components/ui/Footer";
+import PwaUpdateBanner from "@/components/ui/PwaUpdateBanner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -29,6 +30,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* First-time onboarding */}
       <OnboardingModal />
+
+      {/* PWA update notification */}
+      <PwaUpdateBanner />
     </div>
   );
 }

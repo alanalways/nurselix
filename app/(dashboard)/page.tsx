@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import StatsOverview from "@/components/dashboard/StatsOverview";
+import TodayBriefing from "@/components/dashboard/TodayBriefing";
 import QuickStart from "@/components/dashboard/QuickStart";
 import DailyProgress from "@/components/dashboard/DailyProgress";
 import AssessmentPrompt from "@/components/dashboard/AssessmentPrompt";
@@ -45,6 +46,9 @@ export default function DashboardPage() {
           歡迎回來，繼續你的備考之旅！
         </p>
       </div>
+
+      {/* Today Briefing */}
+      <TodayBriefing />
 
       {/* Upgrade Banner */}
       <UpgradeBanner />
