@@ -126,6 +126,8 @@ export default function AdminQuestionsPage() {
         setRows(body.rows);
         setTotal(body.total);
       }
+    } catch {
+      // Network error — stay on last known state, no crash
     } finally {
       setLoading(false);
     }
@@ -134,27 +136,33 @@ export default function AdminQuestionsPage() {
   useEffect(() => { load(); }, [load]);
 
   const loadStats = useCallback(async () => {
-    const res = await fetch("/api/admin/questions?stats=1", { cache: "no-store" });
-    if (res.ok) {
-      const body = await res.json();
-      setDomainCounts(body.domains ?? {});
-    }
+    try {
+      const res = await fetch("/api/admin/questions?stats=1", { cache: "no-store" });
+      if (res.ok) {
+        const body = await res.json();
+        setDomainCounts(body.domains ?? {});
+      }
+    } catch { /* network error — keep last state */ }
   }, []);
 
   const loadGenConfig = useCallback(async () => {
-    const res = await fetch("/api/admin/questions/generate", { cache: "no-store" });
-    if (res.ok) {
-      const body = await res.json();
-      setKeysCount(body.keys ?? 0);
-    }
+    try {
+      const res = await fetch("/api/admin/questions/generate", { cache: "no-store" });
+      if (res.ok) {
+        const body = await res.json();
+        setKeysCount(body.keys ?? 0);
+      }
+    } catch { /* network error */ }
   }, []);
 
   const loadBgJob = useCallback(async () => {
-    const res = await fetch("/api/admin/questions/generate/job", { cache: "no-store" });
-    if (res.ok) {
-      const body = await res.json();
-      setBgJob(body.job ?? null);
-    }
+    try {
+      const res = await fetch("/api/admin/questions/generate/job", { cache: "no-store" });
+      if (res.ok) {
+        const body = await res.json();
+        setBgJob(body.job ?? null);
+      }
+    } catch { /* network error */ }
   }, []);
 
   useEffect(() => {

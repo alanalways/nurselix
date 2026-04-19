@@ -27,7 +27,7 @@ export default function AdminFeedbackPage() {
       try {
         const res = await fetch("/api/admin/feedback", { cache: "no-store" });
         if (res.ok) setData(await res.json());
-      } finally {
+      } catch { /* network error */ } finally {
         setLoading(false);
       }
     })();

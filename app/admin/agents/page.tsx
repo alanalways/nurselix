@@ -28,7 +28,7 @@ export default function AdminAgentsPage() {
       try {
         const res = await fetch("/api/admin/agents", { cache: "no-store" });
         if (res.ok) setData(await res.json());
-      } finally {
+      } catch { /* network error */ } finally {
         setLoading(false);
       }
     })();
