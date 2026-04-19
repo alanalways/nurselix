@@ -1,0 +1,22 @@
+name: Daily trial-expiry cron
+
+on:
+  schedule:
+    # Runs daily at 02:00 UTC (= 10:00 AM Taiwan time)
+    - cron: "0 2 * * *"
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  run-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call trial-expiry endpoint
+        run: |
+          STATUS=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/trial-expiry")
+          cat /tmp/body.txt
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: endpoint returned HTTP $STATUS"
+            exit 1
+          fi
