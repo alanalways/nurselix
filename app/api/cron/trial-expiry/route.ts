@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
         trialEndsAt: { gte: windowStart, lt: windowEnd },
         subscriptionEndsAt: null,
         email: { not: "" },
-      } as any,
+      },
       select: { email: true, name: true },
     });
     for (const user of users) {
@@ -40,7 +40,9 @@ export async function GET(req: NextRequest) {
         daysLeft: days,
         upgradeUrl: `${SITE_URL}/pricing`,
       });
-      await sendMail({ to: user.email, ...mail }).catch(() => {});
+      await sendMail({ to: user.email, ...mail }).catch((err) => {
+        console.warn("[cron/trial-expiry] mail failed:", err?.message ?? err);
+      });
       warnSent++;
     }
   }
@@ -51,7 +53,7 @@ export async function GET(req: NextRequest) {
       plan: { not: "FREE" },
       trialEndsAt: { lt: now },
       subscriptionEndsAt: null,
-    } as any,
+    },
     select: { id: true },
   });
 
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest) {
     where: {
       plan: { not: "FREE" },
       subscriptionEndsAt: { lt: now },
-    } as any,
+    },
     select: { id: true },
   });
 
@@ -74,7 +76,7 @@ export async function GET(req: NextRequest) {
   for (const user of subExpired) {
     await prisma.user.update({
       where: { id: user.id },
-      data: { plan: "FREE", subscriptionEndsAt: null } as any,
+      data: { plan: "FREE", subscriptionEndsAt: null },
     });
     subDowngraded++;
   }
