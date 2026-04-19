@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, Archive, Check, Loader2, Sparkles, Wand2, X, Zap } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import type { RepairJob } from "@/app/api/admin/questions/repair-all/route";
 
 interface ScanRow {
   id: string;
@@ -69,8 +70,8 @@ export default function QuestionQualityPage() {
   const [applying, setApplying] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [archiveResult, setArchiveResult] = useState<string | null>(null);
-  const [repairing, setRepairing] = useState(false);
-  const [repairProgress, setRepairProgress] = useState<string | null>(null);
+  const [repairJob, setRepairJob] = useState<RepairJob | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +88,41 @@ export default function QuestionQualityPage() {
   }, [issueFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Poll repair job status from server; works even if user navigates away and returns
+  const startPolling = useCallback(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch("/api/admin/questions/repair-all", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const job: RepairJob | null = data.job ?? null;
+        setRepairJob(job);
+        if (job?.status !== "running") {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          if (job?.status === "done") load();
+        }
+      } catch { /* ignore network errors during polling */ }
+    }, 5000);
+  }, [load]);
+
+  // On mount, check if a job is already running
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/questions/repair-all", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.job) {
+          setRepairJob(data.job);
+          if (data.job.status === "running") startPolling();
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [startPolling]);
 
   const handleEnhance = async (id: string) => {
     setEnhancing(id);
@@ -211,87 +247,25 @@ export default function QuestionQualityPage() {
   };
 
   const handleRepairAllShort = async () => {
+    if (repairJob?.status === "running") { alert("已有修補任務在背景執行中"); return; }
     if (!summary || summary.shortExplanation === 0) { alert("沒有過短題目需要修補"); return; }
-    if (!confirm(`將使用 Gemini 批次修補 ${summary.shortExplanation} 道解析過短的題目，可能需要數分鐘。繼續？`)) return;
-
-    setRepairing(true);
-    setRepairProgress("收集待修補題目…");
+    if (!confirm(`將在伺服器背景修補 ${summary.shortExplanation} 道解析過短的題目。\n\n任務會在背景持續執行，關掉頁面不影響進度，回來重新整理可查看狀態。繼續？`)) return;
 
     try {
-      const ids: string[] = [];
-      let page = 1;
-      while (true) {
-        const res = await fetch(`/api/admin/questions/scan?issue=short_explanation&page=${page}&pageSize=100`, { cache: "no-store" });
-        if (!res.ok) throw new Error("scan failed");
-        const data = await res.json();
-        const pageIds = (data.rows as ScanRow[]).map((r) => r.id);
-        ids.push(...pageIds);
-        if (pageIds.length < 100) break;
-        page++;
-        if (page > 50) break;
-      }
-
-      if (ids.length === 0) {
-        setRepairProgress("沒有待修補題目");
-        setRepairing(false);
-        return;
-      }
-
-      const BATCH_SIZE = 15;
-      const CONCURRENCY = 5; // parallel requests — each uses a different key offset
-      let enhancedTotal = 0;
-      let skippedTotal = 0;
-      const total = ids.length;
-
-      for (let i = 0; i < ids.length; i += BATCH_SIZE * CONCURRENCY) {
-        // Build up to CONCURRENCY sub-batches for this round
-        const subBatches: Array<{ ids: string[]; keyOffset: number }> = [];
-        for (let j = 0; j < CONCURRENCY; j++) {
-          const start = i + j * BATCH_SIZE;
-          if (start >= ids.length) break;
-          subBatches.push({
-            ids: ids.slice(start, start + BATCH_SIZE),
-            keyOffset: j * 2, // spread across keys: 0,2,4,6,8
-          });
-        }
-
-        setRepairProgress(`修補中… ${i}/${total}（同時處理 ${subBatches.length} 批 / 每批 ${BATCH_SIZE} 題）`);
-
-        const results = await Promise.allSettled(
-          subBatches.map(({ ids: batchIds, keyOffset }) =>
-            fetch("/api/admin/questions/enhance-batch", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ids: batchIds, keyOffset }),
-            }).then((r) => r.json())
-          )
-        );
-
-        for (let j = 0; j < results.length; j++) {
-          const result = results[j];
-          if (result.status === "fulfilled" && result.value?.enhanced != null) {
-            enhancedTotal += result.value.enhanced as number;
-            skippedTotal += (result.value.skipped as number) ?? 0;
-          } else {
-            skippedTotal += subBatches[j].ids.length;
-            if (result.status === "rejected") console.warn("batch error:", result.reason);
-            else console.warn("batch failed:", (result.value as any)?.error);
-          }
-        }
-
-        // Give Gemini keys a short breather between rounds
-        if (i + BATCH_SIZE * CONCURRENCY < ids.length) {
-          await new Promise((r) => setTimeout(r, 2000));
-        }
-      }
-
-      setRepairProgress(`✅ 完成：成功 ${enhancedTotal} 題，跳過 ${skippedTotal} 題`);
-      await load();
+      const res = await fetch("/api/admin/questions/repair-all", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error ?? "啟動失敗"); return; }
+      setRepairJob(data.job ?? { id: data.jobId, status: "running", total: 0, done: 0, enhanced: 0, skipped: 0, startedAt: new Date().toISOString(), message: "初始化中…" });
+      startPolling();
     } catch (e: any) {
-      setRepairProgress(`❌ 失敗：${e.message}`);
-    } finally {
-      setRepairing(false);
+      alert("網路錯誤：" + e.message);
     }
+  };
+
+  const handleClearRepairJob = async () => {
+    await fetch("/api/admin/questions/repair-all", { method: "DELETE" }).catch(() => {});
+    setRepairJob(null);
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
   return (
@@ -365,17 +339,55 @@ export default function QuestionQualityPage() {
             size="sm"
             variant="gold"
             onClick={handleRepairAllShort}
-            disabled={repairing || !summary || summary.shortExplanation === 0}
+            disabled={repairJob?.status === "running" || !summary || summary.shortExplanation === 0}
           >
-            {repairing
-              ? <><Loader2 size={14} className="animate-spin" /> 修補中</>
+            {repairJob?.status === "running"
+              ? <><Loader2 size={14} className="animate-spin" /> 背景修補中</>
               : <><Zap size={14} /> 一鍵修補所有過短題目 (Gemini)</>}
           </Button>
           {archiveResult && (
             <span className="text-xs text-[var(--text-secondary)] ml-2">{archiveResult}</span>
           )}
-          {repairProgress && (
-            <span className="text-xs text-[var(--text-secondary)] ml-2">{repairProgress}</span>
+        </div>
+      )}
+
+      {/* Repair job status card */}
+      {repairJob && (
+        <div className={`rounded-xl border p-4 flex items-start gap-3 ${
+          repairJob.status === "running"
+            ? "bg-[var(--blue-dim)] border-[var(--blue)]"
+            : repairJob.status === "done"
+            ? "bg-[var(--bg-surface)] border-[var(--success)]"
+            : "bg-[var(--bg-surface)] border-[var(--error)]"
+        }`}>
+          {repairJob.status === "running"
+            ? <Loader2 size={18} className="animate-spin text-[var(--blue)] mt-0.5 flex-shrink-0" />
+            : repairJob.status === "done"
+            ? <Check size={18} className="text-[var(--success)] mt-0.5 flex-shrink-0" />
+            : <AlertCircle size={18} className="text-[var(--error)] mt-0.5 flex-shrink-0" />}
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-[var(--text-primary)]">
+              {repairJob.status === "running" ? "背景修補任務進行中" : repairJob.status === "done" ? "修補完成" : "修補失敗"}
+              {repairJob.total > 0 && (
+                <span className="ml-2 text-xs font-mono text-[var(--text-muted)]">
+                  {repairJob.done}/{repairJob.total} 題（成功 {repairJob.enhanced}，跳過 {repairJob.skipped}）
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">{repairJob.message}</div>
+            {repairJob.total > 0 && repairJob.status === "running" && (
+              <div className="mt-2 h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[var(--blue)] transition-all duration-500"
+                  style={{ width: `${Math.round((repairJob.done / repairJob.total) * 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+          {repairJob.status !== "running" && (
+            <button onClick={handleClearRepairJob} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] flex-shrink-0">
+              <X size={14} />
+            </button>
           )}
         </div>
       )}
