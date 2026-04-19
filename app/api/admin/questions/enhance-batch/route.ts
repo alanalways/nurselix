@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
-import { getApiKeys, AUTO_MODEL_PRIORITY } from "@/lib/generateBatch";
+import { getApiKeys } from "@/lib/generateBatch";
+
+// Flash-first order for batch enhance: free-tier Pro has only 5 RPM / 25 RPD
+// per key, making it too slow for bulk repair. Flash gives 10-15 RPM / 500 RPD.
+const ENHANCE_MODEL_PRIORITY = [
+  "gemini-2.5-flash",
+  "gemini-3-flash-preview",
+  "gemini-2.5-pro",
+  "gemini-3.1-flash-lite-preview",
+  "gemini-2.5-flash-lite",
+];
 
 /**
  * Batch-enhance short / incomplete explanations using Gemini's large context.
@@ -179,7 +189,7 @@ export async function POST(req: NextRequest) {
   let usedModel = "";
   let usageMeta: { inputTokens: number; outputTokens: number } | null = null;
 
-  outer: for (const model of AUTO_MODEL_PRIORITY) {
+  outer: for (const model of ENHANCE_MODEL_PRIORITY) {
     for (const key of apiKeys) {
       try {
         const resp = await fetch(

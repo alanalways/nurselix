@@ -237,7 +237,7 @@ export default function QuestionQualityPage() {
         return;
       }
 
-      const batchSize = 20;
+      const batchSize = 15; // Smaller batches to stay under free-tier RPM
       let enhancedTotal = 0;
       let skippedTotal = 0;
       const total = ids.length;
@@ -262,6 +262,10 @@ export default function QuestionQualityPage() {
         } catch (e) {
           skippedTotal += batch.length;
           console.warn("batch network error:", e);
+        }
+        // Respect Gemini free-tier RPM limits — give keys 3 s to recover
+        if (i + batchSize < ids.length) {
+          await new Promise((r) => setTimeout(r, 3000));
         }
       }
 
