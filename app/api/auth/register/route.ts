@@ -31,9 +31,14 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    // Beta period: all users get PRO until May 1 2026; trial-expiry cron auto-downgrades
+    // During beta (until 2026-05-01) every new user gets PRO until the beta ends.
+    // After beta the behaviour reverts automatically to the original 7-day BASIC trial.
     const BETA_ENDS = new Date("2026-05-01T00:00:00Z");
-    const trialEndsAt = BETA_ENDS;
+    const inBeta = Date.now() < BETA_ENDS.getTime();
+    const trialEndsAt = inBeta
+      ? BETA_ENDS
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const initialPlan = inBeta ? "PRO" : "BASIC";
 
     await prisma.user.create({
       data: {
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
         yearsOfExperience: yearsOfExperience ?? null,
         trialUsed: true,
         trialEndsAt,
-        plan: "PRO", // Beta: everyone gets Plus until BETA_ENDS
+        plan: initialPlan,
         settings: {
           create: { dailyGoal },
         },

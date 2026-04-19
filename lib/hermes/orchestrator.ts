@@ -175,9 +175,11 @@ export async function runHermesForSession(sessionId: string, userId: string): Pr
       },
     });
 
-    // 10. Log API usage costs
+    // 10. Log API usage costs (teachingModel auto-reverts to sonnet on 2026-05-01)
+    const BETA_ENDS = new Date("2026-05-01T00:00:00Z").getTime();
     const analyticsModel = "claude-haiku-4-5-20251001";
-    const teachingModel  = "claude-haiku-4-5-20251001"; // beta: both agents on haiku
+    const teachingModel  =
+      Date.now() < BETA_ENDS ? "claude-haiku-4-5-20251001" : "claude-sonnet-4-6";
     if (analytics._usage) {
       await prisma.apiUsageLog.create({
         data: {

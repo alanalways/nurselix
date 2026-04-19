@@ -105,8 +105,13 @@ Rules for studyPlan:
 - Day 3: mixed review / confidence building
 - questions must match the learner's confidence band (low=10, developing=15, stable=20, high=25)`;
 
+  // Beta (until 2026-05-01): run on Haiku to cut cost; auto-revert to Sonnet afterwards.
+  const BETA_ENDS = new Date("2026-05-01T00:00:00Z").getTime();
+  const teachingModel =
+    Date.now() < BETA_ENDS ? "claude-haiku-4-5-20251001" : "claude-sonnet-4-6";
+
   const msg = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001", // beta: downgraded from sonnet to reduce cost
+    model: teachingModel,
     max_tokens: 600,
     system: [{ type: "text", text: TAXONOMY_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: prompt }],

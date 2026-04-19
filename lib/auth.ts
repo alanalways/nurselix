@@ -138,12 +138,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         update: {},
         create: { userId: user.id },
       });
-      if (user.email && ADMIN_EMAILS.has(user.email.toLowerCase())) {
+
+      const isAdminEmail = user.email && ADMIN_EMAILS.has(user.email.toLowerCase());
+      if (isAdminEmail) {
         await prisma.user.update({
           where: { id: user.id },
           data: { role: "ADMIN", plan: "ELITE" },
         });
+        return;
       }
+
+      // Grant the same initial trial that email signup receives.
+      // Beta (until 2026-05-01): PRO until beta ends.
+      // After beta: BASIC for 7 days. trialUsed=true blocks re-trials forever.
+      const BETA_ENDS = new Date("2026-05-01T00:00:00Z");
+      const inBeta = Date.now() < BETA_ENDS.getTime();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          plan: inBeta ? "PRO" : "BASIC",
+          trialUsed: true,
+          trialEndsAt: inBeta
+            ? BETA_ENDS
+            : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
     },
   },
 });
