@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { anthropic } from "@/lib/ai/claude";
+import { userRateLimit } from "@/lib/utils/rateLimit";
 
 const schema = z.object({ examDate: z.string().optional() });
 
@@ -12,6 +13,10 @@ export async function POST(req: NextRequest) {
   if ((session.user as any).plan !== "ELITE") {
     return NextResponse.json({ error: "此功能需要 Elite 方案", required: "ELITE" }, { status: 403 });
   }
+
+  // Rate limit: 5 calls per hour to prevent API cost abuse
+  const limit = await userRateLimit(session.user.id, "learning-plan", { limit: 5, windowSec: 3600 });
+  if (!limit.success) return NextResponse.json({ error: "每小時最多產生 5 次學習計畫" }, { status: 429 });
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "AI 服務暫時不可用" }, { status: 503 });

@@ -19,8 +19,7 @@ export async function GET() {
   return NextResponse.json({
     enabled,
     email: TEST_ACCOUNT.email,
-    password: TEST_ACCOUNT.password,
-    plan: "FREE",
+    // password intentionally omitted from response
   });
 }
 
@@ -43,7 +42,6 @@ export async function POST(req: NextRequest) {
     ok: true,
     enabled: parsed.data.enabled,
     email: TEST_ACCOUNT.email,
-    password: TEST_ACCOUNT.password,
     message: parsed.data.enabled
       ? "✓ 測試帳號已啟用，藍新審核可登入"
       : "✓ 測試帳號已停用，無人可登入此帳號",

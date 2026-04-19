@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +29,8 @@ export async function POST(req: NextRequest) {
     const amount = PLAN_AMOUNTS[plan]?.[billing];
     if (!amount) return NextResponse.json({ error: "無效方案" }, { status: 400 });
 
-    const merchantOrderNo = `NX${Date.now()}`.slice(0, 30);
+    // Use cryptographically random ID to prevent order enumeration
+    const merchantOrderNo = `NX${randomBytes(10).toString("hex")}`.slice(0, 30);
 
     const order = await prisma.order.create({
       data: {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { anthropic } from "@/lib/ai/claude";
+import { userRateLimit } from "@/lib/utils/rateLimit";
 
 export async function GET() {
   const session = await auth();
@@ -9,6 +10,9 @@ export async function GET() {
   if ((session.user as any).plan !== "ELITE") {
     return NextResponse.json({ error: "此功能需要 Elite 方案", required: "ELITE" }, { status: 403 });
   }
+
+  const limit = await userRateLimit(session.user.id, "weekly-report", { limit: 5, windowSec: 3600 });
+  if (!limit.success) return NextResponse.json({ error: "每小時最多產生 5 次週報" }, { status: 429 });
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "AI 服務暫時不可用" }, { status: 503 });

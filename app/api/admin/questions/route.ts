@@ -109,7 +109,7 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const before = await prisma.question.count();
-    await prisma.$executeRawUnsafe(`TRUNCATE "Question" CASCADE`);
+    await prisma.$executeRaw`TRUNCATE "Question" CASCADE`;
     return NextResponse.json({ deleted: before });
   } catch (err) {
     console.error("[DELETE /api/admin/questions]", err);
