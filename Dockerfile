@@ -1,10 +1,13 @@
+# syntax=docker/dockerfile:1
 # ===== Stage 1: Dependencies =====
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN NODE_ENV=development npm ci --legacy-peer-deps
+# Cache the npm download cache across builds — saves ~2 min on repeat builds
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    NODE_ENV=development npm ci --legacy-peer-deps
 
 # ===== Stage 2: Builder =====
 FROM node:20-alpine AS builder
@@ -20,11 +23,12 @@ RUN npx prisma generate
 ARG DATABASE_URL
 RUN if [ -n "$DATABASE_URL" ]; then DATABASE_URL="$DATABASE_URL" npx prisma db push --accept-data-loss; else echo "DATABASE_URL not set — skipping prisma db push"; fi
 
-# Build Next.js
+# Build Next.js — cache the compiler output so unchanged pages aren't recompiled
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # ===== Stage 3: Runner =====
 FROM node:20-alpine AS runner
