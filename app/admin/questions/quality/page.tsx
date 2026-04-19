@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Archive, Check, Loader2, Sparkles, Wand2, X } from "lucide-react";
+import { AlertCircle, Archive, Check, Loader2, Sparkles, Wand2, X, Zap } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 
@@ -69,6 +69,8 @@ export default function QuestionQualityPage() {
   const [applying, setApplying] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [archiveResult, setArchiveResult] = useState<string | null>(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairProgress, setRepairProgress] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -208,6 +210,70 @@ export default function QuestionQualityPage() {
     }
   };
 
+  const handleRepairAllShort = async () => {
+    if (!summary || summary.shortExplanation === 0) { alert("沒有過短題目需要修補"); return; }
+    if (!confirm(`將使用 Gemini 批次修補 ${summary.shortExplanation} 道解析過短的題目，可能需要數分鐘。繼續？`)) return;
+
+    setRepairing(true);
+    setRepairProgress("收集待修補題目…");
+
+    try {
+      const ids: string[] = [];
+      let page = 1;
+      while (true) {
+        const res = await fetch(`/api/admin/questions/scan?issue=short_explanation&page=${page}&pageSize=100`, { cache: "no-store" });
+        if (!res.ok) throw new Error("scan failed");
+        const data = await res.json();
+        const pageIds = (data.rows as ScanRow[]).map((r) => r.id);
+        ids.push(...pageIds);
+        if (pageIds.length < 100) break;
+        page++;
+        if (page > 50) break;
+      }
+
+      if (ids.length === 0) {
+        setRepairProgress("沒有待修補題目");
+        setRepairing(false);
+        return;
+      }
+
+      const batchSize = 20;
+      let enhancedTotal = 0;
+      let skippedTotal = 0;
+      const total = ids.length;
+
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize);
+        setRepairProgress(`修補中… ${i}/${total}（本批 ${batch.length} 題）`);
+        try {
+          const res = await fetch("/api/admin/questions/enhance-batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: batch }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            enhancedTotal += data.enhanced ?? 0;
+            skippedTotal += data.skipped ?? 0;
+          } else {
+            skippedTotal += batch.length;
+            console.warn("batch failed:", data.error);
+          }
+        } catch (e) {
+          skippedTotal += batch.length;
+          console.warn("batch network error:", e);
+        }
+      }
+
+      setRepairProgress(`✅ 完成：成功 ${enhancedTotal} 題，跳過 ${skippedTotal} 題`);
+      await load();
+    } catch (e: any) {
+      setRepairProgress(`❌ 失敗：${e.message}`);
+    } finally {
+      setRepairing(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="p-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -275,8 +341,21 @@ export default function QuestionQualityPage() {
           >
             <Archive size={14} /> 封存所有問題題目
           </Button>
+          <Button
+            size="sm"
+            variant="gold"
+            onClick={handleRepairAllShort}
+            disabled={repairing || !summary || summary.shortExplanation === 0}
+          >
+            {repairing
+              ? <><Loader2 size={14} className="animate-spin" /> 修補中</>
+              : <><Zap size={14} /> 一鍵修補所有過短題目 (Gemini)</>}
+          </Button>
           {archiveResult && (
             <span className="text-xs text-[var(--text-secondary)] ml-2">{archiveResult}</span>
+          )}
+          {repairProgress && (
+            <span className="text-xs text-[var(--text-secondary)] ml-2">{repairProgress}</span>
           )}
         </div>
       )}

@@ -118,14 +118,14 @@ MCQ 範例：
   "optionE": null,
   "correctAnswer": "A",
   "correctAnswers": null,
-  "explanationZh": "COPD 病人使用低流量氧氣可改善低氧血症，同時避免抑制缺氧驅動呼吸。SpO2 目標為 88-92%。",
+  "explanationZh": "COPD 急性發作的首要處置：先用低流量氧氣（1-2 L/min 鼻導管）把 SpO2 拉回 88-92% 的安全區間，這是 ABC 優先原則的 A（Airway）和 B（Breathing）。為什麼不能給高流量氧氣？COPD 病人長期 CO2 滯留，靠的是缺氧驅動（hypoxic drive）來維持呼吸，氧氣太高會抑制呼吸中樞造成 CO2 麻醉。這題的陷阱在 B（立即插管），看到 SpO2 87% 很容易恐慌，但只要意識清楚、還能自主呼吸，都應先嘗試保守治療；通知醫師（C）和抽血氣（D）都是後續動作，緊急處置永遠以穩定生命徵象為優先。",
   "optionRationales": {
-    "A": { "en": "Low-flow oxygen corrects hypoxemia while preserving the hypoxic drive in COPD.", "zh": "低流量氧氣改善低氧血症，同時保留缺氧驅動。" },
-    "B": { "en": "Immediate intubation is not indicated; conservative management should be tried first.", "zh": "立即插管不適當，應先嘗試保守治療。" },
-    "C": { "en": "Physician notification is important but not the first action; oxygen delivery is the priority.", "zh": "通知醫師重要，但不是首要步驟。" },
-    "D": { "en": "ABG is valuable but obtaining oxygen first addresses the immediate hypoxemia.", "zh": "血氣分析有價值，但先給氧才能處理當下低氧。" }
+    "A": { "en": "Low-flow oxygen corrects hypoxemia while preserving the hypoxic drive in COPD.", "zh": "低流量氧氣（1-2 L/min）把 SpO2 拉到 88-92% 的安全區間，同時避免抑制缺氧驅動呼吸，是 COPD 急性發作的標準首要處置。" },
+    "B": { "en": "Immediate intubation is not indicated; conservative management should be tried first.", "zh": "立即插管屬於侵入性處置，需在保守治療無效（例如 SpO2 無法回升、意識改變、CO2 持續上升）才考慮，不是首選。" },
+    "C": { "en": "Physician notification is important but not the first action; oxygen delivery is the priority.", "zh": "通知醫師固然必要，但在病人缺氧的當下必須先給氧救命，再回報，符合 ABC 原則。" },
+    "D": { "en": "ABG is valuable but obtaining oxygen first addresses the immediate hypoxemia.", "zh": "血氣分析能提供 PaO2 / PaCO2 / pH 等關鍵資料，但抽血和等報告都要時間，不能讓病人一直缺氧。" }
   },
-  "usTwDifference": "美國護理師可依醫囑直接調整氧流量；台灣需依醫囑執行，部分機構需通知醫師確認。",
+  "usTwDifference": "美國護理師在標準氧氣 protocol（如 COPD 維持 SpO2 88-92%）下可直接調整流量，不需逐次醫囑；台灣多數醫院仍要求 PRN 氧氣也需醫囑，護理師可先給氧但需立即通報並補開醫囑。",
   "irtA": 1.0, "irtB": 0.0, "irtC": 0.20
 }
 
@@ -143,15 +143,15 @@ SATA 範例：
   "optionE": "Reduce sodium intake to less than 2 g per day",
   "correctAnswer": null,
   "correctAnswers": ["A", "B", "D", "E"],
-  "explanationZh": "心臟衰竭出院指導：每天同時間量體重、限制液體攝取、限鈉、體重24小時增加超過2磅應回報。不可自行停用利尿劑。",
+  "explanationZh": "心臟衰竭出院指導的四大支柱：每日量體重、限水、限鈉、警訊回報。每日同時間（起床排尿後）量重是監測液體滯留最敏感的指標，比水腫更早出現。液體限制通常 1.5-2 L/day、鈉限制 < 2 g/day 可降低前負荷，減少再入院率。24 小時體重增加 >2 lbs（約 0.9 kg）或一週 >5 lbs 是急性失代償的紅旗，必須立即回報。C 是明確錯誤：利尿劑造成的姿勢性低血壓應透過緩慢起身、評估用藥時間來改善，擅自停藥會讓液體再次堆積，極可能在數天內回到急診。整個教育重點在『病人自我監測 + 早期介入』。",
   "optionRationales": {
-    "A": { "en": "Daily weight monitoring detects fluid retention early.", "zh": "每日量重可早期發現水分滯留。" },
-    "B": { "en": "Fluid restriction prevents fluid overload in heart failure.", "zh": "限制液體攝取預防液體過負荷。" },
-    "C": { "en": "Diuretics must not be stopped without provider guidance.", "zh": "不可自行停藥。" },
-    "D": { "en": "Weight gain >2 lbs in 24 hours indicates fluid retention.", "zh": "24小時增重超過2磅代表液體滯留。" },
-    "E": { "en": "Low-sodium diet reduces fluid retention.", "zh": "低鈉飲食減少液體滯留。" }
+    "A": { "en": "Daily weight monitoring detects fluid retention early.", "zh": "同時間量體重是監測液體滯留最敏感的指標，能比水腫早 24-48 小時發現失代償。" },
+    "B": { "en": "Fluid restriction prevents fluid overload in heart failure.", "zh": "限制 1.5-2 L/day 可降低前負荷，特別是 NYHA III-IV 級病人一定要落實。" },
+    "C": { "en": "Diuretics must not be stopped without provider guidance.", "zh": "擅自停利尿劑會讓液體快速堆積，頭暈應從起身速度和用藥時間調整，必要時回診調整劑量。" },
+    "D": { "en": "Weight gain >2 lbs in 24 hours indicates fluid retention.", "zh": "24 小時 >2 lbs 或一週 >5 lbs 是急性失代償紅旗，需立即回報醫療團隊。" },
+    "E": { "en": "Low-sodium diet reduces fluid retention.", "zh": "鈉 < 2 g/day 減少液體滯留，但需指導病人閱讀包裝標示，外食是最大陷阱。" }
   },
-  "usTwDifference": "美國心臟衰竭管理強調病人自我監測與回報；台灣部分醫院以門診追蹤為主。",
+  "usTwDifference": "美國心衰竭管理強調病人自我監測（每日量重、填日誌、症狀管理 app）與護理師主導的門診；台灣多由心臟內科醫師主導，護理師出院衛教較短，返家後以傳統門診追蹤為主，較少結構化的病例管理系統。",
   "irtA": 1.0, "irtB": 0.0, "irtC": 0.20
 }
 
@@ -165,11 +165,18 @@ SATA 範例：
 - SATA：correctAnswer=null，correctAnswers=[至少2個字母]，optionE 必須有內容
 - 每題都必須有：stem、stemZh、questionType、domain、difficulty、optionA-D、correctAnswer、correctAnswers、explanationZh、optionRationales（A-D 各含 en 和 zh）、usTwDifference、irtA、irtB、irtC
 
+【解析長度要求（關鍵！）】
+- explanationZh 必須 200-400 字繁體中文，且內容結構化：核心概念 → 為何正確答案對 → 為何其他選項錯 → 臨床思路/安全優先原則
+- optionRationales 每個選項的 zh 必須 50-120 字，不可只寫「對」或「錯」，要解釋機轉或為什麼
+- usTwDifference 必須 60-150 字，描述具體的臨床作業或護理執業範圍差異，若完全無差異才留空字串
+- 以上長度不足一律視為不合格題目，請重寫該題
+
 【禁止事項】
 - 每題 usTwDifference 必須獨特，描述內容不可重複
-- explanationZh 開頭不可都一樣
+- explanationZh 開頭不可都一樣（避免「此題的重點是」、「根據臨床原則」等模板開頭）
 - optionRationales 的 en 欄位每個不可超過 150 字
 - 不可使用填空式題幹（如 "37F presents with..."）
+- 不可在解析中直接複製題幹或選項文字
 
 請直接輸出 JSON 物件，從 { 開始，到 } 結束，不要任何前後說明。`;
 }
