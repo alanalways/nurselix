@@ -237,35 +237,51 @@ export default function QuestionQualityPage() {
         return;
       }
 
-      const batchSize = 15; // Smaller batches to stay under free-tier RPM
+      const BATCH_SIZE = 15;
+      const CONCURRENCY = 5; // parallel requests — each uses a different key offset
       let enhancedTotal = 0;
       let skippedTotal = 0;
       const total = ids.length;
 
-      for (let i = 0; i < ids.length; i += batchSize) {
-        const batch = ids.slice(i, i + batchSize);
-        setRepairProgress(`修補中… ${i}/${total}（本批 ${batch.length} 題）`);
-        try {
-          const res = await fetch("/api/admin/questions/enhance-batch", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: batch }),
+      for (let i = 0; i < ids.length; i += BATCH_SIZE * CONCURRENCY) {
+        // Build up to CONCURRENCY sub-batches for this round
+        const subBatches: Array<{ ids: string[]; keyOffset: number }> = [];
+        for (let j = 0; j < CONCURRENCY; j++) {
+          const start = i + j * BATCH_SIZE;
+          if (start >= ids.length) break;
+          subBatches.push({
+            ids: ids.slice(start, start + BATCH_SIZE),
+            keyOffset: j * 2, // spread across keys: 0,2,4,6,8
           });
-          const data = await res.json();
-          if (res.ok) {
-            enhancedTotal += data.enhanced ?? 0;
-            skippedTotal += data.skipped ?? 0;
-          } else {
-            skippedTotal += batch.length;
-            console.warn("batch failed:", data.error);
-          }
-        } catch (e) {
-          skippedTotal += batch.length;
-          console.warn("batch network error:", e);
         }
-        // Respect Gemini free-tier RPM limits — give keys 3 s to recover
-        if (i + batchSize < ids.length) {
-          await new Promise((r) => setTimeout(r, 3000));
+
+        setRepairProgress(`修補中… ${i}/${total}（同時處理 ${subBatches.length} 批 / 每批 ${BATCH_SIZE} 題）`);
+
+        const results = await Promise.allSettled(
+          subBatches.map(({ ids: batchIds, keyOffset }) =>
+            fetch("/api/admin/questions/enhance-batch", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: batchIds, keyOffset }),
+            }).then((r) => r.json())
+          )
+        );
+
+        for (let j = 0; j < results.length; j++) {
+          const result = results[j];
+          if (result.status === "fulfilled" && result.value?.enhanced != null) {
+            enhancedTotal += result.value.enhanced as number;
+            skippedTotal += (result.value.skipped as number) ?? 0;
+          } else {
+            skippedTotal += subBatches[j].ids.length;
+            if (result.status === "rejected") console.warn("batch error:", result.reason);
+            else console.warn("batch failed:", (result.value as any)?.error);
+          }
+        }
+
+        // Give Gemini keys a short breather between rounds
+        if (i + BATCH_SIZE * CONCURRENCY < ids.length) {
+          await new Promise((r) => setTimeout(r, 2000));
         }
       }
 

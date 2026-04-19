@@ -124,14 +124,19 @@ export async function POST(req: NextRequest) {
   if (ids.length === 0) {
     return NextResponse.json({ error: "ids required (max 30)" }, { status: 400 });
   }
+  // keyOffset lets concurrent callers start from different keys so they don't
+  // all pile onto key_1 and cascade through identical 429s.
+  const keyOffset = typeof body.keyOffset === "number" ? Math.abs(body.keyOffset) : 0;
 
-  const apiKeys = getApiKeys();
-  if (apiKeys.length === 0) {
+  const allKeys = getApiKeys();
+  if (allKeys.length === 0) {
     return NextResponse.json(
       { error: "未設定 Gemini API Key（GEMINI_API_KEY_1 ~ GEMINI_API_KEY_10）" },
       { status: 500 }
     );
   }
+  const start = keyOffset % allKeys.length;
+  const apiKeys = [...allKeys.slice(start), ...allKeys.slice(0, start)];
 
   const rows = await prisma.question.findMany({
     where: { id: { in: ids } },
