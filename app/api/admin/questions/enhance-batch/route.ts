@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin";
 import { getApiKeys } from "@/lib/generateBatch";
 import { geminiEnhanceBatch } from "@/lib/geminiEnhance";
 
-const MAX_IDS = 30;
+const MAX_IDS = 100;
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();

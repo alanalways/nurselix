@@ -30,8 +30,8 @@ declare global {
   var __repairAllJob: RepairJob | undefined;
 }
 
-const BATCH_SIZE = 15;
-const CONCURRENCY = 5;
+const BATCH_SIZE = 100;
+const CONCURRENCY = 3; // 3×100 = 300 questions per round; large batches take longer so RPM pressure is low
 
 async function runRepair(jobId: string) {
   const job = global.__repairAllJob!;
