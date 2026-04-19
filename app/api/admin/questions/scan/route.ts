@@ -50,7 +50,8 @@ export async function GET(req: Request) {
 
   const issueFilters: Record<string, any> = {
     missing_explanation: {
-      OR: [{ explanationZh: "" }, { explanationZh: "暫無解析" }, { explanationZh: null }],
+      // explanationZh is non-nullable in schema; null filter would be rejected by Prisma
+      OR: [{ explanationZh: "" }, { explanationZh: "暫無解析" }],
     },
     missing_rationales: { optionRationales: { equals: null as any } },
     missing_stem_zh: { OR: [{ stemZh: null }, { stemZh: "" }] },
