@@ -6,15 +6,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { getApiKeys } from "@/lib/generateBatch";
+import { MODEL_PRIORITY } from "@/lib/geminiModels";
 
-// Priority: 3.1 series → 3.0 series → 2.5-pro → 2.5-flash → 2.5-flash-lite
-export const ENHANCE_MODEL_PRIORITY = [
-  "gemini-3.1-flash-lite-preview",
-  "gemini-3-flash-preview",
-  "gemini-2.5-pro",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-];
+export const ENHANCE_MODEL_PRIORITY: string[] = MODEL_PRIORITY;
 
 const SYSTEM_INSTRUCTION = `你是資深 NCLEX-RN 護理教學專家，擅長以繁體中文為 NCLEX 題目撰寫詳細、精確、有臨床實用性的解析，目標讀者是準備赴美執業的台灣護理師。
 
@@ -134,7 +128,7 @@ export async function geminiEnhanceBatch(
   // Put preferred model first if valid, keep rest as fallbacks
   const modelPriority = preferModel && ENHANCE_MODEL_PRIORITY.includes(preferModel)
     ? [preferModel, ...ENHANCE_MODEL_PRIORITY.filter((m) => m !== preferModel)]
-    : ENHANCE_MODEL_PRIORITY;
+    : [...ENHANCE_MODEL_PRIORITY];
 
   const rows = await prisma.question.findMany({
     where: { id: { in: ids } },

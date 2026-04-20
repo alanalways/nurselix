@@ -6,7 +6,7 @@ import { AlertCircle, Archive, Check, Loader2, Sparkles, Wand2, X, Zap } from "l
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import type { RepairJob } from "@/app/api/admin/questions/repair-all/route";
-import { ENHANCE_MODEL_PRIORITY } from "@/lib/geminiEnhance";
+import { GEMINI_MODELS } from "@/lib/geminiModels";
 
 interface ScanRow {
   id: string;
@@ -72,7 +72,7 @@ export default function QuestionQualityPage() {
   const [archiving, setArchiving] = useState(false);
   const [archiveResult, setArchiveResult] = useState<string | null>(null);
   const [repairJob, setRepairJob] = useState<RepairJob | null>(null);
-  const [repairModel, setRepairModel] = useState<string>(ENHANCE_MODEL_PRIORITY[0]);
+  const [repairModel, setRepairModel] = useState<string>(GEMINI_MODELS[0].id);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -348,8 +348,10 @@ export default function QuestionQualityPage() {
               disabled={repairJob?.status === "running"}
               className="h-8 px-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] disabled:opacity-50"
             >
-              {ENHANCE_MODEL_PRIORITY.map((m) => (
-                <option key={m} value={m}>{m}</option>
+              {GEMINI_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}（{m.rpdPerKey.toLocaleString()} RPD/key）
+                </option>
               ))}
             </select>
             <Button

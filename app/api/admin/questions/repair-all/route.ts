@@ -13,7 +13,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin";
-import { geminiEnhanceBatch, ENHANCE_MODEL_PRIORITY } from "@/lib/geminiEnhance";
+import { geminiEnhanceBatch } from "@/lib/geminiEnhance";
+import { MODEL_PRIORITY } from "@/lib/geminiModels";
 
 export interface RepairJob {
   id: string;
@@ -150,9 +151,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const preferModel: string =
-    typeof body.preferModel === "string" && ENHANCE_MODEL_PRIORITY.includes(body.preferModel)
+    typeof body.preferModel === "string" && MODEL_PRIORITY.includes(body.preferModel)
       ? body.preferModel
-      : ENHANCE_MODEL_PRIORITY[0];
+      : MODEL_PRIORITY[0];
 
   const jobId = Date.now().toString();
   global.__repairAllJob = {
