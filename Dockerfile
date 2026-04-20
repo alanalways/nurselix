@@ -24,6 +24,9 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 
 # ===== Stage 2: Builder =====
 FROM node:20-alpine AS builder
+# libc6-compat is required for Next.js SWC binary on Alpine (musl).
+# Without it, @next/swc-linux-x64-musl fails to load and the build crashes.
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -45,6 +48,7 @@ RUN --mount=type=cache,target=/app/.next/cache \
 
 # ===== Stage 3: Runner =====
 FROM node:20-alpine AS runner
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 ENV NODE_ENV=production
