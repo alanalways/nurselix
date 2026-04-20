@@ -1,10 +1,9 @@
 import { anthropic } from "@/lib/ai/claude";
 import { calcCostUsd } from "@/lib/ai/costCalc";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getApiKeys } from "@/lib/generateBatch";
+import { MODEL_PRIORITY } from "@/lib/geminiModels";
 
 export type VocabProvider = "claude" | "gemini";
-
-const GEMINI_MODEL = "gemini-2.5-flash";
 
 export const VOCAB_CATEGORIES = [
   "Pharmacology",
@@ -159,38 +158,64 @@ async function callClaude(opts: { category: string; tier: number; count: number;
   return { words: [], usage, costUsd, raw, provider: "claude", modelUsed: MODEL };
 }
 
-function pickGeminiKey(): string {
-  // Try numbered keys first (GEMINI_API_KEY_1 ~ GEMINI_API_KEY_10), then fallbacks
-  for (let i = 1; i <= 10; i++) {
-    const k = process.env[`GEMINI_API_KEY_${i}`]?.trim();
-    if (k) return k;
-  }
-  const fallback = process.env.GOOGLE_AI_API_KEY?.trim() ?? process.env.GEMINI_API_KEY?.trim();
-  if (fallback) return fallback;
-  throw new Error("未設定 Gemini API Key（GEMINI_API_KEY_1 ~ GEMINI_API_KEY_10）");
-}
-
 async function callGemini(opts: { category: string; tier: number; count: number; existingWords: string[] }): Promise<BatchResult> {
-  const apiKey = pickGeminiKey();
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+  const apiKeys = getApiKeys();
+  if (apiKeys.length === 0) throw new Error("未設定 Gemini API Key（GEMINI_API_KEY_1 ~ GEMINI_API_KEY_10）");
 
   const systemText = SYSTEM_PROMPT.replace("{count}", String(opts.count));
   const fewShotText = `以下為格式範例（這些字已收錄，不可重複）：\n${JSON.stringify(FEW_SHOT, null, 2)}`;
   const userPrompt = buildVocabPrompt(opts);
   const fullPrompt = `${systemText}\n\n${fewShotText}\n\n${userPrompt}`;
 
-  const result = await model.generateContent(fullPrompt);
-  const raw = result.response.text();
+  let raw = "";
+  let lastError = "";
+  let usedModel = "";
+  let promptTokens = 0;
+  let outputTokens = 0;
 
-  const promptTokens = result.response.usageMetadata?.promptTokenCount ?? 0;
-  const outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0;
-  // Gemini 2.0 Flash pricing: $0.10/1M input, $0.40/1M output
+  // Try each model in priority order, rotate through all keys per model
+  outer: for (const model of MODEL_PRIORITY) {
+    for (const key of apiKeys) {
+      try {
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { role: "system", parts: [{ text: systemText }] },
+              contents: [{ role: "user", parts: [{ text: `${fewShotText}\n\n${userPrompt}` }] }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 8192,
+                responseMimeType: "application/json",
+              },
+            }),
+            signal: AbortSignal.timeout(120_000),
+          }
+        );
+        if (resp.status === 429) { lastError = `${model} rate limited`; continue; }
+        if (!resp.ok) { lastError = `${model} HTTP ${resp.status}`; continue; }
+        const data = await resp.json();
+        const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        if (!text) { lastError = `${model}: empty response`; continue; }
+        raw = text;
+        usedModel = model;
+        promptTokens = data.usageMetadata?.promptTokenCount ?? 0;
+        outputTokens = data.usageMetadata?.candidatesTokenCount ?? 0;
+        break outer;
+      } catch (err) {
+        lastError = `${model}: ${String(err).slice(0, 120)}`;
+      }
+    }
+  }
+
+  if (!raw) throw new Error(`Gemini 所有模型均失敗。最後錯誤：${lastError}`);
+
+  // Gemini 3.1-flash-lite pricing estimate: ~$0.10/1M input, $0.40/1M output
   const costUsd = (promptTokens * 0.10 + outputTokens * 0.40) / 1_000_000;
-
   const usage = { inputTokens: promptTokens, outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 };
-  return { words: [], usage, costUsd, raw, provider: "gemini", modelUsed: GEMINI_MODEL };
+  return { words: [], usage, costUsd, raw, provider: "gemini", modelUsed: usedModel };
 }
 
 export async function generateVocabBatch(opts: {
