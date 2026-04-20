@@ -24,19 +24,22 @@ export const DOMAIN_TARGETS: Record<string, number> = {
   "Physiological Adaptation": 1980,
 };
 
+// Free-tier RPD per API key (requests per day)
 export const MODEL_RPD: Record<string, number> = {
-  "gemini-3-flash-preview": 1500,
-  "gemini-2.5-flash": 20,
-  "gemini-2.5-pro": 100,
+  "gemini-3.1-flash-lite-preview": 1500,
+  "gemini-3-flash-preview":        1500,
+  "gemini-2.5-pro":                 100,
+  "gemini-2.5-flash":                20,
+  "gemini-2.5-flash-lite":         1000,
 };
 
-// Auto-mode priority: smartest first, fallback to faster/cheaper tiers on
-// rate-limit. Keeps output quality high when quota is available.
-// Minimum model: gemini-2.5-flash (no lite or 2.0 variants).
+// Auto-mode priority: 3.1 series first (highest RPD), then 2.5-pro, then flash.
 export const AUTO_MODEL_PRIORITY = [
-  "gemini-2.5-pro",
+  "gemini-3.1-flash-lite-preview",
   "gemini-3-flash-preview",
+  "gemini-2.5-pro",
   "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
 ];
 
 const IRT: Record<string, { a: number; b: number }> = {

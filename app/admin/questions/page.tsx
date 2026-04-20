@@ -45,11 +45,13 @@ const DOMAIN_TARGETS: Record<string, number> = {
   "Physiological Adaptation": 1980,
 };
 
-// Free-tier RPD per project per model (minimum: gemini-2.5-flash)
+// Free-tier RPD per API key
 const MODEL_RPD: Record<string, number> = {
-  "gemini-3-flash-preview": 1500,
-  "gemini-2.5-flash": 20,
-  "gemini-2.5-pro": 100,
+  "gemini-3.1-flash-lite-preview": 1500,
+  "gemini-3-flash-preview":        1500,
+  "gemini-2.5-pro":                 100,
+  "gemini-2.5-flash":                20,
+  "gemini-2.5-flash-lite":         1000,
 };
 
 const statusBadge = {
@@ -461,10 +463,18 @@ export default function AdminQuestionsPage() {
                 onChange={(e) => setGenModel(e.target.value)}
                 className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] outline-none"
               >
-                <option value="auto">自動（最聰明 → 最快，遞補）</option>
-                <option value="gemini-2.5-pro">2.5 Pro（最聰明，100 RPD/key）</option>
-                <option value="gemini-3-flash-preview">3 Flash Preview（1,500 RPD/key）</option>
-                <option value="gemini-2.5-flash">2.5 Flash（20 RPD/key）</option>
+                <option value="auto">自動（3.1 → 3.0 → 2.5-pro → 2.5-flash，依序遞補）</option>
+                <optgroup label="── Gemini 3.1 系列 ──">
+                  <option value="gemini-3.1-flash-lite-preview">3.1 Flash Lite Preview（1,500 RPD/key）</option>
+                </optgroup>
+                <optgroup label="── Gemini 3.0 系列 ──">
+                  <option value="gemini-3-flash-preview">3 Flash Preview（1,500 RPD/key）</option>
+                </optgroup>
+                <optgroup label="── Gemini 2.5 系列 ──">
+                  <option value="gemini-2.5-pro">2.5 Pro（100 RPD/key，最高品質）</option>
+                  <option value="gemini-2.5-flash">2.5 Flash（20 RPD/key）</option>
+                  <option value="gemini-2.5-flash-lite">2.5 Flash Lite（1,000 RPD/key）</option>
+                </optgroup>
               </select>
 
               <select

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const model = String(body.model ?? "gemini-2.5-flash");
+  const model = String(body.model ?? "gemini-3.1-flash-lite-preview");
   const rawDomain = String(body.domain ?? "auto");
   const domain = rawDomain === "auto" || !rawDomain ? await pickAutoDomain() : rawDomain;
 
