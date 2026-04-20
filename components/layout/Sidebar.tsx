@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Brain, BookOpen, Calendar, BarChart3,
   Trophy, Bookmark, Settings, ChevronLeft, ChevronRight,
-  LogOut, Star, Shield, Sparkles, Zap, Globe
+  LogOut, Star, Shield, Sparkles, Zap, Globe, Library
 } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { cn } from "@/lib/utils/cn";
@@ -17,6 +17,7 @@ const navItems = [
   { href: "/", icon: LayoutDashboard, label: "儀表板" },
   { href: "/nclex", icon: Brain, label: "NCLEX 練習", badge: "主要" },
   { href: "/review", icon: BookOpen, label: "錯題複習" },
+  { href: "/vocab", icon: Library, label: "單字詞庫", badge: "NEW" },
   { href: "/daily-challenge", icon: Calendar, label: "每日挑戰" },
   { href: "/insights", icon: Sparkles, label: "AI 洞察", badge: "Hermes" },
   { href: "/stats", icon: BarChart3, label: "學習統計" },

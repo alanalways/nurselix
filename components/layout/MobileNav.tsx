@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Brain, BookOpen, BarChart3, UserCircle, X, LogOut, Settings, Shield, Zap, Trophy } from "lucide-react";
+import { LayoutDashboard, Brain, BookOpen, BarChart3, UserCircle, X, LogOut, Settings, Shield, Zap, Library } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -20,9 +20,9 @@ const planVariant: Record<string, BadgeVariant> = {
 const tabs = [
   { href: "/", icon: LayoutDashboard, label: "首頁" },
   { href: "/nclex", icon: Brain, label: "NCLEX" },
+  { href: "/vocab", icon: Library, label: "單字" },
   { href: "/review", icon: BookOpen, label: "錯題" },
   { href: "/stats", icon: BarChart3, label: "統計" },
-  { href: "/achievements", icon: Trophy, label: "成就" },
 ];
 
 export default function MobileNav() {

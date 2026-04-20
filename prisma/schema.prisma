@@ -48,6 +48,8 @@ model User {
   orders           Order[]
   learnerProfile   LearnerProfile?
   hermesReports    HermesReport[]
+  vocabProgress    UserVocabProgress[]
+  vocabSessions    VocabSession[]
 }
 
 model Account {
@@ -595,6 +597,83 @@ model GenerationJob {
   updatedAt   DateTime @updatedAt
 
   @@index([status, startedAt(sort: Desc)])
+}
+
+// ===== Vocabulary (NCLEX-RN) =====
+
+model VocabularyWord {
+  id           String   @id @default(uuid())
+  word         String   @unique
+  partOfSpeech String?                // noun | verb | adjective | abbr
+  definitionEn String
+  definitionZh String
+  category     String                  // Pharmacology | Assessment | Pathophysiology | ...
+  tier         Int      @default(1)    // 1 foundation | 2 clinical | 3 advanced
+  difficulty   Difficulty @default(MEDIUM)
+  exampleEn    String?
+  exampleZh    String?
+  synonyms     String[] @default([])
+  memoryHook   String?                 // etymology / mnemonic (no phonetics)
+  tags         String[] @default([])
+  status       QuestionStatus @default(APPROVED)
+  createdBy    String   @default("claude")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  progress     UserVocabProgress[]
+
+  @@index([category])
+  @@index([tier])
+  @@index([status])
+}
+
+// SM-2 per-user per-word progress
+model UserVocabProgress {
+  id           String   @id @default(uuid())
+  userId       String
+  wordId       String
+  repetition   Int      @default(0)
+  easiness     Float    @default(2.5)
+  interval     Int      @default(1)       // days until next review
+  nextReview   DateTime @default(now())
+  lastResult   String?                    // again | hard | good | easy
+  seenCount    Int      @default(0)
+  correctCount Int      @default(0)
+  mastered     Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word VocabularyWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+  @@index([userId, nextReview])
+  @@index([userId, mastered])
+}
+
+enum VocabSessionMode {
+  FLASHCARD     // 正面英文 → 翻面看中文 + 例句
+  QUIZ          // 英文 → 中文四選一
+  SPELLING      // 中文 → 拼出英文單字
+  DEFINITION    // 英文定義 → 選正確單字
+}
+
+model VocabSession {
+  id            String           @id @default(uuid())
+  userId        String
+  mode          VocabSessionMode
+  tier          Int?
+  category      String?
+  wordIds       String[]         @default([])
+  totalWords    Int              @default(0)
+  correctCount  Int              @default(0)
+  timeSpentSec  Int              @default(0)
+  startedAt     DateTime         @default(now())
+  endedAt       DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt(sort: Desc)])
 }
 
 // ===== API Usage / Cost Tracking =====

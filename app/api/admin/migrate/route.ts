@@ -9,7 +9,7 @@ import path from "node:path";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const MIGRATIONS = ["phase10_hermes.sql"];
+const MIGRATIONS = ["phase10_hermes.sql", "phase13_vocabulary.sql"];
 
 export async function POST() {
   const session = await auth();
