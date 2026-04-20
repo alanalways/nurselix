@@ -84,8 +84,10 @@ export async function POST(req: NextRequest) {
 
   const { categories, tier, totalPerCategory, batchSize, provider } = parsed.data;
 
-  if (provider === "gemini" && !process.env.GOOGLE_AI_API_KEY && !process.env.GEMINI_API_KEY) {
-    return NextResponse.json({ error: "GOOGLE_AI_API_KEY missing" }, { status: 503 });
+  const hasGeminiKey = Array.from({ length: 10 }, (_, i) => process.env[`GEMINI_API_KEY_${i + 1}`]).some(Boolean)
+    || !!process.env.GOOGLE_AI_API_KEY || !!process.env.GEMINI_API_KEY;
+  if (provider === "gemini" && !hasGeminiKey) {
+    return NextResponse.json({ error: "未設定 Gemini API Key（GEMINI_API_KEY_1 ~ GEMINI_API_KEY_10）" }, { status: 503 });
   }
   if (provider !== "gemini" && !process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "ANTHROPIC_API_KEY missing" }, { status: 503 });

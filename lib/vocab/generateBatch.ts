@@ -159,9 +159,19 @@ async function callClaude(opts: { category: string; tier: number; count: number;
   return { words: [], usage, costUsd, raw, provider: "claude", modelUsed: MODEL };
 }
 
+function pickGeminiKey(): string {
+  // Try numbered keys first (GEMINI_API_KEY_1 ~ GEMINI_API_KEY_10), then fallbacks
+  for (let i = 1; i <= 10; i++) {
+    const k = process.env[`GEMINI_API_KEY_${i}`]?.trim();
+    if (k) return k;
+  }
+  const fallback = process.env.GOOGLE_AI_API_KEY?.trim() ?? process.env.GEMINI_API_KEY?.trim();
+  if (fallback) return fallback;
+  throw new Error("未設定 Gemini API Key（GEMINI_API_KEY_1 ~ GEMINI_API_KEY_10）");
+}
+
 async function callGemini(opts: { category: string; tier: number; count: number; existingWords: string[] }): Promise<BatchResult> {
-  const apiKey = process.env.GOOGLE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GOOGLE_AI_API_KEY is not set");
+  const apiKey = pickGeminiKey();
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
