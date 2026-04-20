@@ -5,9 +5,22 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# Cache the npm download cache across builds — saves ~2 min on repeat builds
+
+# Make npm resilient to flaky network on the build host. Zeabur has
+# intermittently ECONNRESET'd against registry.npmjs.org during peak hours.
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 600000
+
+# Cache the npm download cache across builds — saves ~2 min on repeat builds.
+# Retry the install up to 3 times on transient network failures.
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
-    NODE_ENV=development npm ci --legacy-peer-deps
+    for i in 1 2 3; do \
+      NODE_ENV=development npm ci --legacy-peer-deps --no-audit --no-fund --prefer-offline && break; \
+      echo "npm ci failed (attempt $i), retrying in 15s..."; \
+      sleep 15; \
+    done
 
 # ===== Stage 2: Builder =====
 FROM node:20-alpine AS builder
