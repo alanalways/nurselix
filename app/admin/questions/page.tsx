@@ -456,7 +456,7 @@ export default function AdminQuestionsPage() {
                 onChange={(e) => setGenModel(e.target.value)}
                 className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)] outline-none"
               >
-                <option value="auto">自動（3.1 → 3.0 → 2.5-pro → 2.5-flash，依序遞補）</option>
+                <option value="auto">自動（3.1 Flash Lite → 2.5 Flash Lite → 3 Flash → 2.5 Flash）</option>
                 {(["3.1", "3.0", "2.5"] as const).map((series) => {
                   const models = GEMINI_MODELS.filter((m) => m.series === series);
                   if (models.length === 0) return null;
@@ -464,7 +464,7 @@ export default function AdminQuestionsPage() {
                     <optgroup key={series} label={`── Gemini ${series} 系列 ──`}>
                       {models.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.label}（{m.rpdPerKey.toLocaleString()} RPD/key）
+                          {m.label}（RPD {m.rpdPerKey} · RPM {m.rpmPerKey}/key）
                         </option>
                       ))}
                     </optgroup>

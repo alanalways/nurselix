@@ -1,66 +1,55 @@
 /**
- * Client-safe Gemini model constants.
- * NO server-only imports here — this file is used by both client components
- * and server code.
+ * Client-safe Gemini model constants — NO server-only imports.
  *
- * Free-tier RPD (requests per day per API key) based on Google AI docs:
- *   gemini-3.x preview : ~1,500 RPD  (preview models have generous free quota)
- *   gemini-2.5-pro     :    100 RPD
- *   gemini-2.5-flash   :     20 RPD  (reduced Dec 2025)
- *   gemini-2.5-flash-lite: 1,000 RPD
+ * RPM / RPD values are per API key, read directly from Google AI Studio
+ * rate-limit dashboard (aistudio.google.com/rate-limit).
+ *
+ * Models with RPD = 0 on the free tier are excluded.
+ * Effective daily quota with 10 rotating keys = RPD × 10.
  */
 
 export interface GeminiModelInfo {
   id: string;
   label: string;
   series: string;
+  rpmPerKey: number;
   rpdPerKey: number;
   note: string;
 }
 
-// Ordered by user-specified priority: 3.1 → 3.0 → 2.5-pro → 2.5-flash → 2.5-flash-lite
+// Ordered by priority: 3.1 series first (highest RPD), then by RPM desc
 export const GEMINI_MODELS: GeminiModelInfo[] = [
   {
-    id: "gemini-3.1-pro-preview",
-    label: "3.1 Pro Preview",
-    series: "3.1",
-    rpdPerKey: 1500,
-    note: "最新 3.1 Pro，1,500 RPD/key",
-  },
-  {
     id: "gemini-3.1-flash-lite-preview",
-    label: "3.1 Flash Lite Preview",
+    label: "3.1 Flash Lite",
     series: "3.1",
-    rpdPerKey: 1500,
-    note: "3.1 Flash Lite，1,500 RPD/key",
-  },
-  {
-    id: "gemini-3-flash-preview",
-    label: "3 Flash Preview",
-    series: "3.0",
-    rpdPerKey: 1500,
-    note: "3.0 Flash，1,500 RPD/key",
-  },
-  {
-    id: "gemini-2.5-pro",
-    label: "2.5 Pro",
-    series: "2.5",
-    rpdPerKey: 100,
-    note: "最高品質，100 RPD/key",
-  },
-  {
-    id: "gemini-2.5-flash",
-    label: "2.5 Flash",
-    series: "2.5",
-    rpdPerKey: 20,
-    note: "20 RPD/key（Dec 2025 調降後）",
+    rpmPerKey: 15,
+    rpdPerKey: 500,
+    note: "最高配額，500 RPD/key · 15 RPM/key",
   },
   {
     id: "gemini-2.5-flash-lite",
     label: "2.5 Flash Lite",
     series: "2.5",
-    rpdPerKey: 1000,
-    note: "1,000 RPD/key，速度最快",
+    rpmPerKey: 10,
+    rpdPerKey: 20,
+    note: "20 RPD/key · 10 RPM/key",
+  },
+  {
+    id: "gemini-3-flash-preview",
+    label: "3 Flash Preview",
+    series: "3.0",
+    rpmPerKey: 5,
+    rpdPerKey: 20,
+    note: "20 RPD/key · 5 RPM/key",
+  },
+  {
+    id: "gemini-2.5-flash",
+    label: "2.5 Flash",
+    series: "2.5",
+    rpmPerKey: 5,
+    rpdPerKey: 20,
+    note: "20 RPD/key · 5 RPM/key",
   },
 ];
 

@@ -350,7 +350,7 @@ export default function QuestionQualityPage() {
             >
               {GEMINI_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.label}（{m.rpdPerKey.toLocaleString()} RPD/key）
+                  {m.label}（RPD {m.rpdPerKey} · RPM {m.rpmPerKey}/key）
                 </option>
               ))}
             </select>
