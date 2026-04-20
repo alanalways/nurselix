@@ -1,20 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, AlertCircle } from "lucide-react";
+import { Mail, Lock, User, AlertCircle, ExternalLink } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { signIn } from "next-auth/react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
 
+function detectInAppBrowser(): string | null {
+  if (typeof navigator === "undefined") return null;
+  const ua = navigator.userAgent;
+  if (/Line\//i.test(ua)) return "LINE";
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return "Facebook";
+  if (/Instagram/i.test(ua)) return "Instagram";
+  if (/MicroMessenger/i.test(ua)) return "WeChat";
+  if (/Threads/i.test(ua)) return "Threads";
+  if (/Twitter/i.test(ua)) return "X (Twitter)";
+  if (/Discord/i.test(ua)) return "Discord";
+  if (/TikTok/i.test(ua)) return "TikTok";
+  if (/wv\)/i.test(ua)) return "App 內建瀏覽器";
+  return null;
+}
+
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [inAppBrowser, setInAppBrowser] = useState<string | null>(null);
+
+  useEffect(() => { setInAppBrowser(detectInAppBrowser()); }, []);
 
   // Step 1 fields
   const [name, setName] = useState("");
@@ -126,11 +144,30 @@ export default function RegisterPage() {
 
         {step === 1 && (
           <>
+            {/* In-app browser warning */}
+            {inAppBrowser && (
+              <div className="flex flex-col gap-2 p-4 mb-4 rounded-xl bg-amber-500/10 border border-amber-500/40 text-sm">
+                <div className="flex items-start gap-2 text-amber-400 font-medium">
+                  <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                  在 {inAppBrowser} 內無法使用 Google 登入
+                </div>
+                <p className="text-[var(--text-secondary)] text-xs leading-relaxed">
+                  Google 封鎖了 App 內建瀏覽器的登入功能。請點下方在 Chrome 或 Safari 開啟，或改用電子郵件註冊。
+                </p>
+                <button
+                  onClick={() => window.open(window.location.href, "_blank")}
+                  className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 underline"
+                >
+                  <ExternalLink size={12} /> 在外部瀏覽器開啟
+                </button>
+              </div>
+            )}
+
             {/* Google OAuth */}
             <button
-              onClick={handleGoogle}
-              disabled={googleLoading}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] hover:border-[var(--gold)] transition-colors mb-4 disabled:opacity-60"
+              onClick={inAppBrowser ? undefined : handleGoogle}
+              disabled={googleLoading || !!inAppBrowser}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] hover:border-[var(--gold)] transition-colors mb-4 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
