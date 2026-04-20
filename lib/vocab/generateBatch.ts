@@ -1,5 +1,10 @@
 import { anthropic } from "@/lib/ai/claude";
 import { calcCostUsd } from "@/lib/ai/costCalc";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+export type VocabProvider = "claude" | "gemini";
+
+const GEMINI_MODEL = "gemini-2.0-flash";
 
 export const VOCAB_CATEGORIES = [
   "Pharmacology",
@@ -118,14 +123,11 @@ export interface BatchResult {
   usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
   costUsd: number;
   raw: string;
+  provider: VocabProvider;
+  modelUsed: string;
 }
 
-export async function generateVocabBatch(opts: {
-  category: string;
-  tier: number;
-  count: number;
-  existingWords: string[];
-}): Promise<BatchResult> {
+async function callClaude(opts: { category: string; tier: number; count: number; existingWords: string[] }): Promise<BatchResult> {
   const prompt = buildVocabPrompt(opts);
 
   const msg = await anthropic.messages.create({
@@ -154,6 +156,50 @@ export async function generateVocabBatch(opts: {
     cacheWriteTokens: (msg.usage as any).cache_creation_input_tokens ?? 0,
   };
   const costUsd = calcCostUsd(MODEL, usage);
+  return { words: [], usage, costUsd, raw, provider: "claude", modelUsed: MODEL };
+}
+
+async function callGemini(opts: { category: string; tier: number; count: number; existingWords: string[] }): Promise<BatchResult> {
+  const apiKey = process.env.GOOGLE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_AI_API_KEY is not set");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+
+  const systemText = SYSTEM_PROMPT.replace("{count}", String(opts.count));
+  const fewShotText = `以下為格式範例（這些字已收錄，不可重複）：\n${JSON.stringify(FEW_SHOT, null, 2)}`;
+  const userPrompt = buildVocabPrompt(opts);
+  const fullPrompt = `${systemText}\n\n${fewShotText}\n\n${userPrompt}`;
+
+  const result = await model.generateContent(fullPrompt);
+  const raw = result.response.text();
+
+  const promptTokens = result.response.usageMetadata?.promptTokenCount ?? 0;
+  const outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0;
+  // Gemini 2.0 Flash pricing: $0.10/1M input, $0.40/1M output
+  const costUsd = (promptTokens * 0.10 + outputTokens * 0.40) / 1_000_000;
+
+  const usage = { inputTokens: promptTokens, outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 };
+  return { words: [], usage, costUsd, raw, provider: "gemini", modelUsed: GEMINI_MODEL };
+}
+
+export async function generateVocabBatch(opts: {
+  category: string;
+  tier: number;
+  count: number;
+  existingWords: string[];
+  provider?: VocabProvider;
+}): Promise<BatchResult> {
+  const useProvider = opts.provider ?? "claude";
+  let result: BatchResult;
+
+  if (useProvider === "gemini") {
+    result = await callGemini(opts);
+  } else {
+    result = await callClaude(opts);
+  }
+
+  const { raw, usage, costUsd, provider, modelUsed } = result;
 
   let parsed: GeneratedWord[] = [];
   try {
@@ -179,5 +225,5 @@ export async function generateVocabBatch(opts: {
       memoryHook: (w.memoryHook ?? "").replace(/\[[^\]]*\]/g, "").trim(), // strip any stray phonetic brackets
     }));
 
-  return { words: clean, usage, costUsd, raw };
+  return { words: clean, usage, costUsd, raw, provider, modelUsed };
 }

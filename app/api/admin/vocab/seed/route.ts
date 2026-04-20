@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
-import { generateVocabBatch, VOCAB_CATEGORIES } from "@/lib/vocab/generateBatch";
+import { generateVocabBatch, VOCAB_CATEGORIES, VocabProvider } from "@/lib/vocab/generateBatch";
 
 export async function GET() {
   const guard = await requireAdmin();
@@ -32,15 +32,12 @@ const seedSchema = z.object({
   category: z.enum(VOCAB_CATEGORIES),
   tier: z.number().int().min(1).max(3),
   count: z.number().int().min(5).max(40).default(20),
+  provider: z.enum(["claude", "gemini"]).default("claude"),
 });
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (guard instanceof NextResponse) return guard;
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY missing" }, { status: 503 });
-  }
 
   const body = await req.json().catch(() => ({}));
   const parsed = seedSchema.safeParse(body);
@@ -48,7 +45,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const { category, tier, count } = parsed.data;
+  const { category, tier, count, provider } = parsed.data;
+
+  if (provider === "gemini" && !process.env.GOOGLE_AI_API_KEY && !process.env.GEMINI_API_KEY) {
+    return NextResponse.json({ error: "GOOGLE_AI_API_KEY missing" }, { status: 503 });
+  }
+  if (provider !== "gemini" && !process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY missing" }, { status: 503 });
+  }
 
   // Fetch existing words (all, since uniqueness is global) to avoid duplicates
   const existing = await prisma.vocabularyWord.findMany({
@@ -57,12 +61,12 @@ export async function POST(req: NextRequest) {
   });
   const existingWords = existing.map((w) => w.word);
 
-  const { words, usage, costUsd, raw } = await generateVocabBatch({
-    category, tier, count, existingWords,
+  const { words, usage, costUsd, raw, modelUsed } = await generateVocabBatch({
+    category, tier, count, existingWords, provider: provider as VocabProvider,
   });
 
   if (words.length === 0) {
-    return NextResponse.json({ error: "Claude returned no usable words", raw: raw.slice(0, 600) }, { status: 500 });
+    return NextResponse.json({ error: `${provider === "gemini" ? "Gemini" : "Claude"} returned no usable words`, raw: raw.slice(0, 600) }, { status: 500 });
   }
 
   // Bulk insert skipping duplicates (word is unique)
@@ -85,7 +89,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.apiUsageLog.create({
     data: {
-      model: "claude-sonnet-4-6",
+      model: modelUsed,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       cacheReadTokens: usage.cacheReadTokens,

@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
-import { generateVocabBatch, VOCAB_CATEGORIES } from "@/lib/vocab/generateBatch";
+import { generateVocabBatch, VOCAB_CATEGORIES, VocabProvider } from "@/lib/vocab/generateBatch";
 
 export interface VocabSeedJob {
   id: string;
@@ -26,6 +26,7 @@ export interface VocabSeedJob {
   currentCategory: string | null;
   lastMessage: string;
   totalCostUsd: number;
+  provider: VocabProvider;
 }
 
 declare global {
@@ -63,6 +64,7 @@ const startSchema = z.object({
   tier: z.number().int().min(1).max(3),
   totalPerCategory: z.number().int().min(10).max(500),
   batchSize: z.number().int().min(5).max(30).default(20),
+  provider: z.enum(["claude", "gemini"] as const).default("claude"),
 });
 
 export async function POST(req: NextRequest) {
@@ -74,17 +76,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Job already running", job: existing }, { status: 409 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY missing" }, { status: 503 });
-  }
-
   const body = await req.json().catch(() => ({}));
   const parsed = startSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   }
 
-  const { categories, tier, totalPerCategory, batchSize } = parsed.data;
+  const { categories, tier, totalPerCategory, batchSize, provider } = parsed.data;
+
+  if (provider === "gemini" && !process.env.GOOGLE_AI_API_KEY && !process.env.GEMINI_API_KEY) {
+    return NextResponse.json({ error: "GOOGLE_AI_API_KEY missing" }, { status: 503 });
+  }
+  if (provider !== "gemini" && !process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY missing" }, { status: 503 });
+  }
   const cats = categories && categories.length > 0 ? categories : [...VOCAB_CATEGORIES];
 
   const job: VocabSeedJob = {
@@ -100,10 +105,11 @@ export async function POST(req: NextRequest) {
     currentCategory: cats[0] ?? null,
     lastMessage: "啟動中…",
     totalCostUsd: 0,
+    provider: provider as VocabProvider,
   };
   setJob(job);
 
-  void runVocabSeedJob(job.id, cats, tier, totalPerCategory, batchSize).catch((e) => {
+  void runVocabSeedJob(job.id, cats, tier, totalPerCategory, batchSize, provider as VocabProvider).catch((e) => {
     const cur = getJob();
     if (cur && cur.id === job.id) {
       cur.status = "failed";
@@ -122,6 +128,7 @@ async function runVocabSeedJob(
   tier: number,
   totalPerCategory: number,
   batchSize: number,
+  provider: VocabProvider = "claude",
 ) {
   for (const category of categories) {
     let insertedForCat = 0;
@@ -145,14 +152,15 @@ async function runVocabSeedJob(
       });
 
       try {
-        const { words, usage, costUsd } = await generateVocabBatch({
+        const { words, usage, costUsd, modelUsed } = await generateVocabBatch({
           category, tier, count,
           existingWords: existing.map((w) => w.word),
+          provider,
         });
 
         if (words.length === 0) {
           cur.errors += 1;
-          cur.lastMessage = `${category}：Claude 回傳 0 字，跳過一輪`;
+          cur.lastMessage = `${category}：${provider === "gemini" ? "Gemini" : "Claude"} 回傳 0 字，跳過一輪`;
           cur.updatedAt = Date.now();
           setJob(cur);
           // avoid tight retry loops
@@ -178,7 +186,7 @@ async function runVocabSeedJob(
 
         await prisma.apiUsageLog.create({
           data: {
-            model: "claude-sonnet-4-6",
+            model: modelUsed,
             inputTokens: usage.inputTokens,
             outputTokens: usage.outputTokens,
             cacheReadTokens: usage.cacheReadTokens,

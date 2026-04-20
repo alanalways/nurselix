@@ -34,6 +34,7 @@ interface SeedJob {
   currentCategory: string | null;
   lastMessage: string;
   totalCostUsd: number;
+  provider?: "claude" | "gemini";
 }
 
 export default function AdminVocabPage() {
@@ -51,6 +52,7 @@ export default function AdminVocabPage() {
   const [seedPerCat, setSeedPerCat] = useState(50);
   const [seedBatch, setSeedBatch] = useState(15);
   const [seedCats, setSeedCats] = useState<string[]>([]);
+  const [seedProvider, setSeedProvider] = useState<"claude" | "gemini">("claude");
   const [job, setJob] = useState<SeedJob | null>(null);
   const [jobErr, setJobErr] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -129,6 +131,7 @@ export default function AdminVocabPage() {
         totalPerCategory: seedPerCat,
         batchSize: seedBatch,
         categories: seedCats.length > 0 ? seedCats : undefined,
+        provider: seedProvider,
       }),
     });
     const body = await res.json();
@@ -193,9 +196,26 @@ export default function AdminVocabPage() {
 
       {/* Seed panel */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-[var(--gold)]" />
-          <h2 className="font-semibold text-[var(--text-primary)]">用 Claude 產生 NCLEX 單字（背景任務）</h2>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className="text-[var(--gold)]" />
+            <h2 className="font-semibold text-[var(--text-primary)]">產生 NCLEX 單字（背景任務）</h2>
+          </div>
+          <div className="flex items-center gap-1 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg p-0.5">
+            {(["claude", "gemini"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setSeedProvider(p)}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
+                  seedProvider === p
+                    ? "bg-[var(--gold)] text-[#080E1A]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                {p === "claude" ? "Claude" : "Gemini"}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -257,7 +277,10 @@ export default function AdminVocabPage() {
                 }>{job.status}</Badge>
                 {job.currentCategory && <span className="text-xs text-[var(--text-muted)]">目前：{job.currentCategory}</span>}
               </div>
-              <div className="text-xs font-mono text-[var(--text-muted)]">$ {job.totalCostUsd.toFixed(4)}</div>
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] font-mono">
+                <span className="px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">{job.provider ?? "claude"}</span>
+                <span>$ {job.totalCostUsd.toFixed(4)}</span>
+              </div>
             </div>
             <div className="text-sm text-[var(--text-primary)]">{job.lastMessage}</div>
             <div className="mt-3 h-2 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
