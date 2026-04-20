@@ -15,6 +15,7 @@ import ExplanationPanel from "./ExplanationPanel";
 import ReportButton from "./ReportButton";
 import QuestionNote from "./QuestionNote";
 import BookmarkButton from "./BookmarkButton";
+import ExamExitGuard from "./ExamExitGuard";
 import Modal from "@/components/ui/Modal";
 import type { QuestionPayload, SessionMode } from "@/types";
 
@@ -354,6 +355,9 @@ export default function ExamShell({
           <ProgressBar current={questionIndex + 1} total={targetCount} showLabel={false} />
         </div>
       )}
+
+      {/* Friendly reminder + browser-close guard */}
+      <ExamExitGuard active={!finished && !error} />
 
       {/* Error banner */}
       {error && (

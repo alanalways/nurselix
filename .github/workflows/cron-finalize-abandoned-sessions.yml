@@ -1,0 +1,22 @@
+name: Hourly finalize-abandoned-sessions cron
+
+on:
+  schedule:
+    # Runs every hour at minute 15
+    - cron: "15 * * * *"
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  run-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call finalize-abandoned-sessions endpoint
+        run: |
+          STATUS=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/finalize-abandoned-sessions")
+          cat /tmp/body.txt
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: endpoint returned HTTP $STATUS"
+            exit 1
+          fi

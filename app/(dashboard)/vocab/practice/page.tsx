@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, CheckCircle2, XCircle, RotateCw, Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+
+export const dynamic = "force-dynamic";
 
 interface Card {
   wordId: string;
@@ -35,6 +37,14 @@ function normalize(s: string) {
 }
 
 export default function VocabPracticePage() {
+  return (
+    <Suspense fallback={<div className="p-10 flex justify-center"><Loader2 className="animate-spin text-[var(--gold)]" /></div>}>
+      <VocabPracticeInner />
+    </Suspense>
+  );
+}
+
+function VocabPracticeInner() {
   const router = useRouter();
   const params = useSearchParams();
   const sessionIdFromUrl = params.get("sid");
