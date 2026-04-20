@@ -6,6 +6,7 @@ import { AlertCircle, Archive, Check, Loader2, Sparkles, Wand2, X, Zap } from "l
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import type { RepairJob } from "@/app/api/admin/questions/repair-all/route";
+import { ENHANCE_MODEL_PRIORITY } from "@/lib/geminiEnhance";
 
 interface ScanRow {
   id: string;
@@ -71,6 +72,7 @@ export default function QuestionQualityPage() {
   const [archiving, setArchiving] = useState(false);
   const [archiveResult, setArchiveResult] = useState<string | null>(null);
   const [repairJob, setRepairJob] = useState<RepairJob | null>(null);
+  const [repairModel, setRepairModel] = useState<string>(ENHANCE_MODEL_PRIORITY[0]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -252,10 +254,14 @@ export default function QuestionQualityPage() {
     if (!confirm(`將在伺服器背景修補 ${summary.shortExplanation} 道解析過短的題目。\n\n任務會在背景持續執行，關掉頁面不影響進度，回來重新整理可查看狀態。繼續？`)) return;
 
     try {
-      const res = await fetch("/api/admin/questions/repair-all", { method: "POST" });
+      const res = await fetch("/api/admin/questions/repair-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferModel: repairModel }),
+      });
       const data = await res.json();
       if (!res.ok) { alert(data.error ?? "啟動失敗"); return; }
-      setRepairJob(data.job ?? { id: data.jobId, status: "running", total: 0, done: 0, enhanced: 0, skipped: 0, startedAt: new Date().toISOString(), message: "初始化中…" });
+      setRepairJob(data.job ?? { id: data.jobId, status: "running", total: 0, done: 0, enhanced: 0, skipped: 0, passes: 0, preferModel: repairModel, startedAt: new Date().toISOString(), message: "初始化中…" });
       startPolling();
     } catch (e: any) {
       alert("網路錯誤：" + e.message);
@@ -335,16 +341,28 @@ export default function QuestionQualityPage() {
           >
             <Archive size={14} /> 封存所有問題題目
           </Button>
-          <Button
-            size="sm"
-            variant="gold"
-            onClick={handleRepairAllShort}
-            disabled={repairJob?.status === "running" || !summary || summary.shortExplanation === 0}
-          >
-            {repairJob?.status === "running"
-              ? <><Loader2 size={14} className="animate-spin" /> 背景修補中</>
-              : <><Zap size={14} /> 一鍵修補所有過短題目 (Gemini)</>}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={repairModel}
+              onChange={(e) => setRepairModel(e.target.value)}
+              disabled={repairJob?.status === "running"}
+              className="h-8 px-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] disabled:opacity-50"
+            >
+              {ENHANCE_MODEL_PRIORITY.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              variant="gold"
+              onClick={handleRepairAllShort}
+              disabled={repairJob?.status === "running" || !summary || summary.shortExplanation === 0}
+            >
+              {repairJob?.status === "running"
+                ? <><Loader2 size={14} className="animate-spin" /> 背景修補中</>
+                : <><Zap size={14} /> 一鍵修補所有過短題目</>}
+            </Button>
+          </div>
           {archiveResult && (
             <span className="text-xs text-[var(--text-secondary)] ml-2">{archiveResult}</span>
           )}
@@ -370,7 +388,13 @@ export default function QuestionQualityPage() {
               {repairJob.status === "running" ? "背景修補任務進行中" : repairJob.status === "done" ? "修補完成" : "修補失敗"}
               {repairJob.total > 0 && (
                 <span className="ml-2 text-xs font-mono text-[var(--text-muted)]">
-                  {repairJob.done}/{repairJob.total} 題（成功 {repairJob.enhanced}，跳過 {repairJob.skipped}）
+                  {repairJob.done}/{repairJob.total} 題（✓ {repairJob.enhanced}，剩 {repairJob.skipped}）
+                  {(repairJob.passes ?? 0) > 0 && <span className="ml-1">· 第 {repairJob.passes} 輪</span>}
+                </span>
+              )}
+              {repairJob.preferModel && (
+                <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono">
+                  {repairJob.preferModel}
                 </span>
               )}
             </div>

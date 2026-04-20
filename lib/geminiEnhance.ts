@@ -7,13 +7,11 @@
 import { prisma } from "@/lib/prisma";
 import { getApiKeys } from "@/lib/generateBatch";
 
-// Flash-first: free-tier Pro is only 5 RPM / 25 RPD per key
+// Minimum allowed: gemini-2.5-flash. No lite or sub-2.5 models.
 export const ENHANCE_MODEL_PRIORITY = [
   "gemini-2.5-flash",
   "gemini-3-flash-preview",
   "gemini-2.5-pro",
-  "gemini-3.1-flash-lite-preview",
-  "gemini-2.5-flash-lite",
 ];
 
 const SYSTEM_INSTRUCTION = `你是資深 NCLEX-RN 護理教學專家，擅長以繁體中文為 NCLEX 題目撰寫詳細、精確、有臨床實用性的解析，目標讀者是準備赴美執業的台灣護理師。
@@ -118,16 +116,23 @@ ${outputSchema}
 
 /**
  * Fetch question rows, call Gemini, write results to DB.
- * @param ids Question IDs to enhance (max 30)
+ * @param ids Question IDs to enhance (max ~20 for quality)
  * @param keyOffset Rotate key array so concurrent callers use different keys
+ * @param preferModel Put this model first in priority (must be >= gemini-2.5-flash)
  */
 export async function geminiEnhanceBatch(
   ids: string[],
-  keyOffset = 0
+  keyOffset = 0,
+  preferModel?: string
 ): Promise<EnhanceBatchResult> {
   const allKeys = getApiKeys();
   const start = allKeys.length > 0 ? keyOffset % allKeys.length : 0;
   const apiKeys = [...allKeys.slice(start), ...allKeys.slice(0, start)];
+
+  // Put preferred model first if valid, keep rest as fallbacks
+  const modelPriority = preferModel && ENHANCE_MODEL_PRIORITY.includes(preferModel)
+    ? [preferModel, ...ENHANCE_MODEL_PRIORITY.filter((m) => m !== preferModel)]
+    : ENHANCE_MODEL_PRIORITY;
 
   const rows = await prisma.question.findMany({
     where: { id: { in: ids } },
@@ -183,7 +188,7 @@ export async function geminiEnhanceBatch(
   let usedModel = "";
   let usageMeta = { inputTokens: 0, outputTokens: 0 };
 
-  outer: for (const model of ENHANCE_MODEL_PRIORITY) {
+  outer: for (const model of modelPriority) {
     for (const key of apiKeys) {
       try {
         const resp = await fetch(

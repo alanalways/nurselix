@@ -25,21 +25,18 @@ export const DOMAIN_TARGETS: Record<string, number> = {
 };
 
 export const MODEL_RPD: Record<string, number> = {
-  "gemini-3.1-flash-lite-preview": 1500,
   "gemini-3-flash-preview": 1500,
-  "gemini-2.5-flash-lite": 1000,
   "gemini-2.5-flash": 20,
   "gemini-2.5-pro": 100,
 };
 
 // Auto-mode priority: smartest first, fallback to faster/cheaper tiers on
 // rate-limit. Keeps output quality high when quota is available.
+// Minimum model: gemini-2.5-flash (no lite or 2.0 variants).
 export const AUTO_MODEL_PRIORITY = [
   "gemini-2.5-pro",
   "gemini-3-flash-preview",
   "gemini-2.5-flash",
-  "gemini-3.1-flash-lite-preview",
-  "gemini-2.5-flash-lite",
 ];
 
 const IRT: Record<string, { a: number; b: number }> = {
