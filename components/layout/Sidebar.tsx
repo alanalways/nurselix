@@ -17,7 +17,7 @@ const navItems = [
   { href: "/", icon: LayoutDashboard, label: "儀表板" },
   { href: "/nclex", icon: Brain, label: "NCLEX 練習", badge: "主要" },
   { href: "/review", icon: BookOpen, label: "錯題複習" },
-  { href: "/vocab", icon: Library, label: "單字詞庫", badge: "NEW" },
+  { href: "/vocab", icon: Library, label: "單字詞庫" },
   { href: "/daily-challenge", icon: Calendar, label: "每日挑戰" },
   { href: "/insights", icon: Sparkles, label: "AI 洞察", badge: "Hermes" },
   { href: "/stats", icon: BarChart3, label: "學習統計" },
