@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Sparkles, TrendingUp, TrendingDown, Minus, Target,
   AlertCircle, Brain, Loader2, ArrowRight, CheckCircle2,
-  Calendar, Zap, BookOpen, History, Lock,
+  Calendar, Zap, BookOpen, History, Lock, Library,
 } from "lucide-react";
 import Link from "next/link";
 import Badge from "@/components/ui/Badge";
@@ -26,6 +26,14 @@ interface HermesReport {
   recentTrend: string | null;
   weakDomains: string[];
   createdAt: string;
+}
+
+interface VocabSuggestion {
+  dueCount: number;
+  masteredCount: number;
+  totalVocab: number;
+  recommendedCategories: string[];
+  suggestions: { id: string; word: string; definitionZh: string; category: string; tier: number; reason: string }[];
 }
 
 interface Profile {
@@ -73,14 +81,16 @@ export default function InsightsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [reports, setReports] = useState<HermesReport[]>([]);
   const [reportsLocked, setReportsLocked] = useState(false);
+  const [vocab, setVocab] = useState<VocabSuggestion | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [profileRes, reportsRes] = await Promise.all([
+        const [profileRes, reportsRes, vocabRes] = await Promise.all([
           fetch("/api/user/profile", { cache: "no-store" }),
           fetch("/api/user/hermes/reports", { cache: "no-store" }),
+          fetch("/api/hermes/vocab-suggest", { cache: "no-store" }),
         ]);
         if (profileRes.ok) {
           const body = await profileRes.json();
@@ -90,6 +100,9 @@ export default function InsightsPage() {
           const body = await reportsRes.json();
           setReports(body.reports ?? []);
           setReportsLocked(body.locked ?? false);
+        }
+        if (vocabRes.ok) {
+          setVocab(await vocabRes.json());
         }
       } finally {
         setLoading(false);
@@ -221,6 +234,54 @@ export default function InsightsPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Vocab recommendation */}
+      {vocab && vocab.totalVocab > 0 && (
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Library size={16} className="text-[var(--gold)]" />
+              <span className="text-sm font-semibold text-[var(--text-primary)]">今日 NCLEX 單字</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-[var(--warning)]">{vocab.dueCount} 到期</span>
+              <span className="text-[var(--success)]">{vocab.masteredCount} 已掌握</span>
+              <span className="text-[var(--text-muted)]">/ {vocab.totalVocab}</span>
+            </div>
+          </div>
+          {vocab.recommendedCategories.length > 0 && (
+            <div className="text-xs text-[var(--text-muted)] mb-3">
+              根據你的弱點領域，建議優先攻克：
+              {vocab.recommendedCategories.map((c) => (
+                <Badge key={c} variant="gold" className="ml-1.5 text-[10px]">{c}</Badge>
+              ))}
+            </div>
+          )}
+          {vocab.suggestions.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+              {vocab.suggestions.map((w) => (
+                <div key={w.id} className="px-3 py-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-mono font-semibold text-[var(--text-primary)]">{w.word}</div>
+                    <div className="text-xs text-[var(--text-secondary)] truncate">{w.definitionZh}</div>
+                  </div>
+                  <Badge variant={w.reason === "due" ? "warning" : "muted"} className="text-[10px] flex-shrink-0">
+                    {w.reason === "due" ? "到期" : `T${w.tier}`}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-[var(--text-muted)] py-2">沒有待複習的單字，太棒了！</p>
+          )}
+          <Link
+            href="/vocab"
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--gold)] hover:underline"
+          >
+            進入單字練習 <ArrowRight size={12} />
+          </Link>
         </div>
       )}
 
