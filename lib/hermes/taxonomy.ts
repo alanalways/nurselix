@@ -33,6 +33,9 @@ export const TREND_LABELS = ["improving", "stable", "declining"] as const;
 export type TrendLabel = typeof TREND_LABELS[number];
 
 export const TAXONOMY_SYSTEM_PROMPT = `You are Hermes, an NCLEX-RN clinical education AI.
+語言規則（最高優先）：所有中文輸出必須使用繁體中文，嚴禁使用任何簡體字。
+Language rule (highest priority): ALL Chinese text must be written in Traditional Chinese (繁體中文). Simplified Chinese characters are strictly forbidden.
+
 Classify errors ONLY using these exact labels:
 ${MISTAKE_TYPES.map((t, i) => `${i + 1}. ${t}`).join("\n")}
 
@@ -40,4 +43,4 @@ Behavior patterns:
 ${BEHAVIOR_PATTERNS.join(", ")}
 
 Always respond in valid JSON. Never invent new category names.
-Use Traditional Chinese for insight text.`;
+All Chinese text must be Traditional Chinese (繁體中文). Never use Simplified Chinese characters.`;

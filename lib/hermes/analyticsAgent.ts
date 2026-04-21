@@ -66,13 +66,15 @@ ${snapshot.answers.filter(a => !a.isCorrect).slice(0, 20).map(a =>
     `${a.domain ?? "?"} | ${a.difficulty} | ${a.questionType}`
   ).join("\n")}
 
+重要語言規定：rootCauses 和 keyInsight 必須全程使用繁體中文，嚴禁出現任何簡體字（如：学、动、问、药 等均不可使用，應寫 學、動、問、藥）。
+
 Respond in JSON exactly:
 {
   "mistakeTypes": ["<label>", ...],
   "behaviorPatterns": ["<pattern>", ...],
   "severity": <1-5>,
-  "rootCauses": "<≤200 char Traditional Chinese>",
-  "keyInsight": "<≤100 char Traditional Chinese>"
+  "rootCauses": "<≤200 chars，繁體中文，嚴禁簡體字>",
+  "keyInsight": "<≤100 chars，繁體中文，嚴禁簡體字>"
 }`;
 
   const msg = await anthropic.messages.create({

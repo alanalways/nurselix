@@ -70,6 +70,9 @@ export async function runTeachingAgent(
 
   const prompt = `You are Hermes, a senior NCLEX-RN teaching agent. Analyse this learner and produce a structured update.
 
+語言規定（最高優先）：所有中文欄位必須使用繁體中文，嚴禁出現任何簡體字。
+LANGUAGE RULE (highest priority): Every Chinese field must be written in Traditional Chinese (繁體中文). Simplified Chinese is strictly forbidden — never use characters like 学、药、动、问、发、产、时、过 etc.; always use 學、藥、動、問、發、產、時、過 etc.
+
 LEARNER STATE:
 - Sessions analysed: ${profile.sessionsAnalysed}
 - θ (IRT ability): ${sessionTheta.toFixed(2)} → confidence: ${confidenceBand}, trend: ${recentTrend}
@@ -85,17 +88,17 @@ THIS SESSION:
 
 TASK: Return ONLY valid JSON with exactly these fields:
 {
-  "insightSummary": "<2 sentences, Traditional Chinese, ≤300 chars total. Pattern forming + one actionable advice>",
-  "nextActions": ["<action 1>", "<action 2>", "<action 3>"],
+  "insightSummary": "<2 句繁體中文，≤300 chars。說明學習模式並給出一個具體建議，嚴禁簡體字>",
+  "nextActions": ["<具體行動 1，繁體中文>", "<具體行動 2>", "<具體行動 3>"],
   "studyPlan": [
-    { "day": 1, "focus": "<Traditional Chinese, ≤60 chars>", "questions": <number 10-30> },
-    { "day": 2, "focus": "<Traditional Chinese, ≤60 chars>", "questions": <number 10-30> },
-    { "day": 3, "focus": "<Traditional Chinese, ≤60 chars>", "questions": <number 10-30> }
+    { "day": 1, "focus": "<繁體中文，≤60 chars>", "questions": <number 10-30> },
+    { "day": 2, "focus": "<繁體中文，≤60 chars>", "questions": <number 10-30> },
+    { "day": 3, "focus": "<繁體中文，≤60 chars>", "questions": <number 10-30> }
   ]
 }
 
 Rules for nextActions (3-5 items):
-- Each item ≤60 chars, Traditional Chinese
+- Each item ≤60 chars, 繁體中文，嚴禁簡體字
 - Must be concrete and actionable (e.g. "練 15 題 Management of Care 的 Priority 題型")
 - Directly address the worst mistake pattern from this session
 
@@ -103,7 +106,8 @@ Rules for studyPlan:
 - Day 1: address the top weakness from this session
 - Day 2: reinforce a related domain
 - Day 3: mixed review / confidence building
-- questions must match the learner's confidence band (low=10, developing=15, stable=20, high=25)`;
+- questions must match the learner's confidence band (low=10, developing=15, stable=20, high=25)
+- focus field must be 繁體中文，嚴禁簡體字`;
 
   // Beta (until 2026-05-01): run on Haiku to cut cost; auto-revert to Sonnet afterwards.
   const BETA_ENDS = new Date("2026-05-01T00:00:00Z").getTime();
