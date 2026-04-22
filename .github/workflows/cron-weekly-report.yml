@@ -1,0 +1,22 @@
+name: Weekly report cron
+
+on:
+  schedule:
+    # Runs every Monday at 00:00 UTC (= 08:00 AM Taiwan time)
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+jobs:
+  run-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call weekly-report endpoint
+        run: |
+          STATUS=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/weekly-report")
+          cat /tmp/body.txt
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: endpoint returned HTTP $STATUS"
+            exit 1
+          fi
