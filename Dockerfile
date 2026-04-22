@@ -68,6 +68,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/prisma/init.sql ./prisma/init.sql
 COPY --from=builder --chown=nextjs:nodejs /app/prisma/migrations ./prisma/migrations
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/init-db.js ./scripts/init-db.js
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/seed-admin.js ./scripts/seed-admin.js
 
 # Copy pg driver + its runtime dependencies (chowned to nextjs)
 RUN --mount=type=bind,from=builder,source=/app/node_modules,target=/builder-nm \
@@ -86,5 +87,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Init DB schema (idempotent, ignores already-exists errors) then start server
-CMD ["sh", "-c", "node scripts/init-db.js && node server.js"]
+# Init DB schema → seed admin user → start server (all idempotent)
+CMD ["sh", "-c", "node scripts/init-db.js && node scripts/seed-admin.js && node server.js"]
