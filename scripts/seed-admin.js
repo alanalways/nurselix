@@ -12,7 +12,7 @@
 const { Pool } = require("pg");
 const crypto = require("crypto");
 
-require("dotenv").config?.();
+try { require("dotenv").config?.(); } catch { /* not needed in production — env vars already injected */ }
 
 const ADMIN_EMAIL = "cmshj30326@gmail.com";
 
