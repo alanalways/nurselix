@@ -1,162 +1,209 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Bot, CheckCircle, Clock, AlertCircle, Loader2, Copy } from "lucide-react";
+import {
+  Bot, CheckCircle, AlertCircle, Loader2, RefreshCw,
+  ExternalLink, Clock, XCircle, Activity,
+} from "lucide-react";
 import Badge from "@/components/ui/Badge";
 
 interface AgentsData {
   timestamp: string;
   services: {
     database: { healthy: boolean };
-    redis: { healthy: boolean };
-    minio: { healthy: boolean | null; note?: string };
+    redis:    { healthy: boolean };
   };
-  hermes: {
-    lastBackupAt: string | null;
-    cronTasks: Array<{ id: string; schedule: string; description: string }>;
+  hermesJobs: {
+    pending:       number;
+    running:       number;
+    retryable:     number;
+    done:          number;
+    exhausted:     number;
+    lastSuccessAt: string | null;
+    recentExhausted: {
+      id: string;
+      sessionId: string;
+      attempts: number;
+      error: string | null;
+      updatedAt: string;
+    }[];
   };
+  githubActionsUrl: string;
 }
 
 export default function AdminAgentsPage() {
-  const [data, setData] = useState<AgentsData | null>(null);
+  const [data, setData]       = useState<AgentsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryResult, setRetryResult] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/agents", { cache: "no-store" });
-        if (res.ok) setData(await res.json());
-      } catch { /* network error */ } finally {
-        setLoading(false);
-      }
-    })();
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/agents", { cache: "no-store" });
+      if (res.ok) setData(await res.json());
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    setRetryResult(null);
+    try {
+      const res = await fetch("/api/admin/hermes/retry", { method: "POST" });
+      const body = await res.json();
+      setRetryResult(`重試完成：${body.succeeded} 成功 / ${body.failed} 失敗（共掃 ${body.scanned} 筆）`);
+      await load();
+    } catch {
+      setRetryResult("重試請求失敗");
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="p-6 flex flex-col items-center gap-3">
-        <Loader2 className="animate-spin text-[var(--gold)]" />
+      <div className="p-6 flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="animate-spin text-[var(--gold)]" size={24} />
       </div>
     );
   }
 
   if (!data) return <div className="p-6 text-[var(--error)]">載入失敗</div>;
 
-  const services = [
-    { name: "PostgreSQL", healthy: data.services.database.healthy },
-    { name: "Redis", healthy: data.services.redis.healthy },
-    { name: "MinIO", healthy: data.services.minio.healthy },
-  ];
-
-  const allHealthy = services.every((s) => s.healthy !== false);
-
-  const cronText = data.hermes.cronTasks
-    .map((t) => `${t.schedule} - ${t.description}`)
-    .join("\n");
-
-  const copy = () => {
-    navigator.clipboard.writeText(cronText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  const { services, hermesJobs } = data;
+  const servicesOk = services.database.healthy && services.redis.healthy;
+  const hasIssues  = hermesJobs.exhausted > 0 || hermesJobs.retryable > 0 || !servicesOk;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-6 space-y-5"
+      className="p-6 space-y-5 max-w-4xl"
     >
-      <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Hermes 任務狀態</h1>
-        <Badge variant={allHealthy ? "success" : "error"}>
-          {allHealthy ? "全部正常" : "有異常"}
-        </Badge>
-      </div>
-
-      <div className="bg-gradient-to-r from-[var(--blue-dim)] to-[var(--gold-dim)] border border-[var(--blue)] rounded-xl p-5">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-[var(--blue-dim)] border border-[var(--blue)] flex items-center justify-center">
-            <Bot size={24} className="text-[var(--blue)]" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-[var(--text-primary)]">Hermes AI Agent</h2>
-            <p className="text-sm text-[var(--text-secondary)]">
-              自動化維護機器人 · {data.hermes.cronTasks.length} 個排程任務
-            </p>
-            {data.hermes.lastBackupAt && (
-              <p className="text-xs text-[var(--text-muted)] mt-1">
-                最近備份：{new Date(data.hermes.lastBackupAt).toLocaleString("zh-TW")}
-              </p>
-            )}
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full animate-pulse ${allHealthy ? "bg-[var(--success)]" : "bg-[var(--error)]"}`} />
-            <span className={`text-sm font-medium ${allHealthy ? "text-[var(--success)]" : "text-[var(--error)]"}`}>
-              {allHealthy ? "Online" : "Degraded"}
-            </span>
-          </div>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Agent 狀態</h1>
+          <Badge variant={hasIssues ? "error" : "success"}>
+            {hasIssues ? "需要注意" : "全部正常"}
+          </Badge>
         </div>
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--gold)] transition-colors"
+        >
+          <RefreshCw size={13} /> 重新整理
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {services.map((s) => (
-          <div key={s.name} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-[var(--text-primary)]">{s.name}</span>
-              {s.healthy === null
-                ? <AlertCircle size={18} className="text-[var(--text-muted)]" />
-                : s.healthy
-                  ? <CheckCircle size={18} className="text-[var(--success)]" />
-                  : <AlertCircle size={18} className="text-[var(--error)]" />}
-            </div>
-            <div className="text-xs text-[var(--text-muted)] mt-1">
-              {s.healthy === null ? "未檢查" : s.healthy ? "連線正常" : "連線失敗"}
-            </div>
+      {/* Services */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { name: "PostgreSQL", healthy: services.database.healthy },
+          { name: "Redis",      healthy: services.redis.healthy },
+        ].map((s) => (
+          <div key={s.name} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center justify-between">
+            <span className="font-medium text-[var(--text-primary)]">{s.name}</span>
+            {s.healthy
+              ? <CheckCircle size={18} className="text-[var(--success)]" />
+              : <AlertCircle size={18} className="text-[var(--error)]" />}
           </div>
         ))}
       </div>
 
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between">
-          <h3 className="font-semibold text-[var(--text-primary)]">排程任務清單</h3>
-          <button
-            onClick={copy}
-            className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--gold)]"
-          >
-            <Copy size={12} /> {copied ? "已複製" : "複製 crontab"}
-          </button>
+      {/* Hermes Job Queue */}
+      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center gap-2">
+          <Bot size={16} className="text-[var(--gold)]" />
+          <span className="font-semibold text-[var(--text-primary)]">Hermes AI Job Queue</span>
+          {hermesJobs.lastSuccessAt && (
+            <span className="ml-auto text-xs text-[var(--text-muted)] flex items-center gap-1">
+              <Clock size={11} />
+              最近成功：{new Date(hermesJobs.lastSuccessAt).toLocaleString("zh-TW")}
+            </span>
+          )}
         </div>
-        <table className="w-full text-sm">
-          <thead className="border-b border-[var(--border-subtle)]">
-            <tr>
-              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium">任務 ID</th>
-              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium">Cron</th>
-              <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium">描述</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.hermes.cronTasks.map((t) => (
-              <tr key={t.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors">
-                <td className="py-3 px-4 font-mono text-xs text-[var(--blue)]">{t.id}</td>
-                <td className="py-3 px-4 font-mono text-xs text-[var(--gold)]">{t.schedule}</td>
-                <td className="py-3 px-4 text-[var(--text-secondary)]">{t.description}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+        <div className="grid grid-cols-5 divide-x divide-[var(--border-subtle)]">
+          {[
+            { label: "等待中",   count: hermesJobs.pending,   color: "text-[var(--text-muted)]" },
+            { label: "執行中",   count: hermesJobs.running,   color: "text-[var(--blue)]" },
+            { label: "可重試",   count: hermesJobs.retryable, color: "text-[var(--warning)]" },
+            { label: "已完成",   count: hermesJobs.done,      color: "text-[var(--success)]" },
+            { label: "已放棄",   count: hermesJobs.exhausted, color: "text-[var(--error)]" },
+          ].map((s) => (
+            <div key={s.label} className="p-4 text-center">
+              <div className={`text-2xl font-bold ${s.color}`}>{s.count}</div>
+              <div className="text-xs text-[var(--text-muted)] mt-1">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {(hermesJobs.retryable > 0 || hermesJobs.running > 0) && (
+          <div className="px-5 py-3 border-t border-[var(--border-subtle)] flex items-center gap-3">
+            <button
+              onClick={handleRetry}
+              disabled={retrying}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--gold)] text-[#080E1A] text-sm font-semibold hover:opacity-90 transition disabled:opacity-50"
+            >
+              {retrying ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />}
+              立即重試失敗任務
+            </button>
+            {retryResult && <span className="text-sm text-[var(--text-secondary)]">{retryResult}</span>}
+          </div>
+        )}
       </div>
 
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5">
-        <h3 className="font-semibold text-[var(--text-primary)] mb-3">接入 Hermes</h3>
-        <p className="text-sm text-[var(--text-secondary)]">
-          請參考專案根目錄的 <code className="font-mono text-[var(--gold)]">HERMES_SETUP.md</code>，
-          裡面包含完整的 Hermes 安裝指令、Telegram 通知設定，以及上面所有 cron 任務的完整指令。
-        </p>
-        <p className="text-xs text-[var(--text-muted)] mt-2">
-          上次檢查：<Clock size={11} className="inline" /> {new Date(data.timestamp).toLocaleString("zh-TW")}
-        </p>
+      {/* Exhausted jobs detail */}
+      {hermesJobs.recentExhausted.length > 0 && (
+        <div className="rounded-2xl border border-[var(--error)]/30 bg-[var(--bg-surface)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--error)]/20 flex items-center gap-2">
+            <XCircle size={15} className="text-[var(--error)]" />
+            <span className="font-semibold text-[var(--text-primary)]">已放棄的 Jobs（已超過 3 次重試）</span>
+          </div>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {hermesJobs.recentExhausted.map((j) => (
+              <div key={j.id} className="px-5 py-3">
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-mono text-[var(--text-muted)]">Session: {j.sessionId.slice(0, 16)}…</span>
+                  <span className="text-[var(--text-muted)]">
+                    {new Date(j.updatedAt).toLocaleString("zh-TW")} · {j.attempts} 次
+                  </span>
+                </div>
+                {j.error && (
+                  <p className="text-xs text-[var(--error)] font-mono truncate">{j.error}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* GitHub Actions link */}
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 flex items-center justify-between">
+        <div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">Cron 排程（GitHub Actions）</div>
+          <div className="text-xs text-[var(--text-muted)] mt-0.5">
+            trial-expiry · finalize-sessions · weekly-report · exam-reminder · hermes-retry
+          </div>
+        </div>
+        <a
+          href={data.githubActionsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 text-xs text-[var(--gold)] hover:underline flex-shrink-0"
+        >
+          查看執行紀錄 <ExternalLink size={12} />
+        </a>
+      </div>
+
+      <div className="text-xs text-[var(--text-muted)]">
+        最後更新：{new Date(data.timestamp).toLocaleString("zh-TW")}
       </div>
     </motion.div>
   );
