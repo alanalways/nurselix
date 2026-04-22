@@ -18,7 +18,7 @@ interface ServiceStatus {
   services: {
     database: { healthy: boolean };
     redis: { healthy: boolean };
-    minio: { healthy: boolean | null };
+    minio?: { healthy: boolean | null };
   };
 }
 
@@ -301,7 +301,7 @@ export default function AdminDashboard() {
               { name: "PostgreSQL", ok: dbOk },
               { name: "Redis", ok: redisOk },
               { name: "API Server", ok: true },
-              { name: "MinIO", ok: health?.services.minio.healthy },
+              { name: "MinIO", ok: health?.services.minio?.healthy ?? null },
             ].map((s) => (
               <div key={s.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
