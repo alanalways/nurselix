@@ -23,7 +23,7 @@ export type OpsProvider = "nvidia" | "gemini";
 export const OPS_PROVIDER: OpsProvider = process.env.NVIDIA_NIM_API_KEY ? "nvidia" : "gemini";
 
 const DEFAULT_MODELS: Record<OpsProvider, string> = {
-  nvidia: "zai-org/glm-4.5-air",
+  nvidia: "z-ai/glm-5.1",
   gemini: "gemini-2.5-flash",
 };
 
