@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { submitAnswer } from "@/lib/nclex/sessionEngine";
 import { userRateLimit } from "@/lib/utils/rateLimit";
 import { consumeDaily } from "@/lib/utils/dailyLimit";
+import { prisma } from "@/lib/prisma";
 import type { Plan } from "@/types";
 
 const schema = z.object({
@@ -23,7 +24,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const body = await req.json();
     const input = schema.parse(body);
 
-    // Consume daily quota
+    // Pre-validate session and question before consuming quota.
+    const sessionRecord = await prisma.userSession.findUnique({
+      where: { id: params.id },
+      select: { userId: true, endedAt: true, questionIds: true },
+    });
+    if (!sessionRecord || sessionRecord.userId !== session.user.id || sessionRecord.endedAt) {
+      return NextResponse.json({ error: "Session not found or ended" }, { status: 404 });
+    }
+    if (!sessionRecord.questionIds.includes(input.questionId)) {
+      return NextResponse.json({ error: "Question not part of this session" }, { status: 400 });
+    }
+
+    // Idempotency: return 409 if this question was already answered in this session.
+    const duplicate = await prisma.userAnswer.findFirst({
+      where: { sessionId: params.id, questionId: input.questionId },
+      select: { id: true },
+    });
+    if (duplicate) {
+      return NextResponse.json({ error: "Question already answered in this session" }, { status: 409 });
+    }
+
+    // Consume daily quota only after confirming the request is valid.
     const plan = (session.user.plan ?? "FREE") as Plan;
     const quota = await consumeDaily(session.user.id, plan);
     if (!quota.allowed) {

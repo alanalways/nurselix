@@ -12,7 +12,8 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const pageRaw = parseInt(searchParams.get("page") ?? "1");
+  const page = Math.max(1, Number.isNaN(pageRaw) ? 1 : pageRaw);
   const pageSize = 10;
 
   const [reports, total] = await Promise.all([

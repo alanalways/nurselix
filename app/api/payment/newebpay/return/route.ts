@@ -24,7 +24,13 @@ export async function POST(req: NextRequest) {
     }
 
     const decrypted = decryptTradeInfo(tradeInfo);
-    const trade = JSON.parse(decrypted) as { MerchantOrderNo: string };
+    let trade: { MerchantOrderNo: string };
+    try {
+      trade = JSON.parse(decrypted);
+    } catch {
+      console.error("[payment/return] Failed to parse decrypted trade info");
+      return NextResponse.redirect(`${SITE_URL}/payment/failed?reason=parse_error`);
+    }
 
     const order = await prisma.order.findFirst({
       where: { paymentRef: trade.MerchantOrderNo },

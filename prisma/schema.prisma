@@ -276,6 +276,7 @@ model UserAnswer {
   user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   question Question    @relation(fields: [questionId], references: [id])
 
+  @@unique([sessionId, questionId])
   @@index([sessionId, answeredAt])
   @@index([userId, answeredAt])
 }
