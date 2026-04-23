@@ -12,6 +12,7 @@ import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { cn } from "@/lib/utils/cn";
 import Badge from "@/components/ui/Badge";
 import { signOut, useSession } from "next-auth/react";
+import { isPaymentPublic } from "@/lib/utils/paymentFlag";
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "儀表板" },
@@ -24,7 +25,6 @@ const navItems = [
   { href: "/achievements", icon: Trophy, label: "成就" },
   { href: "/bookmarks", icon: Bookmark, label: "收藏題目" },
   { href: "/nursing-career", icon: Globe, label: "RN 職業指南" },
-  { href: "/pricing", icon: Zap, label: "方案與定價" },
 ];
 
 const secondaryItems = [
@@ -179,7 +179,7 @@ export default function Sidebar({ collapsed = false, onCollapse }: SidebarProps)
             </div>
           </Link>
         )}
-        {!isElite && (
+        {!isElite && isPaymentPublic() && (
           <Link href="/pricing">
             <div
               className={cn(

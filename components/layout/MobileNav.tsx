@@ -6,6 +6,7 @@ import { LayoutDashboard, Brain, BookOpen, BarChart3, UserCircle, X, LogOut, Set
 import { cn } from "@/lib/utils/cn";
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { isPaymentPublic } from "@/lib/utils/paymentFlag";
 import Image from "next/image";
 import Badge from "@/components/ui/Badge";
 import type { BadgeVariant } from "@/components/ui/Badge";
@@ -119,7 +120,7 @@ export default function MobileNav() {
 
             {/* Menu items */}
             <nav className="px-3 py-3 space-y-1">
-              {plan === "FREE" && (
+              {plan === "FREE" && isPaymentPublic() && (
                 <Link href="/pricing" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-[var(--gold)]/15 to-[var(--gold-light)]/10 border border-[var(--gold)]/30 text-[var(--gold)] font-semibold text-sm">
                   <Zap size={16} />
                   免費試用 Plus 7 天

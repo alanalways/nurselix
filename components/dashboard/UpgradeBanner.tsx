@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Zap, Sparkles, ChevronRight, X } from "lucide-react";
 import { useState } from "react";
+import { isPaymentPublic } from "@/lib/utils/paymentFlag";
 
 const UPSELL_CONFIG: Record<string, { show: boolean; title: string; desc: string; cta: string; badge: string; color: string }> = {
   FREE: {
@@ -39,7 +40,7 @@ export default function UpgradeBanner() {
   const [dismissed, setDismissed] = useState(false);
   const config = UPSELL_CONFIG[plan];
 
-  if (!config?.show || dismissed) return null;
+  if (!config?.show || dismissed || !isPaymentPublic()) return null;
 
   return (
     <div className={`relative rounded-2xl overflow-hidden border border-[var(--gold)] bg-gradient-to-r ${config.color} p-[1px]`}>

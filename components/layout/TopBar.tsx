@@ -6,6 +6,7 @@ import ThemeToggle from "@/components/ui/ThemeToggle";
 import FontSizeControl from "@/components/ui/FontSizeControl";
 import Badge from "@/components/ui/Badge";
 import { useSession, signOut } from "next-auth/react";
+import { isPaymentPublic } from "@/lib/utils/paymentFlag";
 import Image from "next/image";
 import type { BadgeVariant } from "@/components/ui/Badge";
 import { useState, useRef, useEffect } from "react";
@@ -57,7 +58,7 @@ export default function TopBar({ title }: { title?: string }) {
 
       {/* Right */}
       <div className="flex items-center gap-2">
-        {plan === "FREE" && (
+        {plan === "FREE" && isPaymentPublic() && (
           <Link
             href="/pricing"
             className="hidden md:flex items-center gap-1.5 px-3 h-9 rounded-full bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-[#080E1A] font-semibold text-xs hover:opacity-90 transition-opacity"
