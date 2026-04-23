@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -21,12 +21,28 @@ function formatTime(sec: number) {
 export default function CountdownTimer({ totalSec, onExpire, className }: CountdownTimerProps) {
   const [remaining, setRemaining] = useState(totalSec);
   const isWarning = remaining < 1800; // < 30 min
+  const onExpireRef = useRef(onExpire);
+  const firedRef = useRef(false);
 
+  // Keep onExpire ref up to date without re-running the interval effect.
+  useEffect(() => { onExpireRef.current = onExpire; }, [onExpire]);
+
+  // Single interval for the lifetime of the component; ticks independently of
+  // remaining/onExpire changes so we don't churn the timer every second.
   useEffect(() => {
-    if (remaining <= 0) { onExpire?.(); return; }
-    const id = setInterval(() => setRemaining((r) => r - 1), 1000);
+    const id = setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 0) return 0;
+        const next = r - 1;
+        if (next <= 0 && !firedRef.current) {
+          firedRef.current = true;
+          onExpireRef.current?.();
+        }
+        return next;
+      });
+    }, 1000);
     return () => clearInterval(id);
-  }, [remaining, onExpire]);
+  }, []);
 
   return (
     <div className={cn(

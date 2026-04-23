@@ -82,6 +82,12 @@ export default function ExamShell({
   const [consecutiveWrong, setConsecutiveWrong] = useState(0);
   const [showBreakModal, setShowBreakModal] = useState(false);
   const pendingAdvanceRef = useRef(false);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending advance timer on unmount to avoid setState-after-unmount.
+  useEffect(() => () => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+  }, []);
 
   const isSata = question?.questionType === "SATA";
   const questionStartRef = useRef<number>(Date.now());
@@ -193,7 +199,8 @@ export default function ExamShell({
         if (shouldPace) {
           pendingAdvanceRef.current = true; // resume after user dismisses modal
         } else {
-          setTimeout(() => { loadNextQuestion(); }, 400);
+          if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+          advanceTimerRef.current = setTimeout(() => { loadNextQuestion(); }, 400);
         }
       }
     } catch (err) {
@@ -565,7 +572,8 @@ export default function ExamShell({
           setConsecutiveWrong(0);
           if (pendingAdvanceRef.current) {
             pendingAdvanceRef.current = false;
-            setTimeout(() => { loadNextQuestion(); }, 200);
+            if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+            advanceTimerRef.current = setTimeout(() => { loadNextQuestion(); }, 200);
           }
         }}
         title="要不要先喘口氣？"
@@ -587,7 +595,8 @@ export default function ExamShell({
                 setConsecutiveWrong(0);
                 if (pendingAdvanceRef.current) {
                   pendingAdvanceRef.current = false;
-                  setTimeout(() => { loadNextQuestion(); }, 200);
+                  if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+                  advanceTimerRef.current = setTimeout(() => { loadNextQuestion(); }, 200);
                 }
               }}
             >

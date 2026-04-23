@@ -40,7 +40,8 @@ export function nextSm2(
     repetition += 1;
     if (repetition === 1) interval = 1;
     else if (repetition === 2) interval = 3;
-    else interval = Math.round(interval * easiness);
+    // Cap at 365 days so the next review never schedules more than a year out.
+    else interval = Math.min(365, Math.round(interval * easiness));
   }
 
   // Update easiness factor (clamped to 1.3 min)

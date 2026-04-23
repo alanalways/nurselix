@@ -69,13 +69,21 @@ export async function POST(req: NextRequest) {
   });
 
   if (sessionId) {
-    await prisma.vocabSession.update({
-      where: { id: sessionId },
+    // Only update if the session belongs to this user — prevents counter
+    // spoofing on another user's session if someone passes a foreign sessionId.
+    const { count } = await prisma.vocabSession.updateMany({
+      where: { id: sessionId, userId },
       data: {
         correctCount: wasCorrect ? { increment: 1 } : undefined,
         timeSpentSec: timeSpentSec ? { increment: timeSpentSec } : undefined,
       },
-    }).catch(() => null); // session ownership is implicit via cards already served
+    }).catch((err) => {
+      console.warn("[vocab/review] session update failed:", err?.message);
+      return { count: 0 };
+    });
+    if (count === 0) {
+      console.warn("[vocab/review] sessionId not owned by user:", sessionId, userId);
+    }
   }
 
   return NextResponse.json({

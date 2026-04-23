@@ -29,9 +29,9 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const issue = searchParams.get("issue");
-  const pageRaw = parseInt(searchParams.get("page") ?? "1");
+  const pageRaw = parseInt(searchParams.get("page") ?? "1", 10);
   const page = Math.max(1, Number.isNaN(pageRaw) ? 1 : pageRaw);
-  const pageSizeRaw = parseInt(searchParams.get("pageSize") ?? "30");
+  const pageSizeRaw = parseInt(searchParams.get("pageSize") ?? "30", 10);
   const pageSize = Math.min(100, Number.isNaN(pageSizeRaw) ? 30 : pageSizeRaw);
 
   const baseWhere = { status: "APPROVED" as const };
