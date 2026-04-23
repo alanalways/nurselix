@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   const ipLimit = await ipRateLimit(ip, { limit: 60, windowSec: 60 });
   if (!ipLimit.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  const userLimit = await userRateLimit(session.user.id, "session-create", { limit: 10, windowSec: 60 });
+  const userLimit = await userRateLimit(session.user.id, "session-create", { limit: 3, windowSec: 60 });
   if (!userLimit.success) return NextResponse.json({ error: "Too many sessions created" }, { status: 429 });
 
   try {

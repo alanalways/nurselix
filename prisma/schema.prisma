@@ -408,6 +408,9 @@ model QuestionReport {
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   question Question @relation(fields: [questionId], references: [id])
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Feedback {
@@ -419,6 +422,8 @@ model Feedback {
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }
 
 // ===== Beta 訂閱 =====
@@ -430,6 +435,8 @@ model BetaSubscriber {
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }
 
 // ===== 訂單（預留）=====

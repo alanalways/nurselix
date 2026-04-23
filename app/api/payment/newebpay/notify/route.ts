@@ -41,15 +41,21 @@ export async function POST(req: NextRequest) {
       return new NextResponse("0|FAIL", { status: 400 });
     }
 
-    // Find order by paymentRef (we stored merchantOrderNo there)
+    // Find order and validate fields before committing anything.
     const order = await prisma.order.findFirst({
-      where: { paymentRef: merchantOrderNo, status: "pending" },
+      where: { paymentRef: merchantOrderNo },
       include: { user: { select: { email: true, name: true } } },
     } as any);
 
     if (!order) {
       console.warn("[notify] Order not found for", merchantOrderNo);
       return new NextResponse("0|FAIL", { status: 404 });
+    }
+
+    // Idempotency: already processed — tell NewebPay to stop retrying.
+    if ((order as any).status === "paid") {
+      console.log("[notify] Order already paid, skipping:", merchantOrderNo);
+      return new NextResponse("1|OK");
     }
 
     const billing = (order as any).billing as string | null;
@@ -65,11 +71,18 @@ export async function POST(req: NextRequest) {
     const days = daysMap[billing] ?? 30;
     const subscriptionEndsAt = new Date(paidAt.getTime() + days * 24 * 60 * 60 * 1000);
 
-    // Update order
-    await prisma.order.update({
-      where: { id: (order as any).id },
+    // Atomic update: only succeeds if status is still "pending".
+    // If two webhooks race, only one will update (count=1), the other gets count=0.
+    const { count } = await prisma.order.updateMany({
+      where: { id: (order as any).id, status: "pending" },
       data: { status: "paid", paymentRef: trade.TradeNo, paidAt },
     });
+
+    if (count === 0) {
+      // Concurrent webhook beat us to it — safe to acknowledge.
+      console.log("[notify] Concurrent webhook resolved for:", merchantOrderNo);
+      return new NextResponse("1|OK");
+    }
 
     // Upgrade user plan
     await prisma.user.update({
