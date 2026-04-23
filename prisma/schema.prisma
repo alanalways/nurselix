@@ -721,3 +721,27 @@ model ApiUsageLog {
   @@index([createdAt])
   @@index([userId])
 }
+
+// ===== Ops Agent Reports =====
+
+model OpsReport {
+  id           String   @id @default(uuid())
+  period       String   // "2026-W17" | "2026-04-23"
+  periodType   String   // "weekly" | "daily" | "manual"
+  status       String   @default("pending") // pending | running | done | error
+  model        String   // e.g. "gemini-2.5-flash"
+  // Per-agent outputs
+  ctoReport    Json?    // bug scan, code quality findings
+  pmReport     Json?    // UX feedback, feature requests
+  opsReport    Json?    // MAU/DAU, revenue, upgrade requests
+  // Final supervisor summary
+  summaryZh    String?  // 繁體中文綜合報告 (markdown)
+  // Metadata
+  durationMs   Int      @default(0)
+  error        String?
+  triggeredBy  String?  // admin userId or "cron"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([periodType, createdAt(sort: Desc)])
+}
