@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2, Download, UserPlus, Database, Award } from "lucide-react";
+import { Users, BookOpen, Activity, TrendingUp, CheckCircle, AlertCircle, Loader2, Download, UserPlus, Database, Award, Trash2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -36,6 +36,8 @@ export default function AdminDashboard() {
   const [migrateResult, setMigrateResult] = useState<string | null>(null);
   const [achLoading, setAchLoading] = useState(false);
   const [achResult, setAchResult] = useState<string | null>(null);
+  const [purgeLoading, setPurgeLoading] = useState(false);
+  const [purgeResult, setPurgeResult] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -212,6 +214,28 @@ export default function AdminDashboard() {
             {achLoading ? <Loader2 size={14} className="animate-spin" /> : <Award size={14} />}
             {achLoading ? "建立中..." : "建立成就定義"}
           </Button>
+          <Button size="sm" variant="outline" onClick={async () => {
+            if (purgeLoading) return;
+            // Preview first
+            const preview = await fetch("/api/admin/questions/purge-garbage").then(r => r.json());
+            if (preview.count === 0) { setPurgeResult("✓ 沒有偵測到亂碼題目"); return; }
+            if (!confirm(`偵測到 ${preview.count} 道亂碼題目，確定封存？`)) return;
+            setPurgeLoading(true); setPurgeResult(null);
+            try {
+              const res = await fetch("/api/admin/questions/purge-garbage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dryRun: false }) });
+              const body = await res.json();
+              setPurgeResult(res.ok ? `✓ 已封存 ${body.archived} 道亂碼題目` : `✗ 失敗：${body.error}`);
+              const overview = await fetch("/api/admin/overview", { cache: "no-store" });
+              if (overview.ok) setData(await overview.json());
+            } catch (e: any) {
+              setPurgeResult(`✗ 網路錯誤：${e.message}`);
+            } finally {
+              setPurgeLoading(false);
+            }
+          }} disabled={purgeLoading}>
+            {purgeLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            {purgeLoading ? "掃描中..." : "清除亂碼題目"}
+          </Button>
           {data && data.questions.approved === 0 && (
             <Button size="sm" variant="gold" onClick={handleSeed} disabled={seeding}>
               {seeding ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
@@ -223,6 +247,11 @@ export default function AdminDashboard() {
       {seedResult && (
         <div className={`px-4 py-2 rounded-lg text-sm ${seedResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
           {seedResult}
+        </div>
+      )}
+      {purgeResult && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${purgeResult.startsWith("✓") ? "bg-[rgba(46,204,113,0.12)] text-[var(--success)]" : "bg-[rgba(231,76,60,0.12)] text-[var(--error)]"}`}>
+          {purgeResult}
         </div>
       )}
       {achResult && (

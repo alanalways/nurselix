@@ -171,6 +171,43 @@ interface CandidateQuery {
 }
 
 async function fetchCandidates(q: CandidateQuery, limit = 400): Promise<CandidateQuestion[]> {
+  // ERROR_CHALLENGE: only serve questions from the user's due error queue
+  if (q.mode === "ERROR_CHALLENGE") {
+    const now = new Date();
+    const dueErrors = await prisma.errorQuestion.findMany({
+      where: {
+        userId: q.userId,
+        nextReview: { lte: now },
+        ...(q.excludeIds.length > 0 ? { questionId: { notIn: q.excludeIds } } : {}),
+      },
+      orderBy: { nextReview: "asc" },
+      take: limit,
+      include: {
+        question: {
+          select: {
+            id: true, domain: true, difficulty: true,
+            irtA: true, irtB: true, irtC: true,
+            caseStudySetId: true, caseStudyPosition: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    return dueErrors
+      .filter((e) => e.question.status === "APPROVED")
+      .map((e) => ({
+        id: e.question.id,
+        domain: e.question.domain,
+        difficulty: e.question.difficulty as "EASY" | "MEDIUM" | "HARD",
+        irtA: e.question.irtA,
+        irtB: e.question.irtB,
+        irtC: e.question.irtC,
+        caseStudySetId: e.question.caseStudySetId,
+        caseStudyPosition: e.question.caseStudyPosition,
+      }));
+  }
+
   const where: Record<string, unknown> = {
     module: "NCLEX",
     status: "APPROVED",
