@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { runOpsAgentTeam } from "@/lib/ops/orchestrator";
+import { OPS_PROVIDER, OPS_MODEL } from "@/lib/ops/client";
 import { prisma } from "@/lib/prisma";
 
 // GET — list recent reports
@@ -18,7 +19,10 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ reports });
+  return NextResponse.json({
+    reports,
+    provider: { name: OPS_PROVIDER, model: OPS_MODEL },
+  });
 }
 
 // POST — trigger a new agent run (async, responds immediately with reportId)

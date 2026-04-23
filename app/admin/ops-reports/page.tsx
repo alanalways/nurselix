@@ -27,6 +27,7 @@ const statusBadge = {
 
 export default function OpsReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
+  const [provider, setProvider] = useState<{ name: string; model: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export default function OpsReportsPage() {
       if (res.ok) {
         const data = await res.json();
         setReports(data.reports ?? []);
+        if (data.provider) setProvider(data.provider);
       }
     } finally {
       setLoading(false);
@@ -84,9 +86,14 @@ export default function OpsReportsPage() {
     >
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Bot size={20} className="text-[var(--gold)]" />
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Agent 週報</h1>
+          {provider && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full border border-[var(--border-subtle)] text-[var(--text-muted)] font-mono">
+              {provider.name === "nvidia" ? "NVIDIA NIM" : "Gemini"} · {provider.model}
+            </span>
+          )}
           {latestRunning && (
             <span className="flex items-center gap-1.5 text-xs text-[var(--gold)] animate-pulse">
               <Loader2 size={12} className="animate-spin" /> 執行中…

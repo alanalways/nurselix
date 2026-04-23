@@ -8,9 +8,9 @@
  * Returns the final assistant content plus a map of tool name → result list
  * (kept in call order, so repeated calls to the same tool are preserved).
  */
-import { HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
+import { HumanMessage, SystemMessage, ToolMessage, AIMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
 // LangChain tools have parameterised types that don't resolve to a single
 // callable signature. For a generic dispatcher we use a structural alias.
@@ -25,7 +25,9 @@ export interface AgentLoopResult {
 }
 
 export async function runAgentLoop(opts: {
-  llm: ChatGoogleGenerativeAI;
+  // Accepts any LangChain chat model that supports `bindTools` — both
+  // ChatGoogleGenerativeAI and ChatOpenAI (for NVIDIA NIM) do.
+  llm: BaseChatModel;
   // LangChain `DynamicStructuredTool`s carry schema generics that don't unify
   // across heterogeneous tool arrays, so we accept `unknown[]` at the boundary
   // and narrow internally.
@@ -36,9 +38,10 @@ export async function runAgentLoop(opts: {
 }): Promise<AgentLoopResult> {
   const { llm, tools, systemPrompt, userPrompt, maxSteps = 8 } = opts;
   const toolsTyped = tools as unknown as ToolLike[];
-  // bindTools accepts the same array; cast once for the binding to sidestep
-  // LangChain's union-of-generics input signature.
-  const llmWithTools = llm.bindTools(tools as unknown as Parameters<typeof llm.bindTools>[0]);
+  if (typeof llm.bindTools !== "function") {
+    throw new Error("This chat model does not support tool binding.");
+  }
+  const llmWithTools = llm.bindTools(tools as never);
 
   const messages: BaseMessage[] = [
     new SystemMessage(systemPrompt),
@@ -46,7 +49,7 @@ export async function runAgentLoop(opts: {
   ];
 
   const toolResults: Record<string, unknown[]> = {};
-  let response = await llmWithTools.invoke(messages);
+  let response = (await llmWithTools.invoke(messages)) as AIMessage;
 
   for (let step = 0; step < maxSteps; step++) {
     const calls = response.tool_calls;
@@ -78,7 +81,7 @@ export async function runAgentLoop(opts: {
       );
     }
 
-    response = await llmWithTools.invoke(messages);
+    response = (await llmWithTools.invoke(messages)) as AIMessage;
   }
 
   return {

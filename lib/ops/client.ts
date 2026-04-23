@@ -1,16 +1,38 @@
 /**
- * Ops Agent Gemini client — reuses the existing key rotation from generateBatch.
- * Picks the first available key and uses gemini-2.5-flash for agent reasoning
- * (supports function calling required by LangGraph tool nodes).
+ * Ops Agent LLM client — supports two providers with env-var auto-detection:
+ *
+ *   1. NVIDIA NIM (OpenAI-compatible) — preferred when NVIDIA_NIM_API_KEY is set.
+ *      Default model: zai-org/glm-4.5-air (GLM 4.5 Air, supports function calling).
+ *      Override via OPS_MODEL env var, e.g. "zai-org/glm-4.6", "deepseek-ai/deepseek-v3",
+ *      "meta/llama-3.3-70b-instruct", etc.
+ *
+ *   2. Google Gemini (via @langchain/google-genai) — fallback when NVIDIA key is
+ *      not present. Reuses the existing GEMINI_API_KEY_1..10 rotation.
+ *      Default model: gemini-2.5-flash.
+ *
+ * To switch providers, just set/unset NVIDIA_NIM_API_KEY in env.
+ * To pin a specific model, set OPS_MODEL.
  */
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatOpenAI } from "@langchain/openai";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { getApiKeys } from "@/lib/generateBatch";
 
-export const OPS_MODEL = process.env.OPS_MODEL ?? "gemini-2.5-flash";
+export type OpsProvider = "nvidia" | "gemini";
+
+export const OPS_PROVIDER: OpsProvider = process.env.NVIDIA_NIM_API_KEY ? "nvidia" : "gemini";
+
+const DEFAULT_MODELS: Record<OpsProvider, string> = {
+  nvidia: "zai-org/glm-4.5-air",
+  gemini: "gemini-2.5-flash",
+};
+
+export const OPS_MODEL = process.env.OPS_MODEL ?? DEFAULT_MODELS[OPS_PROVIDER];
+
+// ─── Gemini key rotation (unchanged) ──────────────────────────────────────────
 
 let _keyIndex = 0;
 
-/** Round-robin pick from available Gemini API keys. */
 export function pickGeminiKey(): string {
   const keys = getApiKeys();
   if (!keys.length) throw new Error("No Gemini API keys configured (GEMINI_API_KEY or GEMINI_API_KEY_1..10)");
@@ -19,12 +41,28 @@ export function pickGeminiKey(): string {
   return key;
 }
 
-/** Create a ChatGoogleGenerativeAI instance for one agent invocation. */
-export function createOpsLLM(opts?: { temperature?: number }) {
+// ─── Factory ──────────────────────────────────────────────────────────────────
+
+/** Create a chat model instance for one agent invocation. */
+export function createOpsLLM(opts?: { temperature?: number }): BaseChatModel {
+  const temperature = opts?.temperature ?? 0.3;
+
+  if (OPS_PROVIDER === "nvidia") {
+    const apiKey = process.env.NVIDIA_NIM_API_KEY;
+    if (!apiKey) throw new Error("NVIDIA_NIM_API_KEY is required when OPS_PROVIDER=nvidia");
+    return new ChatOpenAI({
+      model: OPS_MODEL,
+      apiKey,
+      configuration: { baseURL: "https://integrate.api.nvidia.com/v1" },
+      temperature,
+      maxRetries: 2,
+    });
+  }
+
   return new ChatGoogleGenerativeAI({
     model: OPS_MODEL,
     apiKey: pickGeminiKey(),
-    temperature: opts?.temperature ?? 0.3,
+    temperature,
     maxRetries: 2,
   });
 }
