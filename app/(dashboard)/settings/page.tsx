@@ -24,17 +24,32 @@ export default function SettingsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelDone, setCancelDone] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const plan = (session?.user as any)?.plan ?? "FREE";
   const isPaid = plan !== "FREE";
 
   useEffect(() => {
-    fetch("/api/user/me").then(r => r.json()).then(u => {
-      if (u.subscriptionEndsAt) setSubscriptionEndsAt(u.subscriptionEndsAt);
-      if (u.trialEndsAt) setTrialEndsAt(u.trialEndsAt);
-      if (u.settings?.dailyGoal) setDailyGoal(u.settings.dailyGoal);
-      if (u.examDate) setExamDate(u.examDate.slice(0, 10));
-    }).catch(() => {});
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/user/me");
+        if (!res.ok) {
+          if (alive) setLoadError("無法載入個人資料，部分欄位可能為預設值");
+          return;
+        }
+        const u = await res.json();
+        if (!alive) return;
+        if (u.subscriptionEndsAt) setSubscriptionEndsAt(u.subscriptionEndsAt);
+        if (u.trialEndsAt) setTrialEndsAt(u.trialEndsAt);
+        if (u.settings?.dailyGoal) setDailyGoal(u.settings.dailyGoal);
+        if (u.examDate) setExamDate(u.examDate.slice(0, 10));
+      } catch (err) {
+        console.warn("[settings] load user failed:", err);
+        if (alive) setLoadError("無法載入個人資料，部分欄位可能為預設值");
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
   const handleCancelSubscription = async () => {
@@ -57,13 +72,22 @@ export default function SettingsPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch("/api/user/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dailyGoal, notification, theme, fontSize }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+      // Save user-level settings and profile (examDate) in parallel.
+      const [settingsRes, profileRes] = await Promise.all([
+        fetch("/api/user/settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dailyGoal, notification, theme, fontSize }),
+        }),
+        fetch("/api/user/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ examDate: examDate || null }),
+        }),
+      ]);
+      if (!settingsRes.ok || !profileRes.ok) {
+        const failed = !settingsRes.ok ? settingsRes : profileRes;
+        const body = await failed.json().catch(() => ({}));
         setSaveError(body.error ?? "儲存失敗，請重試");
         return;
       }
@@ -92,6 +116,13 @@ export default function SettingsPage() {
       className="p-4 md:p-6 max-w-2xl mx-auto space-y-6"
     >
       <h1 className="text-2xl font-bold text-[var(--text-primary)]">設定</h1>
+
+      {loadError && (
+        <div className="rounded-xl border border-[var(--warning)] bg-[rgba(243,156,18,0.1)] px-4 py-2.5 text-sm text-[var(--warning)] flex items-center gap-2">
+          <AlertCircle size={14} />
+          {loadError}
+        </div>
+      )}
 
       {/* Profile */}
       <section className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-4">

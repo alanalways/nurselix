@@ -199,7 +199,7 @@ export function examReminderMail(params: {
           <li>考前一天充分休息，不要熬夜</li>
         </ul>
         <div style="text-align:center;margin-top:24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/nclex" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#C9A84C,#E8C66A);color:#080E1A;font-weight:700;border-radius:10px;text-decoration:none;">進入最後衝刺</a>
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/nclex" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#C9A84C,#E8C66A);color:#080E1A;font-weight:700;border-radius:10px;text-decoration:none;">進入最後衝刺</a>
         </div>
       </div>
     `,
@@ -229,7 +229,7 @@ export function subscriptionCancelledMail(params: {
         </div>
         <p style="color:#8A9BB5;line-height:1.7;">如果你改變心意，可以隨時在設定頁重新訂閱。</p>
         <div style="text-align:center;margin-top:24px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/pricing" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#C9A84C,#E8C66A);color:#080E1A;font-weight:700;border-radius:10px;text-decoration:none;">重新訂閱</a>
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/pricing" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#C9A84C,#E8C66A);color:#080E1A;font-weight:700;border-radius:10px;text-decoration:none;">重新訂閱</a>
         </div>
       </div>
     `,
