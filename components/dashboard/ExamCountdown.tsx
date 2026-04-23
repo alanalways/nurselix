@@ -6,10 +6,11 @@ import { CalendarDays } from "lucide-react";
 export default function ExamCountdown() {
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [examDateStr, setExamDateStr] = useState<string | null>(null);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
     fetch("/api/user/me")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("failed"); return r.json(); })
       .then((data) => {
         if (data.examDate) {
           const exam = new Date(data.examDate);
@@ -20,7 +21,7 @@ export default function ExamCountdown() {
           setExamDateStr(exam.toLocaleDateString("zh-TW", { month: "long", day: "numeric" }));
         }
       })
-      .catch(() => {});
+      .catch(() => setFetchFailed(true));
   }, []);
 
   return (
@@ -40,7 +41,7 @@ export default function ExamCountdown() {
       <div className="text-right">
         <div className="text-xs text-[var(--text-muted)]">考試日期</div>
         <div className="text-sm font-medium text-[var(--text-secondary)]">
-          {examDateStr ?? "尚未設定"}
+          {fetchFailed ? "載入失敗" : (examDateStr ?? "尚未設定")}
         </div>
       </div>
     </div>

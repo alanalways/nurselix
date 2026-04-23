@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [examDate, setExamDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState<string | null>(null);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
@@ -54,14 +55,22 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch("/api/user/settings", {
+      const res = await fetch("/api/user/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dailyGoal, notification, theme, fontSize }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "儲存失敗，請重試");
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setSaveError("網路錯誤，請稍後重試");
     } finally {
       setSaving(false);
     }
@@ -299,6 +308,9 @@ export default function SettingsPage() {
         <button className="text-sm text-[var(--text-secondary)] hover:text-[var(--gold)] transition-colors block">連結 Google 帳號</button>
       </section>
 
+      {saveError && (
+        <p className="text-sm text-[var(--error)] text-center">{saveError}</p>
+      )}
       <div className="flex gap-3">
         <Button fullWidth loading={saving} onClick={handleSave}>
           {saved ? "已儲存 ✓" : "儲存設定"}

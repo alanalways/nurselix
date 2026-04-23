@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -35,17 +35,23 @@ export default function VocabHomePage() {
   const [selectedTier, setSelectedTier] = useState<number>(0);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/vocab/overview", { cache: "no-store" });
-        if (res.ok) setData(await res.json());
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const loadOverview = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await fetch("/api/vocab/overview", { cache: "no-store" });
+      if (res.ok) setData(await res.json());
+      else setLoadError(true);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadOverview(); }, [loadOverview]);
 
   const startSession = async (mode: string) => {
     if (starting) return;
@@ -101,6 +107,18 @@ export default function VocabHomePage() {
 
       {loading && (
         <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-[var(--gold)]" /></div>
+      )}
+
+      {!loading && loadError && (
+        <div className="py-10 flex flex-col items-center gap-3 text-center">
+          <p className="text-[var(--text-muted)] text-sm">載入詞庫資料失敗</p>
+          <button
+            onClick={loadOverview}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] transition-colors"
+          >
+            重試
+          </button>
+        </div>
       )}
 
       {!loading && data && data.totalWords === 0 && (

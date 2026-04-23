@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Loader2, TrendingUp, Calendar } from "lucide-react";
+import { Loader2, TrendingUp, Calendar, RefreshCw } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
 
 interface StatsData {
@@ -35,17 +35,23 @@ const ALL_DOMAINS = Object.keys(DOMAIN_ZH);
 export default function StatsPage() {
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/stats", { cache: "no-store" });
-        if (res.ok) setData(await res.json());
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await fetch("/api/stats", { cache: "no-store" });
+      if (res.ok) setData(await res.json());
+      else setLoadError(true);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   if (loading) {
     return (
@@ -55,7 +61,19 @@ export default function StatsPage() {
     );
   }
 
-  if (!data) return <div className="p-6 text-[var(--text-muted)] text-sm">載入失敗，請重新整理</div>;
+  if (loadError || !data) {
+    return (
+      <div className="p-6 flex flex-col items-center gap-4 text-center">
+        <p className="text-[var(--text-muted)] text-sm">載入失敗</p>
+        <button
+          onClick={load}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--border-default)] text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] transition-colors"
+        >
+          <RefreshCw size={14} /> 重試
+        </button>
+      </div>
+    );
+  }
 
   // Radar chart data: fill zero for domains not yet attempted
   const radarData = ALL_DOMAINS.map((en) => {

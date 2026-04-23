@@ -23,7 +23,10 @@ interface DailyChallengeData {
 }
 
 export default function DailyChallengePage() {
-  const today = new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric" });
+  const [today, setToday] = useState("");
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric" }));
+  }, []);
 
   const [data, setData] = useState<DailyChallengeData | null>(null);
   const [loading, setLoading] = useState(true);
