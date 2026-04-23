@@ -86,7 +86,7 @@ export const getRecentFeedback = tool(
     description: "Get recent user feedback submissions (rating + comment) for UX analysis.",
     schema: z.object({
       days: z.number().int().min(1).max(30).describe("Days to look back"),
-      limit: z.number().int().min(1).max(50).describe("Max items to return"),
+      limit: z.number().int().min(1).default(20).transform((v) => Math.min(v, 50)).describe("Max items to return (capped at 50)"),
     }),
   }
 );
@@ -110,7 +110,7 @@ export const getQuestionReports = tool(
     description: "Get recent question reports (content issues flagged by users).",
     schema: z.object({
       days: z.number().int().min(1).max(30).describe("Days to look back"),
-      limit: z.number().int().min(1).max(50).describe("Max items to return"),
+      limit: z.number().int().min(1).default(20).transform((v) => Math.min(v, 50)).describe("Max items to return (capped at 50)"),
     }),
   }
 );
