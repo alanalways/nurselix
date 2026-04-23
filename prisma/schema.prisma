@@ -46,6 +46,7 @@ model User {
   questionNotes    QuestionNote[]
   betaSubscribers  BetaSubscriber[]
   orders           Order[]
+  upgradeRequests  UpgradeRequest[]
   learnerProfile   LearnerProfile?
   hermesReports    HermesReport[]
   vocabProgress    UserVocabProgress[]
@@ -457,6 +458,24 @@ model Order {
 
   @@index([userId])
   @@index([status])
+}
+
+// ===== 升級申請（手動付款）=====
+
+model UpgradeRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  plan      Plan
+  billing   String   // monthly | quarterly | yearly
+  status    String   @default("pending") // pending | contacted | completed | cancelled
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([userId])
 }
 
 // ===== Hermes Agent Layer =====

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Check, X, Star, Mail, Loader2, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, X, Star, Mail, Loader2, Sparkles, Send, ChevronDown } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -138,6 +138,14 @@ export default function PricingPage() {
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
+  // Upgrade request modal state
+  const [requestModal, setRequestModal] = useState<{ plan: string; planName: string } | null>(null);
+  const [requestNote, setRequestNote] = useState("");
+  const [requestBilling, setRequestBilling] = useState<Billing>("monthly");
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestDone, setRequestDone] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
   // null = pre-hydration; we assume beta is active until we can compare on the
   // client so SSR + client render agree (Date.now() on the server would drift).
   const [now, setNow] = useState<number | null>(null);
@@ -149,58 +157,55 @@ export default function PricingPage() {
   const betaActive = now === null ? true : now < BETA_END_MS;
   const remaining = now === null ? BETA_END_MS - Date.now() : BETA_END_MS - now;
 
-  const handleSubscribe = async (planKey: string) => {
+  const handleSubscribe = (planKey: string) => {
+    if (planKey === "FREE") return;
     if (!authSession) {
-      // During beta everything is free — send straight to the app after sign-in.
-      const callbackUrl = betaActive ? "/" : "/pricing";
-      router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      router.push(`/login?callbackUrl=${encodeURIComponent("/pricing")}`);
       return;
     }
-    // Beta: no checkout call; everyone gets full access on the site.
-    if (betaActive) {
-      router.push("/");
-      return;
-    }
-    if (billing === "quarterly") return;
-    setLoadingPlan(planKey);
+    const planName = plans.find((p) => p.key === planKey)?.name ?? planKey;
+    setRequestBilling(billing);
+    setRequestNote("");
+    setRequestDone(false);
+    setRequestError(null);
+    setRequestModal({ plan: planKey, planName });
+  };
+
+  const submitUpgradeRequest = async () => {
+    if (!requestModal) return;
+    setRequestLoading(true);
+    setRequestError(null);
     try {
-      const res = await fetch("/api/payment/newebpay/create", {
+      const res = await fetch("/api/user/upgrade-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planKey, billing }),
+        body: JSON.stringify({ plan: requestModal.plan, billing: requestBilling, note: requestNote || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error ?? "發生錯誤，請重試");
+        setRequestError(data.error ?? "發生錯誤，請重試");
         return;
       }
-      // Inject form and auto-submit → redirects to NewebPay
-      const div = document.createElement("div");
-      div.innerHTML = data.formHtml;
-      document.body.appendChild(div);
+      setRequestDone(true);
     } catch {
-      alert("網路錯誤，請稍後再試");
+      setRequestError("網路錯誤，請稍後再試");
     } finally {
-      setLoadingPlan(null);
+      setRequestLoading(false);
     }
   };
 
   const getButtonLabel = (planKey: string) => {
-    if (betaActive && planKey !== "FREE") return "Beta 免費體驗";
-    if (!userPlan) return planKey === "FREE" ? "免費使用" : "立即訂閱";
+    if (planKey === "FREE") return "免費使用";
+    if (!userPlan) return "申請升級";
     if (planKey === userPlan) return "目前方案";
     const currentIdx = PLAN_ORDER.indexOf(userPlan);
     const targetIdx = PLAN_ORDER.indexOf(planKey);
-    if (planKey === "FREE") return "降級";
-    return targetIdx > currentIdx ? "升級" : "降級";
+    return targetIdx > currentIdx ? "申請升級" : "申請降級";
   };
 
   const isCurrentPlan = (planKey: string) => userPlan === planKey;
-  const isDisabled = (planKey: string) => {
-    if (loadingPlan !== null) return true;
-    if (betaActive) return false; // beta: always clickable (routes to app)
-    return planKey === "FREE" || isCurrentPlan(planKey);
-  };
+  const isDisabled = (planKey: string) =>
+    loadingPlan !== null || planKey === "FREE" || isCurrentPlan(planKey);
 
   const submitBeta = async () => {
     if (!betaEmail || subscribing) return;
@@ -246,22 +251,20 @@ export default function PricingPage() {
           </p>
         </div>
 
-        {betaActive && (
-          <div className="rounded-2xl border border-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] to-[var(--blue-dim)] px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
-            <div className="flex items-center gap-2">
-              <Sparkles size={18} className="text-[var(--gold)]" />
-              <span className="font-semibold text-[var(--text-primary)]">
-                Beta 階段限時免費體驗，全功能開放至 5/1
-              </span>
-            </div>
-            <span className="text-sm text-[var(--text-secondary)]">
-              距離正式定價還有{" "}
-              <span className="font-mono font-semibold text-[var(--gold)]">
-                {formatRemaining(remaining)}
-              </span>
+        <div className="rounded-2xl border border-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] to-[var(--blue-dim)] px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className="text-[var(--gold)]" />
+            <span className="font-semibold text-[var(--text-primary)]">
+              Beta 階段限時免費體驗，全功能開放至 5/1
             </span>
           </div>
-        )}
+          <span className="text-sm text-[var(--text-secondary)]">
+            距離正式定價還有{" "}
+            <span className="font-mono font-semibold text-[var(--gold)]">
+              {formatRemaining(remaining)}
+            </span>
+          </span>
+        </div>
 
         {/* Billing Toggle */}
         <div className="flex items-center justify-center gap-2">
@@ -484,6 +487,112 @@ export default function PricingPage() {
       </div>
 
       <Footer />
+
+      {/* Upgrade Request Modal */}
+      <AnimatePresence>
+        {requestModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 z-40"
+              onClick={() => !requestLoading && setRequestModal(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+                {requestDone ? (
+                  <div className="text-center space-y-4 py-4">
+                    <div className="w-14 h-14 rounded-full bg-[rgba(46,204,113,0.15)] border border-[var(--success)] flex items-center justify-center mx-auto">
+                      <Check size={28} className="text-[var(--success)]" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-[var(--text-primary)]">申請已送出！</h3>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">
+                        我們會盡快透過 Threads 私訊傳送匯款資訊給你。
+                      </p>
+                    </div>
+                    <Button fullWidth onClick={() => setRequestModal(null)}>關閉</Button>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                        申請升級至 {requestModal.planName}
+                      </h3>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">
+                        送出後我們會傳送匯款帳號給你，完成匯款後升級生效。
+                      </p>
+                    </div>
+
+                    {/* Billing period */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-[var(--text-secondary)]">付款週期</label>
+                      <div className="relative">
+                        <select
+                          value={requestBilling}
+                          onChange={(e) => setRequestBilling(e.target.value as Billing)}
+                          className="w-full appearance-none bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--gold)] pr-8"
+                        >
+                          <option value="monthly">月付</option>
+                          <option value="quarterly">季付（省 10%）</option>
+                          <option value="yearly">年付（省 20%）</option>
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Optional note */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-[var(--text-secondary)]">留言給我們（選填）</label>
+                      <textarea
+                        value={requestNote}
+                        onChange={(e) => setRequestNote(e.target.value)}
+                        placeholder="有任何問題或需要說明的都可以寫在這裡"
+                        rows={3}
+                        maxLength={500}
+                        className="w-full bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--gold)] resize-none"
+                      />
+                    </div>
+
+                    {requestError && (
+                      <p className="text-sm text-[var(--error)]">{requestError}</p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        fullWidth
+                        onClick={() => setRequestModal(null)}
+                        disabled={requestLoading}
+                      >
+                        取消
+                      </Button>
+                      <Button
+                        variant="gold"
+                        fullWidth
+                        onClick={submitUpgradeRequest}
+                        disabled={requestLoading}
+                      >
+                        {requestLoading
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <Send size={14} />}
+                        送出申請
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

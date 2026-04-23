@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, BookOpen, Users, BarChart3,
-  Flag, MessageSquare, Bot, LogOut, Sparkles, Activity, FlaskConical, Menu, X, Library
+  Flag, MessageSquare, Bot, LogOut, Sparkles, Activity, FlaskConical, Menu, X, Library, TrendingUp
 } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { cn } from "@/lib/utils/cn";
@@ -20,6 +20,7 @@ const adminNav = [
   { href: "/admin/questions/quality", icon: Sparkles, label: "題目品質" },
   { href: "/admin/questions/spot-check", icon: FlaskConical, label: "人工抽查" },
   { href: "/admin/vocab", icon: Library, label: "單字詞庫" },
+  { href: "/admin/upgrade-requests", icon: TrendingUp, label: "升級申請" },
   { href: "/admin/users", icon: Users, label: "用戶管理" },
   { href: "/admin/analytics", icon: BarChart3, label: "數據分析" },
   { href: "/admin/reports", icon: Flag, label: "題目回報" },
@@ -33,16 +34,25 @@ export default function AdminLayoutClient({
 }: { children: React.ReactNode; email: string }) {
   const pathname = usePathname();
   const [pendingReports, setPendingReports] = useState<number | null>(null);
+  const [pendingUpgrades, setPendingUpgrades] = useState<number | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch("/api/admin/reports?status=pending", { cache: "no-store" });
-        if (!res.ok) return;
-        const body = await res.json();
-        if (alive) setPendingReports(body.rows?.length ?? 0);
+        const [reportsRes, upgradesRes] = await Promise.all([
+          fetch("/api/admin/reports?status=pending", { cache: "no-store" }),
+          fetch("/api/admin/upgrade-requests", { cache: "no-store" }),
+        ]);
+        if (reportsRes.ok) {
+          const body = await reportsRes.json();
+          if (alive) setPendingReports(body.rows?.length ?? 0);
+        }
+        if (upgradesRes.ok) {
+          const body = await upgradesRes.json();
+          if (alive) setPendingUpgrades(body.pending ?? 0);
+        }
       } catch {
         // ignore
       }
@@ -68,9 +78,12 @@ export default function AdminLayoutClient({
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {adminNav.map((item) => {
           const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
-          const badgeText = item.href === "/admin/reports" && pendingReports && pendingReports > 0
-            ? String(pendingReports)
-            : null;
+          const badgeText =
+            item.href === "/admin/reports" && pendingReports && pendingReports > 0
+              ? String(pendingReports)
+              : item.href === "/admin/upgrade-requests" && pendingUpgrades && pendingUpgrades > 0
+              ? String(pendingUpgrades)
+              : null;
           return (
             <Link key={item.href} href={item.href}>
               <div className={cn("sidebar-link", active && "active")}>
