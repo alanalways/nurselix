@@ -9,15 +9,15 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const DOMAIN_TO_VOCAB_CATEGORY: Record<string, string> = {
-  "Pharmacological and Parenteral Therapies": "Pharmacology",
-  "Pharmacology":                                 "Pharmacology",
-  "Physiological Adaptation":                     "Pathophysiology",
-  "Reduction of Risk Potential":                  "Lab Values & Diagnostics",
-  "Basic Care and Comfort":                       "Procedures & Skills",
-  "Safety and Infection Control":                 "Patient Safety & Priority",
-  "Management of Care":                           "Nursing Process & Delegation",
-  "Health Promotion and Maintenance":             "Maternal-Newborn",
-  "Psychosocial Integrity":                       "Mental Health",
+  "Pharmacological & Parenteral":              "Pharmacology",
+  "Pharmacology":                              "Pharmacology",
+  "Physiological Adaptation":                  "Pathophysiology",
+  "Reduction of Risk Potential":               "Lab Values & Diagnostics",
+  "Basic Care & Comfort":                      "Procedures & Skills",
+  "Safety & Infection Control":                "Patient Safety & Priority",
+  "Management of Care":                        "Nursing Process & Delegation",
+  "Health Promotion & Maintenance":            "Maternal-Newborn",
+  "Psychosocial Integrity":                    "Mental Health",
 };
 
 export async function GET() {

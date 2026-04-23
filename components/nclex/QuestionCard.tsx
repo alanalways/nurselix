@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
+import { Languages } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import type { Question } from "@/types";
 
@@ -18,6 +20,7 @@ const difficultyMap = {
 
 export default function QuestionCard({ question, questionNumber, totalQuestions }: QuestionCardProps) {
   const diff = difficultyMap[question.difficulty];
+  const [showZh, setShowZh] = useState(false);
 
   return (
     <motion.div
@@ -43,6 +46,15 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
         <div className="flex items-center gap-2">
           <Badge variant={diff.variant}>{diff.label}</Badge>
           <Badge variant="muted">{question.questionType}</Badge>
+          {question.stemZh && (
+            <button
+              onClick={() => setShowZh((v) => !v)}
+              title={showZh ? "顯示英文題幹" : "顯示中文翻譯"}
+              className={`p-1 rounded transition-colors ${showZh ? "text-[var(--gold)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+            >
+              <Languages size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -53,6 +65,16 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
       >
         {question.stem}
       </p>
+
+      {/* Chinese stem (toggled) */}
+      {showZh && question.stemZh && (
+        <p
+          className="mt-3 text-[var(--text-secondary)] leading-relaxed font-noto-sans border-t border-[var(--border-subtle)] pt-3"
+          style={{ fontSize: "calc(0.9rem * var(--font-scale))" }}
+        >
+          {question.stemZh}
+        </p>
+      )}
 
       {/* Tags */}
       {question.tags.length > 0 && (

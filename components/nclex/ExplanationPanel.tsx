@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BookOpen, Globe } from "lucide-react";
+import { BookOpen, Globe, List } from "lucide-react";
 import type { Question } from "@/types";
 
 interface ExplanationPanelProps {
@@ -16,6 +16,19 @@ export default function ExplanationPanel({ question, selectedAnswer, isCorrect: 
   const isCorrect = isCorrectProp !== undefined
     ? isCorrectProp
     : selectedAnswer.trim().toUpperCase() === question.correctAnswer.trim().toUpperCase();
+
+  // Build the display string for correct answer(s)
+  const correctAnswers = question.correctAnswers?.length
+    ? question.correctAnswers
+    : question.correctAnswer.split(",").map((s) => s.trim()).filter(Boolean);
+  const correctAnswerDisplay = correctAnswers.join("、");
+
+  // Present option letters that exist on this question
+  const optionKeys = (["A", "B", "C", "D", "E", "F"] as const).filter(
+    (k) => question[`option${k}` as keyof Question]
+  );
+
+  const rationales = question.optionRationales;
 
   return (
     <motion.div
@@ -36,7 +49,7 @@ export default function ExplanationPanel({ question, selectedAnswer, isCorrect: 
             {isCorrect ? "答對了！" : "答錯了"}
           </div>
           <div className="text-sm text-[var(--text-secondary)]">
-            正確答案：<span className="font-semibold text-[var(--text-primary)]">{question.correctAnswer}</span>
+            正確答案：<span className="font-semibold text-[var(--text-primary)]">{correctAnswerDisplay}</span>
           </div>
         </div>
       </div>
@@ -51,6 +64,35 @@ export default function ExplanationPanel({ question, selectedAnswer, isCorrect: 
           {question.explanationZh}
         </p>
       </div>
+
+      {/* Per-option rationales */}
+      {rationales && optionKeys.length > 0 && (
+        <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <List size={16} className="text-[var(--gold)]" />
+            <h3 className="font-semibold text-[var(--text-primary)] font-noto-serif">各選項解析</h3>
+          </div>
+          <div className="space-y-3">
+            {optionKeys.map((k) => {
+              const r = rationales[k];
+              if (!r?.zh && !r?.en) return null;
+              const isCorrectOpt = correctAnswers.includes(k);
+              return (
+                <div key={k} className="flex gap-3">
+                  <span className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    isCorrectOpt
+                      ? "bg-[rgba(46,204,113,0.18)] text-[var(--success)]"
+                      : "bg-[var(--bg-base)] text-[var(--text-muted)]"
+                  }`}>{k}</span>
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-noto-sans">
+                    {r.zh ?? r.en}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* US vs TW Difference */}
       {question.usTwDifference && (

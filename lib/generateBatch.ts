@@ -12,7 +12,7 @@ export const VALID_DOMAINS = [
   "Health Promotion & Maintenance",
   "Psychosocial Integrity",
   "Basic Care & Comfort",
-  "Pharmacological and Parenteral Therapies",
+  "Pharmacological & Parenteral",
   "Reduction of Risk Potential",
   "Physiological Adaptation",
 ];
@@ -23,7 +23,7 @@ export const DOMAIN_TARGETS: Record<string, number> = {
   "Health Promotion & Maintenance": 1210,
   "Psychosocial Integrity": 990,
   "Basic Care & Comfort": 990,
-  "Pharmacological and Parenteral Therapies": 1540,
+  "Pharmacological & Parenteral": 1540,
   "Reduction of Risk Potential": 1540,
   "Physiological Adaptation": 1980,
 };

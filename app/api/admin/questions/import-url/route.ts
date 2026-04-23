@@ -12,7 +12,7 @@ const VALID_DOMAINS = new Set([
   "Health Promotion & Maintenance",
   "Psychosocial Integrity",
   "Basic Care & Comfort",
-  "Pharmacological and Parenteral Therapies",
+  "Pharmacological & Parenteral",
   "Reduction of Risk Potential",
   "Physiological Adaptation",
 ]);
