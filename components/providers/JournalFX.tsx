@@ -4,32 +4,19 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 /**
- * JournalFX — three linked effects:
+ * JournalFX — two linked effects:
  *
  *   1. Loading screen on first app mount (serif wordmark, ink rule filling)
  *   2. Typewriter on the landing hero `<h1 data-j-typewriter>`
- *   3. Ink-splash transition between routes (a dark blot grows from the user's
- *      last pointer position and fades; the next page fades in underneath)
  *
- * CAT / exam routes suppress the splash so answering remains snappy.
+ * The ink-splash route transition was removed because the full-screen blot
+ * looked like a "flash" when users pressed navigation buttons.
  */
-
-const TRANSITION_SUPPRESS_PATHS = [
-  "/nclex/cat",
-  "/nclex/practice",
-  "/nclex/mock",
-  "/nclex/mini-cat",
-  "/nclex/assessment",
-  "/nclex/tutor",
-  "/nclex/error-challenge",
-];
 
 export default function JournalFX() {
   const pathname = usePathname();
   const previousPath = useRef<string | null>(null);
   const bootedRef = useRef(false);
-  const transitioningRef = useRef(false);
-  const pointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // First-mount loader (runs once)
   useEffect(() => {
@@ -69,16 +56,9 @@ export default function JournalFX() {
     };
   }, []);
 
-  // Remember the last pointer so ink starts from the user's click
-  useEffect(() => {
-    function onPointer(e: PointerEvent) {
-      pointerRef.current = { x: e.clientX, y: e.clientY };
-    }
-    document.addEventListener("pointerdown", onPointer, true);
-    return () => document.removeEventListener("pointerdown", onPointer, true);
-  }, []);
-
-  // Ink-splash route transition — fires when pathname changes
+  // Route-change effect — typewriter only. Ink-splash disabled per user
+  // request: the full-screen blot was reading as a "flash" when users
+  // pressed navigation buttons, so we no longer run it on route changes.
   useEffect(() => {
     if (previousPath.current === null) {
       previousPath.current = pathname;
@@ -86,55 +66,15 @@ export default function JournalFX() {
     }
     if (previousPath.current === pathname) return;
     const to = pathname;
-    const from = previousPath.current;
     previousPath.current = pathname;
-
-    const suppressed = TRANSITION_SUPPRESS_PATHS.some((p) => to.startsWith(p) || from.startsWith(p));
-    if (suppressed || transitioningRef.current) return;
-
-    runInkSplash(pointerRef.current);
-    transitioningRef.current = true;
-    setTimeout(() => { transitioningRef.current = false; }, 720);
 
     // Typewriter runs only on the landing
     if (to === "/" || to === "/journal") {
-      setTimeout(runTypewriter, 420);
+      setTimeout(runTypewriter, 220);
     }
   }, [pathname]);
 
   return null;
-}
-
-// ── Ink-splash overlay ────────────────────────────────────────────────
-function runInkSplash(origin: { x: number; y: number }) {
-  if (typeof document === "undefined") return;
-  const overlay = document.createElement("div");
-  overlay.id = "j-ink-overlay";
-  const x = origin.x || window.innerWidth / 2;
-  const y = origin.y || window.innerHeight * 0.4;
-  overlay.style.setProperty("--ink-x", x + "px");
-  overlay.style.setProperty("--ink-y", y + "px");
-  const blot = document.createElement("div");
-  blot.className = "blot";
-  overlay.appendChild(blot);
-  document.body.appendChild(overlay);
-
-  // Ink-in the next page element once React renders it
-  let attempts = 0;
-  const watch = setInterval(() => {
-    const page = document.querySelector(".j-page");
-    if (page && !page.classList.contains("j-ink-in")) {
-      page.classList.add("j-ink-in");
-      clearInterval(watch);
-    } else if (++attempts > 15) {
-      clearInterval(watch);
-    }
-  }, 24);
-
-  setTimeout(() => {
-    if (overlay.parentNode) overlay.remove();
-    document.querySelectorAll(".j-ink-in").forEach((n) => n.classList.remove("j-ink-in"));
-  }, 720);
 }
 
 // ── Typewriter ────────────────────────────────────────────────────────

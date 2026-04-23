@@ -153,6 +153,11 @@ body {
   overflow-x: hidden;
 }
 
+/* Kill mobile tap-highlight flash on every button / link. */
+a, button, [role="button"], input[type="button"], input[type="submit"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Selection uses phosphor highlight */
 ::selection { background: var(--j-phosphor); color: var(--j-bg); }
 
