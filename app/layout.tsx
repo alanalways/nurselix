@@ -1,37 +1,64 @@
 import type { Metadata, Viewport } from "next";
 import { ToastContainer } from "@/components/ui/Toast";
 import { Providers } from "@/components/providers/Providers";
+import JournalFX from "@/components/providers/JournalFX";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nurslix — NCLEX 英語練習平台",
-  description: "台灣護理師備考 NCLEX-RN 英語練習平台，智能自適應測驗，精準找出你的弱點",
+  title: "Nurslix Journal — NCLEX 備考讀本",
+  description: "為台灣護理師而造。每一題,經過編輯審校、雙語註記、臨床差異對照。慢而確切的 NCLEX-RN 練習。",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Nurslix" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Nurslix Journal" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#C9A84C",
+  themeColor: "#f3efe4",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-TW" data-theme="dark" data-fontsize="medium">
+    <html lang="zh-TW" data-journal-theme="spring" data-fontsize="medium">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Noto+Serif+TC:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" />
-        {/* Restore persisted theme/fontSize before first paint to prevent flash */}
+        {/* Journal typography stack:
+            · Instrument Serif — editorial display
+            · Noto Serif TC    — Chinese body
+            · JetBrains Mono   — labels & running heads
+            · Caveat           — handwritten margin notes                         */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+TC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Caveat:wght@400;500;600&display=swap"
+        />
+        {/* Restore persisted theme + font size BEFORE first paint to prevent a
+            flash of the default palette when users have chosen another preset. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=JSON.parse(localStorage.getItem('nurslix-theme')||'{}');var s=t.state||{};if(s.theme)document.documentElement.setAttribute('data-theme',s.theme);if(s.fontSize)document.documentElement.setAttribute('data-fontsize',s.fontSize);}catch(e){}`,
+            __html: `try{
+              var p=localStorage.getItem('nj.theme.preset');
+              if(p && p!=='custom') document.documentElement.setAttribute('data-journal-theme', p);
+              var fs=localStorage.getItem('nj.fontsize');
+              if(fs) document.documentElement.setAttribute('data-fontsize', fs);
+              var raw=localStorage.getItem('nj.theme');
+              if(raw){
+                var t=JSON.parse(raw);
+                var r=document.documentElement;
+                Object.keys(t||{}).forEach(function(k){ r.style.setProperty('--j-'+k.replace(/([A-Z])/g,'-$1').toLowerCase(), t[k]); });
+              }
+              // legacy migration: old "nurslix-theme" store stored dark|light — map dark→night
+              var legacy=localStorage.getItem('nurslix-theme');
+              if(legacy && !p){
+                try{ var ls=JSON.parse(legacy).state||{}; if(ls.theme==='dark') document.documentElement.setAttribute('data-journal-theme','night'); if(ls.fontSize) document.documentElement.setAttribute('data-fontsize', ls.fontSize); }catch(e){}
+              }
+            }catch(e){}`,
           }}
         />
       </head>
       <body className="antialiased">
         <Providers>
+          <JournalFX />
           {children}
           <ToastContainer />
         </Providers>
