@@ -49,15 +49,16 @@ export async function consumeDaily(userId: string, plan: Plan): Promise<DailyLim
   const key = dailyKey(userId);
 
   try {
-    const current = Number((await redis.get(key)) ?? 0);
-    if (current >= limit) {
-      return { allowed: false, used: current, limit, resetAt: midnightUtc() };
-    }
+    // Atomically increment first, then check — eliminates TOCTOU race condition.
     const newCount = await redis.incr(key);
-    // Set expiry on first increment so Redis GCs the key.
     if (newCount === 1) {
       const secondsUntilMidnight = Math.max(60, Math.floor((midnightUtc() - Date.now()) / 1000));
       await redis.expire(key, secondsUntilMidnight);
+    }
+    if (newCount > limit) {
+      // Rollback: we incremented past the limit, undo it.
+      await redis.decr(key);
+      return { allowed: false, used: limit, limit, resetAt: midnightUtc() };
     }
     return { allowed: true, used: newCount, limit, resetAt: midnightUtc() };
   } catch (err) {

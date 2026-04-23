@@ -7,10 +7,15 @@ import type { Question } from "@/types";
 interface ExplanationPanelProps {
   question: Question;
   selectedAnswer: string;
+  isCorrect?: boolean; // from API response; if provided, overrides local comparison
 }
 
-export default function ExplanationPanel({ question, selectedAnswer }: ExplanationPanelProps) {
-  const isCorrect = selectedAnswer === question.correctAnswer;
+export default function ExplanationPanel({ question, selectedAnswer, isCorrect: isCorrectProp }: ExplanationPanelProps) {
+  // Use API-returned value when available (handles SATA ordering differences).
+  // Fallback to local comparison for MCQ only.
+  const isCorrect = isCorrectProp !== undefined
+    ? isCorrectProp
+    : selectedAnswer.trim().toUpperCase() === question.correctAnswer.trim().toUpperCase();
 
   return (
     <motion.div

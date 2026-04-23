@@ -508,6 +508,7 @@ export default function ExamShell({
                   <ExplanationPanel
                     question={questionForPanel}
                     selectedAnswer={selected.join(",")}
+                    isCorrect={lastAnswer?.isCorrect}
                   />
                 )}
 

@@ -442,6 +442,9 @@ export async function submitAnswer(input: SubmitAnswerInput): Promise<SubmitAnsw
   const session = await prisma.userSession.findUnique({ where: { id: input.sessionId } });
   if (!session || session.userId !== input.userId || session.endedAt) return null;
 
+  // Verify the question was actually served in this session.
+  if (!session.questionIds.includes(input.questionId)) return null;
+
   const q = await prisma.question.findUnique({ where: { id: input.questionId } });
   if (!q) return null;
 
