@@ -99,9 +99,9 @@ export default function BookmarksPage() {
                       <span className="text-xs text-[var(--text-secondary)]">{r.question.domain}</span>
                     )}
                   </div>
-                  <p className="text-sm text-[var(--text-primary)] line-clamp-2">{r.question.stem}</p>
+                  <p className="text-sm text-[var(--text-primary)] line-clamp-2" title={r.question.stem}>{r.question.stem}</p>
                   {r.question.stemZh && (
-                    <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-1">{r.question.stemZh}</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-1" title={r.question.stemZh}>{r.question.stemZh}</p>
                   )}
                   {r.note && (
                     <div className="text-xs text-[var(--gold)] mt-2 bg-[var(--gold-dim)] rounded p-2">

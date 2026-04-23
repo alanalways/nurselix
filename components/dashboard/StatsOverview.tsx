@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, CheckCircle2, Clock, Flame } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, Flame, AlertCircle } from "lucide-react";
 
 interface StatsData {
   streak: number;
@@ -15,12 +15,15 @@ interface StatsData {
 
 export default function StatsOverview() {
   const [data, setData] = useState<StatsData | null>(null);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
+    let alive = true;
     fetch("/api/stats", { cache: "no-store" })
-      .then((r) => r.ok ? r.json() : null)
-      .then(setData)
-      .catch(() => setData(null));
+      .then((r) => { if (!r.ok) throw new Error("failed"); return r.json(); })
+      .then((body) => { if (alive) setData(body); })
+      .catch(() => { if (alive) setFetchFailed(true); });
+    return () => { alive = false; };
   }, []);
 
   const today = data?.heatmap.at(-1);
@@ -64,6 +67,15 @@ export default function StatsOverview() {
       bg: "bg-[rgba(243,156,18,0.15)]",
     },
   ];
+
+  if (fetchFailed) {
+    return (
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-4 flex items-center gap-3 text-sm text-[var(--text-muted)]">
+        <AlertCircle size={16} className="text-[var(--error)]" />
+        <span>統計資料載入失敗，請稍後重新整理</span>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -32,6 +32,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -58,13 +59,21 @@ export default function AdminUsersPage() {
 
   const updatePlan = async (id: string, plan: UserRow["plan"]) => {
     setSaving(id);
+    setSaveError(null);
     try {
-      await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch(`/api/admin/users/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "更新方案失敗");
+        return;
+      }
       await load();
+    } catch {
+      setSaveError("網路錯誤，請稍後重試");
     } finally {
       setSaving(null);
     }
@@ -73,13 +82,21 @@ export default function AdminUsersPage() {
   const toggleActive = async (id: string, isActive: boolean) => {
     if (!confirm(isActive ? "確定要停用此帳號？" : "確定要啟用此帳號？")) return;
     setSaving(id);
+    setSaveError(null);
     try {
-      await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch(`/api/admin/users/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !isActive }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "更新帳號狀態失敗");
+        return;
+      }
       await load();
+    } catch {
+      setSaveError("網路錯誤，請稍後重試");
     } finally {
       setSaving(null);
     }
@@ -115,6 +132,12 @@ export default function AdminUsersPage() {
           </div>
         ))}
       </div>
+
+      {saveError && (
+        <div className="bg-[rgba(231,76,60,0.1)] border border-[var(--error)] rounded-xl px-4 py-2 text-sm text-[var(--error)]">
+          {saveError}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl px-3 py-2 max-w-sm">
         <Search size={14} className="text-[var(--text-muted)]" />

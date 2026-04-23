@@ -2,31 +2,40 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { AlertCircle } from "lucide-react";
 
 export default function DailyProgress() {
   const [done, setDone] = useState(0);
   const [goal, setGoal] = useState(10);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
+    let alive = true;
     (async () => {
       try {
         const [statsRes, settingsRes] = await Promise.all([
           fetch("/api/stats", { cache: "no-store" }),
           fetch("/api/user/settings", { cache: "no-store" }),
         ]);
+        if (!alive) return;
+        if (!statsRes.ok && !settingsRes.ok) {
+          setFetchFailed(true);
+          return;
+        }
         if (statsRes.ok) {
           const s = await statsRes.json();
           const today = s.heatmap?.at(-1);
-          setDone(today?.count ?? 0);
+          if (alive) setDone(today?.count ?? 0);
         }
         if (settingsRes.ok) {
           const settings = await settingsRes.json();
-          if (settings.dailyGoal) setGoal(settings.dailyGoal);
+          if (alive && settings.dailyGoal) setGoal(settings.dailyGoal);
         }
       } catch {
-        // silent fall-back
+        if (alive) setFetchFailed(true);
       }
     })();
+    return () => { alive = false; };
   }, []);
 
   const pct = goal > 0 ? Math.min(100, (done / goal) * 100) : 0;
@@ -66,12 +75,20 @@ export default function DailyProgress() {
 
       <div>
         <h3 className="font-semibold text-[var(--text-primary)] mb-1">今日進度</h3>
-        <p className="text-sm text-[var(--text-secondary)]">
-          今天完成了 <span className="text-[var(--gold)] font-semibold">{done}</span> / {goal} 題目標
-        </p>
-        <p className="text-xs text-[var(--text-muted)] mt-1">
-          {completed ? "🎉 今日目標已達成！" : "開始答題達成今日目標！"}
-        </p>
+        {fetchFailed ? (
+          <p className="text-sm text-[var(--error)] flex items-center gap-1.5">
+            <AlertCircle size={14} /> 載入失敗，請重新整理
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-[var(--text-secondary)]">
+              今天完成了 <span className="text-[var(--gold)] font-semibold">{done}</span> / {goal} 題目標
+            </p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              {completed ? "🎉 今日目標已達成！" : "開始答題達成今日目標！"}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import StatsOverview from "@/components/dashboard/StatsOverview";
@@ -14,7 +15,7 @@ import HeatMap from "@/components/dashboard/HeatMap";
 import UpgradeBanner from "@/components/dashboard/UpgradeBanner";
 import HermesCard from "@/components/dashboard/HermesCard";
 
-function getGreeting() {
+function computeGreeting() {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 12) return "早安";
   if (hour >= 12 && hour < 18) return "午安";
@@ -30,7 +31,8 @@ const pageVariants = {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const name = session?.user?.name ?? "同學";
-  const greeting = getGreeting();
+  const [greeting, setGreeting] = useState("你好");
+  useEffect(() => { setGreeting(computeGreeting()); }, []);
 
   return (
     <motion.div

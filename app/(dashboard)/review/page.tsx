@@ -127,7 +127,7 @@ export default function ReviewPage() {
                         <span className="text-xs text-[var(--text-secondary)]">{r.question.domain}</span>
                       )}
                     </div>
-                    <p className="text-sm text-[var(--text-primary)] line-clamp-2">{r.question.stem}</p>
+                    <p className="text-sm text-[var(--text-primary)] line-clamp-2" title={r.question.stem}>{r.question.stem}</p>
                   </div>
                   <div className="text-xs text-[var(--text-muted)] text-right flex-shrink-0">
                     上次答錯 {new Date(r.lastWrongAt).toLocaleDateString("zh-TW")}
@@ -148,7 +148,7 @@ export default function ReviewPage() {
           <div className="space-y-2">
             {data.upcoming.slice(0, 10).map((r) => (
               <div key={r.questionId} className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl p-3 flex items-center justify-between gap-3">
-                <p className="text-sm text-[var(--text-secondary)] line-clamp-1 flex-1 min-w-0">
+                <p className="text-sm text-[var(--text-secondary)] line-clamp-1 flex-1 min-w-0" title={r.question.stem}>
                   {r.question.stem}
                 </p>
                 <span className="text-xs font-mono text-[var(--text-muted)] whitespace-nowrap">
