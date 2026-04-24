@@ -1,9 +1,7 @@
 "use client";
 
-import { Bell, Search, Shield, Zap, LogOut, Settings, ChevronDown } from "lucide-react";
+import { Bell, Search, Shield, LogOut, Settings, ChevronDown, Zap } from "lucide-react";
 import Link from "next/link";
-import ThemeToggle from "@/components/ui/ThemeToggle";
-import FontSizeControl from "@/components/ui/FontSizeControl";
 import Badge from "@/components/ui/Badge";
 import { useSession, signOut } from "next-auth/react";
 import { isPaymentPublic } from "@/lib/utils/paymentFlag";
@@ -30,29 +28,35 @@ export default function TopBar({ title }: { title?: string }) {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node))
         setMenuOpen(false);
-      }
     };
     if (menuOpen) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex-shrink-0">
-      {/* Left */}
-      <div className="flex items-center gap-3">
-        {title && (
-          <h1 className="font-semibold text-[var(--text-primary)]">{title}</h1>
-        )}
+    <header
+      className="h-14 flex items-center justify-between px-5 border-b flex-shrink-0"
+      style={{ borderColor: "var(--j-line)", background: "var(--j-bg-card)" }}
+    >
+      {/* Left — running head */}
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="j-mono" style={{ color: "var(--j-ink-muted)", fontSize: 11 }}>
+          {title ? `— ${title} —` : "— Reader's Desk —"}
+        </span>
       </div>
 
-      {/* Center - Search (desktop) */}
-      <div className="hidden md:flex items-center gap-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 w-72">
-        <Search size={15} className="text-[var(--text-muted)]" />
+      {/* Center — search */}
+      <div
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 w-64"
+        style={{ border: "1px solid var(--j-line)", background: "var(--j-bg-inset)" }}
+      >
+        <Search size={13} style={{ color: "var(--j-ink-muted)" }} />
         <input
-          placeholder="搜尋題目、標籤..."
-          className="bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none flex-1"
+          placeholder="搜尋題目、標籤…"
+          className="bg-transparent text-sm outline-none flex-1 j-zh"
+          style={{ color: "var(--j-ink)", fontSize: 13 }}
         />
       </div>
 
@@ -61,79 +65,127 @@ export default function TopBar({ title }: { title?: string }) {
         {plan === "FREE" && isPaymentPublic() && (
           <Link
             href="/pricing"
-            className="hidden md:flex items-center gap-1.5 px-3 h-9 rounded-full bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-[#080E1A] font-semibold text-xs hover:opacity-90 transition-opacity"
+            className="hidden md:flex items-center gap-1.5 j-mono j-btn"
+            style={{
+              padding: "6px 12px",
+              border: "1px solid var(--j-phosphor-line)",
+              color: "var(--j-phosphor)",
+              fontSize: 11,
+            }}
           >
-            <Zap size={13} />
-            <span>免費試用 Pro 7天</span>
+            <Zap size={12} />
+            Subscribe
           </Link>
         )}
         {isAdmin && (
           <Link
             href="/admin"
-            className="hidden md:flex items-center gap-1.5 px-3 h-10 rounded-full bg-[var(--gold-dim)] border border-[var(--gold)] text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[#080E1A] transition-colors text-xs font-semibold"
-            title="進入管理後台"
+            className="hidden md:flex items-center gap-1 j-mono j-btn"
+            style={{ padding: "6px 12px", border: "1px solid var(--j-line)", color: "var(--j-ink-dim)", fontSize: 11 }}
           >
-            <Shield size={14} />
-            <span>管理後台</span>
+            <Shield size={12} />
+            Admin
           </Link>
         )}
-        <FontSizeControl />
-        <ThemeToggle />
-        <button className="relative w-10 h-10 rounded-full flex items-center justify-center bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-          <Bell size={16} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--gold)]" />
+
+        <button
+          className="relative w-9 h-9 flex items-center justify-center j-btn"
+          style={{ border: "1px solid var(--j-line)", color: "var(--j-ink-muted)" }}
+          aria-label="通知"
+        >
+          <Bell size={15} />
+          <span
+            className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+            style={{ background: "var(--j-phosphor)" }}
+          />
         </button>
 
         {/* Avatar + dropdown */}
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-[var(--bg-elevated)] transition-colors"
+            className="flex items-center gap-2 pl-1 pr-2 py-1 j-btn"
+            style={{ border: "1px solid transparent" }}
           >
             {user?.image ? (
               <Image
                 src={user.image}
                 alt={displayName}
-                width={32}
-                height={32}
-                className="w-8 h-8 rounded-full object-cover"
+                width={28}
+                height={28}
+                className="w-7 h-7 rounded-full object-cover"
+                style={{ border: "1px solid var(--j-line)" }}
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center text-xs font-bold text-[#080E1A]">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center j-mono"
+                style={{
+                  background: "var(--j-phosphor-soft)",
+                  border: "1px solid var(--j-phosphor-line)",
+                  color: "var(--j-phosphor)",
+                  fontSize: 11,
+                }}
+              >
                 {initial}
               </div>
             )}
             <div className="hidden md:flex flex-col items-start">
-              <span className="text-sm font-medium text-[var(--text-primary)] leading-tight">{displayName}</span>
-              <Badge variant={planVariant[plan] ?? "muted"} className="text-[10px] cursor-pointer">{plan}</Badge>
+              <span className="j-zh leading-tight" style={{ fontSize: 13, color: "var(--j-ink)" }}>
+                {displayName}
+              </span>
+              <Badge variant={planVariant[plan] ?? "muted"} className="text-[10px] cursor-pointer">
+                {plan}
+              </Badge>
             </div>
-            <ChevronDown size={14} className="hidden md:block text-[var(--text-muted)]" />
+            <ChevronDown size={12} className="hidden md:block" style={{ color: "var(--j-ink-muted)" }} />
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-12 w-52 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-xl z-50 py-1 overflow-hidden">
-              <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
-                <div className="text-sm font-semibold text-[var(--text-primary)] truncate">{displayName}</div>
-                <div className="text-xs text-[var(--text-muted)] truncate">{user?.email}</div>
+            <div
+              className="absolute right-0 top-11 w-52 z-50 py-1"
+              style={{
+                background: "var(--j-bg-card)",
+                border: "1px solid var(--j-line-strong)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+              }}
+            >
+              <div className="px-4 py-3 border-b" style={{ borderColor: "var(--j-line)" }}>
+                <div className="j-zh text-sm truncate" style={{ color: "var(--j-ink)" }}>
+                  {displayName}
+                </div>
+                <div className="j-mono truncate" style={{ fontSize: 10, color: "var(--j-ink-muted)", marginTop: 2 }}>
+                  {user?.email}
+                </div>
               </div>
               <nav className="py-1">
-                <Link href="/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors">
-                  <Settings size={14} className="text-[var(--text-muted)]" />
+                <Link
+                  href="/settings"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-2.5 j-btn j-zh"
+                  style={{ fontSize: 13, color: "var(--j-ink)" }}
+                >
+                  <Settings size={13} style={{ color: "var(--j-ink-muted)" }} />
                   設定
                 </Link>
                 {isAdmin && (
-                  <Link href="/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors">
-                    <Shield size={14} className="text-[var(--gold)]" />
+                  <Link
+                    href="/admin"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 j-btn j-zh"
+                    style={{ fontSize: 13, color: "var(--j-ink)" }}
+                  >
+                    <Shield size={13} style={{ color: "var(--j-phosphor)" }} />
                     管理後台
                   </Link>
                 )}
               </nav>
-              <div className="border-t border-[var(--border-subtle)] py-1">
+              <div className="border-t py-1" style={{ borderColor: "var(--j-line)" }}>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 j-btn j-zh"
+                  style={{ fontSize: 13, color: "var(--j-red)" }}
                 >
-                  <LogOut size={14} />
+                  <LogOut size={13} />
                   登出
                 </button>
               </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import StatsOverview from "@/components/dashboard/StatsOverview";
 import TodayBriefing from "@/components/dashboard/TodayBriefing";
@@ -22,12 +21,6 @@ function computeGreeting() {
   return "晚安";
 }
 
-const pageVariants = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25 },
-};
-
 export default function DashboardPage() {
   const { data: session } = useSession();
   const name = session?.user?.name ?? "同學";
@@ -35,17 +28,27 @@ export default function DashboardPage() {
   useEffect(() => { setGreeting(computeGreeting()); }, []);
 
   return (
-    <motion.div
-      {...pageVariants}
-      className="p-4 md:p-6 max-w-7xl mx-auto space-y-6"
-    >
-      {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-          {greeting}，{name} 👋
+    <div className="j-page p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+
+      {/* Running head + greeting */}
+      <div style={{ borderBottom: "1px solid var(--j-line)", paddingBottom: 20 }}>
+        <div className="j-mono" style={{ color: "var(--j-ink-muted)", marginBottom: 8 }}>
+          — Reader{"'"}s Desk · Vol. 14 —
+        </div>
+        <h1
+          className="j-display"
+          style={{
+            fontSize: "clamp(32px, 5vw, 52px)",
+            fontStyle: "italic",
+            letterSpacing: "-0.01em",
+            lineHeight: 1.05,
+            margin: 0,
+          }}
+        >
+          {greeting}，<span style={{ color: "var(--j-phosphor)" }}>{name}</span>
         </h1>
-        <p className="text-[var(--text-secondary)] mt-1">
-          歡迎回來，繼續你的備考之旅！
+        <p className="j-zh" style={{ fontSize: 15, color: "var(--j-ink-dim)", marginTop: 6 }}>
+          繼續你的備考之旅。
         </p>
       </div>
 
@@ -55,7 +58,7 @@ export default function DashboardPage() {
       {/* Upgrade Banner */}
       <UpgradeBanner />
 
-      {/* Assessment Prompt (if not done) */}
+      {/* Assessment Prompt */}
       <AssessmentPrompt />
 
       {/* Stats Overview */}
@@ -63,13 +66,10 @@ export default function DashboardPage() {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Quick Start */}
         <div className="lg:col-span-2 space-y-6">
           <QuickStart />
           <HeatMap />
         </div>
-
-        {/* Right: Sidebar Cards */}
         <div className="space-y-4">
           <HermesCard />
           <DailyProgress />
@@ -80,6 +80,6 @@ export default function DashboardPage() {
 
       {/* Radar Chart */}
       <DomainRadarChart />
-    </motion.div>
+    </div>
   );
 }

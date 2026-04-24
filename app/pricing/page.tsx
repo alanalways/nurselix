@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Star, Mail, Loader2, Sparkles, Send, ChevronDown } from "lucide-react";
-import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
+import { Check, X, Mail, Loader2, Sparkles, Send, ChevronDown } from "lucide-react";
 import Button from "@/components/ui/Button";
-import Badge from "@/components/ui/Badge";
 import Input from "@/components/ui/Input";
 import Footer from "@/components/ui/Footer";
 import { useSession } from "next-auth/react";
@@ -228,177 +226,198 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)]">
-      <nav className="border-b border-[var(--border-subtle)] px-6 py-4 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center">
-            <NurslixIconSquare size={20} className="text-[#080E1A]" />
-          </div>
-          <span className="font-bold text-lg text-gradient-gold">Nurslix</span>
+    <div className="j-page min-h-screen" style={{ background: "var(--j-bg)", color: "var(--j-ink)" }}>
+      {/* Journal top bar */}
+      <nav
+        className="px-6 py-4 flex items-center justify-between"
+        style={{ borderBottom: "1px solid var(--j-line)", background: "var(--j-bg-card)" }}
+      >
+        <a href="/" className="j-display" style={{ fontStyle: "italic", fontSize: 20 }}>
+          Nurslix<span style={{ color: "var(--j-phosphor)" }}>⌁</span>Journal
         </a>
         {authSession ? (
-          <a href="/" className="text-sm text-[var(--text-secondary)] hover:text-[var(--gold)]">← 返回主站</a>
+          <a href="/home" className="j-mono j-btn" style={{ fontSize: 11, color: "var(--j-ink-muted)" }}>
+            ← Reader{"'"}s Desk
+          </a>
         ) : (
-          <a href="/login" className="text-sm text-[var(--text-secondary)] hover:text-[var(--gold)]">登入</a>
+          <a href="/login" className="j-mono j-btn" style={{ fontSize: 11, color: "var(--j-ink-muted)" }}>
+            登入
+          </a>
         )}
       </nav>
 
-      <div className="max-w-6xl mx-auto px-4 py-12 space-y-12">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-[var(--text-primary)] mb-3">選擇你的方案</h1>
-          <p className="text-[var(--text-secondary)] max-w-xl mx-auto">
-            選擇最適合你的備考計畫，隨時可升降級
+      <div className="max-w-6xl mx-auto px-6 py-16 space-y-16">
+        {/* Masthead */}
+        <div style={{ borderBottom: "1px solid var(--j-line)", paddingBottom: 32 }}>
+          <div className="j-mono" style={{ color: "var(--j-ink-muted)", marginBottom: 10 }}>
+            — Subscribe · Vol. 14 —
+          </div>
+          <h1
+            className="j-display"
+            style={{ fontSize: "clamp(40px, 7vw, 80px)", fontStyle: "italic", lineHeight: 1.02, margin: 0 }}
+          >
+            Choose your<br />reading plan.
+          </h1>
+          <p className="j-zh" style={{ fontSize: 17, color: "var(--j-ink-dim)", marginTop: 16, maxWidth: 520 }}>
+            選擇最適合你的備考計畫，隨時可升降級。
           </p>
         </div>
 
-        <div className="rounded-2xl border border-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] to-[var(--blue-dim)] px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
+        {/* Beta banner */}
+        <div
+          className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-5"
+          style={{ border: "1px solid var(--j-phosphor-line)", background: "var(--j-phosphor-soft)" }}
+        >
           <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-[var(--gold)]" />
-            <span className="font-semibold text-[var(--text-primary)]">
+            <Sparkles size={16} style={{ color: "var(--j-phosphor)" }} />
+            <span className="j-zh" style={{ fontWeight: 600 }}>
               Beta 階段限時免費體驗，全功能開放至 5/1
             </span>
           </div>
-          <span className="text-sm text-[var(--text-secondary)]">
+          <span className="j-mono" style={{ fontSize: 11, color: "var(--j-ink-dim)" }}>
             距離正式定價還有{" "}
-            <span className="font-mono font-semibold text-[var(--gold)]">
+            <span style={{ color: "var(--j-phosphor)", fontWeight: 600 }}>
               {formatRemaining(remaining)}
             </span>
           </span>
         </div>
 
         {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center gap-0" style={{ borderBottom: "1px solid var(--j-line)", paddingBottom: 0 }}>
           {(["monthly", "quarterly", "yearly"] as Billing[]).map((b) => (
             <button
               key={b}
               onClick={() => setBilling(b)}
-              className={`px-4 py-2 rounded-xl text-sm border transition-colors ${
-                billing === b
-                  ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]"
-                  : "border-[var(--border-default)] text-[var(--text-secondary)]"
-              }`}
+              className="j-mono j-btn"
+              style={{
+                padding: "10px 20px",
+                fontSize: 11,
+                borderBottom: billing === b ? "2px solid var(--j-ink)" : "2px solid transparent",
+                color: billing === b ? "var(--j-ink)" : "var(--j-ink-muted)",
+                background: "transparent",
+              }}
             >
-              {b === "monthly" ? "月付" : b === "quarterly" ? (
-                <span className="flex items-center gap-1">季付 <Star size={12} className="text-[var(--gold)]" /></span>
-              ) : "年付"}
-              {b === "quarterly" && <span className="ml-1 text-xs text-[var(--success)]">省 10%</span>}
-              {b === "yearly" && <span className="ml-1 text-xs text-[var(--success)]">省 20%</span>}
+              {b === "monthly" ? "月付" : b === "quarterly" ? "季付 −10%" : "年付 −20%"}
             </button>
           ))}
         </div>
         {billing === "quarterly" && (
-          <p className="text-center text-sm text-[var(--text-muted)]">季付一次付清 3 個月，省 10%</p>
+          <p className="j-mono" style={{ fontSize: 11, color: "var(--j-ink-muted)", marginTop: -8 }}>
+            季付一次付清 3 個月
+          </p>
         )}
 
         {/* Plan Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0" style={{ border: "1px solid var(--j-line)" }}>
           {plans.map((plan, i) => (
             <motion.div
               key={plan.key}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className={`relative rounded-2xl border p-6 flex flex-col ${
-                isCurrentPlan(plan.key)
-                  ? "border-[var(--success)] bg-[rgba(46,204,113,0.05)]"
-                  : plan.highlight
-                  ? "border-[var(--gold)] bg-gradient-to-b from-[var(--gold-dim)] to-[var(--bg-surface)]"
-                  : "border-[var(--border-default)] bg-[var(--bg-surface)]"
-              }`}
+              transition={{ delay: i * 0.06 }}
+              className="relative flex flex-col p-7"
+              style={{
+                borderRight: i < 3 ? "1px solid var(--j-line)" : "none",
+                borderTop: isCurrentPlan(plan.key) ? `3px solid var(--j-phosphor)` : plan.highlight ? "3px solid var(--j-ink)" : "3px solid transparent",
+                background: plan.highlight ? "var(--j-bg-inset)" : "var(--j-bg-card)",
+              }}
             >
               {isCurrentPlan(plan.key) && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge variant="success">✓ 目前方案</Badge>
+                <div className="j-mono" style={{ fontSize: 9, color: "var(--j-phosphor)", marginBottom: 6 }}>
+                  ✓ 目前方案
                 </div>
               )}
               {!isCurrentPlan(plan.key) && plan.highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge variant="gold">⭐ 推薦</Badge>
+                <div className="j-mono" style={{ fontSize: 9, color: "var(--j-ink-muted)", marginBottom: 6 }}>
+                  ✦ 推薦
                 </div>
               )}
 
-              <div className="mb-4">
-                <h3 className="text-xl font-bold text-[var(--text-primary)]">{plan.name}</h3>
-                <p className="text-sm text-[var(--text-muted)] mt-0.5">{plan.description}</p>
+              <div style={{ marginBottom: 20 }}>
+                <h3 className="j-display" style={{ fontSize: 28, fontStyle: "italic" }}>{plan.name}</h3>
+                <p className="j-zh" style={{ fontSize: 13, color: "var(--j-ink-muted)", marginTop: 4 }}>{plan.description}</p>
               </div>
 
-              <div className="mb-6">
+              <div style={{ marginBottom: 24 }}>
                 {plan.prices.monthly === 0 ? (
-                  <div className="text-3xl font-bold text-[var(--text-primary)]">免費</div>
+                  <div className="j-display" style={{ fontSize: 36, fontStyle: "italic" }}>免費</div>
                 ) : betaActive ? (
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-1 select-none" aria-hidden="true">
-                      <span className="text-3xl font-bold text-[var(--text-muted)] blur-sm line-through opacity-60">
-                        NT${
-                          billing === "yearly" ? plan.yearlyTotal
-                          : billing === "quarterly" ? plan.quarterlyTotal
-                          : plan.prices.monthly
-                        }
-                      </span>
-                      <span className="text-sm text-[var(--text-muted)] blur-sm opacity-60">
-                        /{billing === "monthly" ? "月" : billing === "quarterly" ? "季" : "年"}
+                  <div>
+                    <div className="select-none" aria-hidden="true" style={{ opacity: 0.4, textDecoration: "line-through" }}>
+                      <span className="j-mono" style={{ fontSize: 20 }}>
+                        NT${billing === "yearly" ? plan.yearlyTotal : billing === "quarterly" ? plan.quarterlyTotal : plan.prices.monthly}
                       </span>
                     </div>
-                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--gold-dim)] border border-[var(--gold)]">
-                      <Sparkles size={12} className="text-[var(--gold)]" />
-                      <span className="text-sm font-semibold text-[var(--gold)]">Beta 限時免費</span>
+                    <div
+                      className="inline-flex items-center gap-1 j-mono"
+                      style={{
+                        fontSize: 10,
+                        padding: "4px 10px",
+                        border: "1px solid var(--j-phosphor-line)",
+                        color: "var(--j-phosphor)",
+                        marginTop: 6,
+                      }}
+                    >
+                      <Sparkles size={10} />
+                      Beta 限時免費
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-[var(--text-primary)]">
-                        NT${
-                          billing === "yearly" ? plan.yearlyTotal
-                          : billing === "quarterly" ? plan.quarterlyTotal
-                          : plan.prices.monthly
-                        }
-                      </span>
-                      <span className="text-sm text-[var(--text-muted)]">
-                        /{billing === "monthly" ? "月" : billing === "quarterly" ? "季" : "年"}
-                      </span>
+                  <div>
+                    <div className="j-display" style={{ fontSize: 36, fontStyle: "italic" }}>
+                      NT${billing === "yearly" ? plan.yearlyTotal : billing === "quarterly" ? plan.quarterlyTotal : plan.prices.monthly}
                     </div>
-                    {billing === "quarterly" && (
-                      <p className="text-xs text-[var(--text-muted)] mt-0.5">約 NT${plan.prices.quarterly}/月</p>
-                    )}
-                    {billing === "yearly" && (
-                      <p className="text-xs text-[var(--text-muted)] mt-0.5">約 NT${plan.prices.yearly}/月</p>
-                    )}
-                  </>
+                    <div className="j-mono" style={{ fontSize: 10, color: "var(--j-ink-muted)", marginTop: 4 }}>
+                      /{billing === "monthly" ? "月" : billing === "quarterly" ? "季" : "年"}
+                      {billing === "quarterly" && ` · 約 NT$${plan.prices.quarterly}/月`}
+                      {billing === "yearly" && ` · 約 NT$${plan.prices.yearly}/月`}
+                    </div>
+                  </div>
                 )}
               </div>
 
-              <ul className="space-y-2 flex-1 mb-6">
+              <ul className="space-y-2.5 flex-1" style={{ marginBottom: 24 }}>
                 {plan.features.filter(f => f.text).map((f, fi) => (
-                  <li key={fi} className="flex items-start gap-2 text-sm">
+                  <li key={fi} className="flex items-start gap-2 j-zh" style={{ fontSize: 13 }}>
                     {f.included
-                      ? <Check size={14} className="text-[var(--success)] flex-shrink-0 mt-0.5" />
-                      : <X size={14} className="text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
+                      ? <Check size={13} className="flex-shrink-0 mt-0.5" style={{ color: "var(--j-phosphor)" }} />
+                      : <X size={13} className="flex-shrink-0 mt-0.5" style={{ color: "var(--j-ink-muted)" }} />
                     }
-                    <span className={f.included ? "text-[var(--text-secondary)]" : "text-[var(--text-muted)]"}>
+                    <span style={{ color: f.included ? "var(--j-ink)" : "var(--j-ink-muted)" }}>
                       {f.text}
                     </span>
                   </li>
                 ))}
               </ul>
 
-              <Button
-                fullWidth
-                variant={isCurrentPlan(plan.key) ? "outline" : plan.highlight ? "gold" : "outline"}
+              <button
                 disabled={isDisabled(plan.key)}
                 onClick={() => !isDisabled(plan.key) && handleSubscribe(plan.key)}
+                className="j-mono j-btn w-full"
+                style={{
+                  padding: "12px",
+                  fontSize: 11,
+                  border: "1px solid var(--j-ink)",
+                  background: plan.highlight && !isCurrentPlan(plan.key) ? "var(--j-ink)" : "transparent",
+                  color: plan.highlight && !isCurrentPlan(plan.key) ? "var(--j-bg)" : "var(--j-ink)",
+                  opacity: isDisabled(plan.key) ? 0.45 : 1,
+                  cursor: isDisabled(plan.key) ? "not-allowed" : "pointer",
+                }}
               >
                 {loadingPlan === plan.key
-                  ? <Loader2 size={14} className="animate-spin" />
+                  ? <Loader2 size={13} className="animate-spin inline" />
                   : getButtonLabel(plan.key)}
-              </Button>
+              </button>
             </motion.div>
           ))}
         </div>
 
         {/* Feature Table */}
         <div>
-          <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">完整功能對照</h2>
+          <div className="j-mono" style={{ color: "var(--j-ink-muted)", marginBottom: 8 }}>— 完整功能對照 —</div>
+          <h2 className="j-display" style={{ fontSize: "clamp(24px,4vw,40px)", fontStyle: "italic", marginBottom: 24 }}>
+            What{"'"}s in each issue
+          </h2>
 
           {/* Mobile: stacked cards */}
           <div className="md:hidden space-y-4">
@@ -408,20 +427,20 @@ export default function PricingPage() {
               return (
                 <div
                   key={planName}
-                  className={`rounded-xl border p-4 ${
-                    highlight
-                      ? "border-[var(--gold)] bg-[var(--gold-dim)]/30"
-                      : "border-[var(--border-subtle)] bg-[var(--bg-surface)]"
-                  }`}
+                  style={{
+                    border: `1px solid ${highlight ? "var(--j-ink)" : "var(--j-line)"}`,
+                    padding: 20,
+                    background: "var(--j-bg-card)",
+                  }}
                 >
-                  <div className="font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-1.5">
-                    {planName} {highlight && <span className="text-[var(--gold)]">⭐</span>}
+                  <div className="j-display" style={{ fontStyle: "italic", fontSize: 22, marginBottom: 12 }}>
+                    {planName} {highlight && <span style={{ color: "var(--j-phosphor)" }}>✦</span>}
                   </div>
-                  <ul className="space-y-2 text-sm">
+                  <ul className="space-y-2">
                     {featureTable.map((row) => (
-                      <li key={row.feature} className="flex justify-between items-start gap-3">
-                        <span className="text-[var(--text-muted)]">{row.feature}</span>
-                        <span className="text-[var(--text-primary)] font-medium text-right shrink-0">{row[key]}</span>
+                      <li key={row.feature} className="flex justify-between items-start gap-3 j-zh" style={{ fontSize: 13 }}>
+                        <span style={{ color: "var(--j-ink-muted)" }}>{row.feature}</span>
+                        <span style={{ color: "var(--j-ink)", fontWeight: 500 }}>{row[key]}</span>
                       </li>
                     ))}
                   </ul>
@@ -432,21 +451,24 @@ export default function PricingPage() {
 
           {/* Desktop: comparison table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="border-b border-[var(--border-subtle)]">
-                  <th className="text-left py-3 px-4 text-[var(--text-muted)] font-medium w-1/3">功能</th>
-                  {["Free", "Basic", "Plus ⭐", "Premium"].map((h) => (
-                    <th key={h} className="py-3 px-4 text-center text-[var(--text-secondary)] font-medium">{h}</th>
+                <tr style={{ borderBottom: "2px solid var(--j-line-strong)" }}>
+                  <th className="text-left py-3 px-4 j-mono" style={{ fontSize: 10, color: "var(--j-ink-muted)", width: "32%" }}>功能</th>
+                  {["Free", "Basic", "Plus ✦", "Premium"].map((h) => (
+                    <th key={h} className="py-3 px-4 text-center j-display" style={{ fontStyle: "italic", fontSize: 18, color: "var(--j-ink)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {featureTable.map((row, i) => (
-                  <tr key={row.feature} className={`border-b border-[var(--border-subtle)] ${i % 2 === 0 ? "bg-[var(--bg-surface)]" : ""}`}>
-                    <td className="py-3 px-4 text-[var(--text-secondary)]">{row.feature}</td>
+                  <tr
+                    key={row.feature}
+                    style={{ borderBottom: "1px solid var(--j-line)", background: i % 2 === 0 ? "var(--j-bg-card)" : "transparent" }}
+                  >
+                    <td className="py-3 px-4 j-zh" style={{ fontSize: 13, color: "var(--j-ink-dim)" }}>{row.feature}</td>
                     {[row.free, row.basic, row.pro, row.elite].map((val, vi) => (
-                      <td key={vi} className="py-3 px-4 text-center text-[var(--text-secondary)]">{val}</td>
+                      <td key={vi} className="py-3 px-4 text-center j-zh" style={{ fontSize: 13, color: "var(--j-ink)" }}>{val}</td>
                     ))}
                   </tr>
                 ))}
@@ -456,9 +478,17 @@ export default function PricingPage() {
         </div>
 
         {/* Beta Subscribe */}
-        <div className="bg-gradient-to-r from-[var(--gold-dim)] to-[var(--blue-dim)] border border-[var(--gold)] rounded-2xl p-8 text-center">
-          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">收到最新消息通知</h2>
-          <p className="text-[var(--text-secondary)] mb-6">有新功能、優惠活動時第一個知道</p>
+        <div
+          className="p-10 text-center"
+          style={{ border: "1px solid var(--j-phosphor-line)", background: "var(--j-phosphor-soft)" }}
+        >
+          <div className="j-mono" style={{ color: "var(--j-phosphor)", marginBottom: 8 }}>— 訂閱通知 —</div>
+          <h2 className="j-display" style={{ fontSize: "clamp(28px,4vw,48px)", fontStyle: "italic", marginBottom: 8 }}>
+            Stay on the list.
+          </h2>
+          <p className="j-zh" style={{ fontSize: 15, color: "var(--j-ink-dim)", marginBottom: 28 }}>
+            有新功能、優惠活動時第一個知道
+          </p>
           {!betaSubscribed ? (
             <>
               <div className="flex gap-2 max-w-md mx-auto">
@@ -506,15 +536,25 @@ export default function PricingPage() {
               transition={{ duration: 0.2 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+              <div
+                className="w-full max-w-md p-6 space-y-5"
+                style={{
+                  background: "var(--j-bg-card)",
+                  border: "1px solid var(--j-line-strong)",
+                  boxShadow: "0 16px 48px rgba(0,0,0,0.16)",
+                }}
+              >
                 {requestDone ? (
                   <div className="text-center space-y-4 py-4">
-                    <div className="w-14 h-14 rounded-full bg-[rgba(46,204,113,0.15)] border border-[var(--success)] flex items-center justify-center mx-auto">
-                      <Check size={28} className="text-[var(--success)]" />
+                    <div
+                      className="w-14 h-14 flex items-center justify-center mx-auto"
+                      style={{ border: "1px solid var(--j-phosphor)", background: "var(--j-phosphor-soft)" }}
+                    >
+                      <Check size={28} style={{ color: "var(--j-phosphor)" }} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-[var(--text-primary)]">申請已送出！</h3>
-                      <p className="text-sm text-[var(--text-secondary)] mt-1">
+                      <h3 className="j-display" style={{ fontSize: 22, fontStyle: "italic" }}>申請已送出！</h3>
+                      <p className="j-zh" style={{ fontSize: 14, color: "var(--j-ink-dim)", marginTop: 6 }}>
                         我們會盡快透過 Threads 私訊傳送匯款資訊給你。
                       </p>
                     </div>
@@ -523,7 +563,7 @@ export default function PricingPage() {
                 ) : (
                   <>
                     <div>
-                      <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                      <h3 className="j-display" style={{ fontSize: 22, fontStyle: "italic" }}>
                         申請升級至 {requestModal.planName}
                       </h3>
                       <p className="text-sm text-[var(--text-secondary)] mt-1">

@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sun, Moon, Bell, CalendarDays, User, Shield, LogOut, CreditCard, Zap, AlertCircle } from "lucide-react";
+import { Bell, CalendarDays, User, Shield, LogOut, CreditCard, Zap, AlertCircle, Palette } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { useThemeStore } from "@/store/themeStore";
+import { JOURNAL_PRESETS, applyPreset, loadActivePresetId } from "@/lib/journal-theme";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -28,6 +29,8 @@ export default function SettingsPage() {
 
   const plan = (session?.user as any)?.plan ?? "FREE";
   const isPaid = plan !== "FREE";
+  const [activePreset, setActivePreset] = useState("spring");
+  useEffect(() => { setActivePreset(loadActivePresetId()); }, []);
 
   useEffect(() => {
     let alive = true;
@@ -154,46 +157,79 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Display */}
-      <section className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-5">
-        <h2 className="font-semibold text-[var(--text-primary)]">顯示設定</h2>
+      {/* Journal Palette */}
+      <section className="border p-5 space-y-6" style={{ borderColor: "var(--j-line)", background: "var(--j-bg-card)" }}>
+        <div className="flex items-center gap-2">
+          <Palette size={15} style={{ color: "var(--j-phosphor)" }} />
+          <h2 className="j-display" style={{ fontStyle: "italic", fontSize: 18 }}>Journal Palette</h2>
+        </div>
 
-        {/* Theme */}
+        {/* Preset swatches */}
         <div>
-          <label className="text-sm text-[var(--text-secondary)] block mb-2">介面主題</label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTheme("dark")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-colors ${
-                theme === "dark" ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--border-default)] text-[var(--text-secondary)]"
-              }`}
-            >
-              <Moon size={16} /> 深色
-            </button>
-            <button
-              onClick={() => setTheme("light")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-colors ${
-                theme === "light" ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--border-default)] text-[var(--text-secondary)]"
-              }`}
-            >
-              <Sun size={16} /> 淺色
-            </button>
+          <div className="j-mono" style={{ fontSize: 10, color: "var(--j-ink-muted)", marginBottom: 10 }}>— Preset themes —</div>
+          <div className="grid grid-cols-3 gap-3">
+            {JOURNAL_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  applyPreset(p.id);
+                  setActivePreset(p.id);
+                  // Map to legacy themeStore so the API save still works
+                  setTheme(p.id === "night" ? "dark" : "light");
+                }}
+                className="j-btn text-left p-3"
+                style={{
+                  border: activePreset === p.id ? "2px solid var(--j-ink)" : "1px solid var(--j-line)",
+                  background: p.t.bg,
+                  position: "relative",
+                }}
+              >
+                <div className="flex gap-1.5 mb-2">
+                  <span style={{ width: 14, height: 14, borderRadius: "50%", background: p.t.bg, border: "1px solid rgba(0,0,0,0.12)", display: "inline-block" }} />
+                  <span style={{ width: 14, height: 14, borderRadius: "50%", background: p.t.phosphor, display: "inline-block" }} />
+                  <span style={{ width: 14, height: 14, borderRadius: "50%", background: p.t.ink, display: "inline-block" }} />
+                </div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: p.t.inkDim }}>
+                  {p.name}
+                </div>
+                <div style={{ fontFamily: "var(--font-zh, serif)", fontSize: 11, color: p.t.inkMuted, marginTop: 2 }}>
+                  {p.subtitle}
+                </div>
+                {activePreset === p.id && (
+                  <span style={{
+                    position: "absolute", top: 6, right: 8,
+                    fontFamily: "var(--font-mono)", fontSize: 9,
+                    color: p.t.phosphor,
+                    letterSpacing: "0.05em",
+                  }}>✓</span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Font size */}
         <div>
-          <label className="text-sm text-[var(--text-secondary)] block mb-2">字體大小</label>
-          <div className="flex gap-2">
-            {(["small", "medium", "large"] as const).map((s) => (
+          <div className="j-mono" style={{ fontSize: 10, color: "var(--j-ink-muted)", marginBottom: 10 }}>— Font size —</div>
+          <div className="flex gap-0" style={{ border: "1px solid var(--j-line)", display: "inline-flex" }}>
+            {(["small", "medium", "large"] as const).map((s, i) => (
               <button
                 key={s}
-                onClick={() => setFontSize(s)}
-                className={`flex-1 py-2 rounded-xl border text-sm transition-colors ${
-                  fontSize === s ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--border-default)] text-[var(--text-secondary)]"
-                }`}
+                onClick={() => {
+                  setFontSize(s);
+                  document.documentElement.setAttribute("data-fontsize", s);
+                  try { localStorage.setItem("nj.fontsize", s); } catch {}
+                }}
+                className="j-mono j-btn"
+                style={{
+                  padding: "8px 18px",
+                  fontSize: 10,
+                  borderRight: i < 2 ? "1px solid var(--j-line)" : "none",
+                  background: fontSize === s ? "var(--j-ink)" : "transparent",
+                  color: fontSize === s ? "var(--j-bg)" : "var(--j-ink-dim)",
+                }}
               >
-                {s === "small" ? "小" : s === "medium" ? "中" : "大"}
+                {s === "small" ? "A−" : s === "medium" ? "A" : "A+"}
               </button>
             ))}
           </div>
