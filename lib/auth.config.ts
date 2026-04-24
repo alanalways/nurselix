@@ -18,7 +18,6 @@ const PUBLIC_ROUTES = [
   "/pricing",
   "/terms",
   "/privacy",
-  "/us-nursing",
   "/nursing-career",
 ];
 

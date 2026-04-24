@@ -683,7 +683,7 @@ function JournalFooter() {
         </div>
         <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
           <li><Link href="/pricing" className="j-zh">訂閱方案</Link></li>
-          <li><Link href="/us-nursing" className="j-zh">赴美護理</Link></li>
+          <li><Link href="/nursing-career" className="j-zh">赴美護理</Link></li>
           <li><Link href="/nursing-career" className="j-zh">職涯資源</Link></li>
         </ul>
       </div>
