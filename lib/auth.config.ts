@@ -8,8 +8,11 @@ import type { NextAuthConfig } from "next-auth";
 // Routes that redirect logged-in users to dashboard.
 const AUTH_ONLY_ROUTES = ["/login", "/register"];
 
-// Public routes that never require a session (unauthenticated or logged-in).
+// The editorial landing ("Nurslix Journal" cover) lives at `/` and is
+// fully public. Authenticated users still see it; a "Continue reading →"
+// button on the cover takes them to the dashboard.
 const PUBLIC_ROUTES = [
+  "/",
   "/forgot-password",
   "/reset-password",
   "/pricing",
@@ -32,7 +35,7 @@ export const authConfig = {
 
       // Auth-only pages — allow unauthenticated, redirect if already logged in.
       if (AUTH_ONLY_ROUTES.some((p) => pathname.startsWith(p))) {
-        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
+        if (isLoggedIn) return Response.redirect(new URL("/home", nextUrl));
         return true;
       }
 

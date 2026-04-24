@@ -292,6 +292,22 @@ mark       { background: var(--j-marker); color: var(--j-ink); padding: 0 3px; b
   .text-balance { text-wrap: balance; }
 }
 
+/* ===== JOURNAL LANDING — responsive collapses ===== */
+@media (max-width: 900px) {
+  .hero-grid,
+  .sample-grid,
+  .footer-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .pullquote-grid { grid-template-columns: 1fr !important; }
+  .pullquote-grid > div { border-left: none !important; padding-left: 0 !important; border-top: 1px solid var(--j-line); padding-top: 20px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .stats-grid > div:nth-child(3) { border-left: none !important; padding-left: 0 !important; }
+  .readers-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: 1fr !important; }
+  .stats-grid > div { border-left: none !important; padding-left: 0 !important; }
+}
+
 /* Exam safety (keep — critical for grading integrity) */
 .exam-no-translate {
   -webkit-user-select: none;

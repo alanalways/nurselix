@@ -53,14 +53,14 @@ export default function LoginPage() {
       setError("電子郵件或密碼錯誤，請確認後再試");
       setLoading(false);
     } else {
-      router.push("/");
+      router.push("/home");
       router.refresh();
     }
   };
 
   const handleGoogle = () => {
     setGoogleLoading(true);
-    signIn("google", { callbackUrl: "/" });
+    signIn("google", { callbackUrl: "/home" });
   };
 
   return (

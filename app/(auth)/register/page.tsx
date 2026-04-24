@@ -88,12 +88,12 @@ export default function RegisterPage() {
     }
 
     // Auto sign-in after successful registration
-    await signIn("credentials", { email, password, callbackUrl: "/" });
+    await signIn("credentials", { email, password, callbackUrl: "/home" });
   };
 
   const handleGoogle = () => {
     setGoogleLoading(true);
-    signIn("google", { callbackUrl: "/" });
+    signIn("google", { callbackUrl: "/home" });
   };
 
   return (
