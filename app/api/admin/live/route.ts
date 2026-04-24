@@ -17,7 +17,6 @@ export async function GET() {
   const now = new Date();
   const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
   const fifteenMinAgo = new Date(now.getTime() - 15 * 60 * 1000);
-  const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 

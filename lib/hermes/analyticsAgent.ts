@@ -39,7 +39,6 @@ export async function runAnalyticsAgent(snapshot: SessionSnapshot): Promise<Anal
 
   const domainErrors: Record<string, { wrong: number; total: number }> = {};
   let sataWrong = 0; let sataTotal = 0;
-  let longStemWrong = 0;
 
   for (const a of snapshot.answers) {
     const d = a.domain ?? "Unknown";

@@ -7,7 +7,6 @@ import {
   BookOpen, Loader2, Layers, ListChecks, Keyboard, Sparkles,
   CheckCircle2, Clock, Target, Library,
 } from "lucide-react";
-import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 
 interface Overview {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Search, UserX, Shield, Loader2 } from "lucide-react";
+import { Search, UserX, Loader2 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 
@@ -21,7 +21,6 @@ interface UserRow {
   sessionCount: number;
 }
 
-const planBadge = { FREE: "muted" as const, BASIC: "blue" as const, PRO: "gold" as const, ELITE: "elite" as const };
 const roleBadge = { STUDENT: "muted" as const, MODERATOR: "blue" as const, ADMIN: "error" as const };
 
 export default function AdminUsersPage() {

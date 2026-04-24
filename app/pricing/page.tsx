@@ -130,7 +130,7 @@ export default function PricingPage() {
   const userPlan = (authSession?.user as any)?.plan ?? null;
 
   const [billing, setBilling] = useState<Billing>("monthly");
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const loadingPlan: string | null = null;
   const [betaEmail, setBetaEmail] = useState("");
   const [betaSubscribed, setBetaSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);

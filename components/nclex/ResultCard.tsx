@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, TrendingUp, Clock, Target } from "lucide-react";
-import Badge from "@/components/ui/Badge";
 import Progress from "@/components/ui/Progress";
 
 interface ResultCardProps {
@@ -22,7 +21,7 @@ function formatTime(sec: number) {
   return `${m} 分 ${sec % 60} 秒`;
 }
 
-export default function ResultCard({ mode, totalQuestions, correctCount, totalTimeSec, theta, passFail, domainStats }: ResultCardProps) {
+export default function ResultCard({ totalQuestions, correctCount, totalTimeSec, theta, passFail, domainStats }: ResultCardProps) {
   const accuracy = Math.round((correctCount / totalQuestions) * 100);
   const isPass = passFail === "PASS";
 

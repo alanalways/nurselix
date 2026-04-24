@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Calendar } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
 
 const STORAGE_KEY = "nurslix_onboarded_";
 

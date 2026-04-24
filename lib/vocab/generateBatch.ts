@@ -165,7 +165,6 @@ async function callGemini(opts: { category: string; tier: number; count: number;
   const systemText = SYSTEM_PROMPT.replace("{count}", String(opts.count));
   const fewShotText = `以下為格式範例（這些字已收錄，不可重複）：\n${JSON.stringify(FEW_SHOT, null, 2)}`;
   const userPrompt = buildVocabPrompt(opts);
-  const fullPrompt = `${systemText}\n\n${fewShotText}\n\n${userPrompt}`;
 
   let raw = "";
   let lastError = "";

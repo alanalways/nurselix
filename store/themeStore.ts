@@ -13,8 +13,14 @@ interface ThemeState {
 
 function applyToDOM(theme: "dark" | "light", fontSize: "small" | "medium" | "large") {
   if (typeof document === "undefined") return;
-  document.documentElement.setAttribute("data-theme", theme);
+  // Journal theme system owns data-journal-theme; we only sync font size here.
+  // Setting data-theme="dark" would leak night-mode --j-line values into
+  // light presets (autumn/winter/summer/nurse) when both attributes coexist.
+  // The pre-paint inline script in layout.tsx restores data-journal-theme from
+  // nj.theme.preset before first paint, so we don't need to do it here.
   document.documentElement.setAttribute("data-fontsize", fontSize);
+  // Keep data-theme in sync for legacy CSS selectors ([data-theme="dark"]).
+  document.documentElement.setAttribute("data-theme", theme);
 }
 
 export const useThemeStore = create<ThemeState>()(
