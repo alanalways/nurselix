@@ -109,6 +109,7 @@ export function toClientPayload(q: {
   domain: string | null;
   difficulty: string;
   tags: string[];
+  hasAudio?: boolean;
 }): QuestionPayload {
   return {
     id: q.id,
@@ -126,6 +127,7 @@ export function toClientPayload(q: {
     domain: q.domain,
     difficulty: q.difficulty as QuestionPayload["difficulty"],
     tags: q.tags,
+    hasAudio: q.hasAudio ?? false,
   };
 }
 

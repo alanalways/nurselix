@@ -66,6 +66,9 @@ export interface Question {
   correctCount: number;
   errorRate: number;
   status: QuestionStatus;
+  hasAudio?: boolean;
+  audioScript?: string | null;
+  audioDurationSec?: number | null;
   createdAt: string;
 }
 
@@ -86,6 +89,7 @@ export interface QuestionPayload {
   domain?: string | null;
   difficulty: Difficulty;
   tags: string[];
+  hasAudio?: boolean;
 }
 
 // ===== Session =====

@@ -166,16 +166,41 @@ model Question {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  // Listening / audio (TOEIC Part 1-4 etc.)
+  audioScript   String?        // Source script for TTS (may include "Speaker A:" markers)
+  audioDurationSec Float?      // Total duration of latest audio asset
+  hasAudio      Boolean        @default(false)
+
   answers        UserAnswer[]
   bookmarks      Bookmark[]
   errorQuestions ErrorQuestion[]
   reports        QuestionReport[]
   notes          QuestionNote[]
+  audioAssets    AudioAsset[]
 
   @@index([module, status])
   @@index([domain])
   @@index([difficulty])
   @@index([caseStudySetId])
+}
+
+// ===== Audio assets (TOEIC listening / general TTS) =====
+
+model AudioAsset {
+  id           String   @id @default(uuid())
+  questionId   String
+  data         Bytes                          // raw audio bytes (WAV)
+  mimeType     String   @default("audio/wav")
+  durationSec  Float?
+  sampleRate   Int      @default(24000)
+  voicesUsed   String[] @default([])          // e.g. ["Kore", "Puck"]
+  scriptHash   String?                         // dedup detection
+  modelUsed    String?                         // gemini-2.5-flash-preview-tts ...
+  createdAt    DateTime @default(now())
+
+  question     Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
 }
 
 enum Module {

@@ -28,12 +28,14 @@ export async function GET(req: NextRequest) {
   const search = url.searchParams.get("q")?.trim() ?? "";
   const status = url.searchParams.get("status") ?? "";
   const domain = url.searchParams.get("domain") ?? "";
+  const moduleFilter = url.searchParams.get("module") ?? "";
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1"));
   const pageSize = Math.min(100, Math.max(10, Number(url.searchParams.get("pageSize") ?? "30")));
 
   const where: Record<string, unknown> = {};
   if (status && ["APPROVED", "DRAFT", "ARCHIVED"].includes(status)) where.status = status;
   if (domain) where.domain = domain;
+  if (moduleFilter && ["NCLEX", "TOEIC", "IELTS"].includes(moduleFilter)) where.module = moduleFilter;
   if (search) {
     where.OR = [
       { stem:   { contains: search, mode: "insensitive" } },
@@ -49,7 +51,8 @@ export async function GET(req: NextRequest) {
       select: {
         id: true, stem: true, stemZh: true, domain: true, difficulty: true,
         status: true, questionType: true, attemptCount: true, correctCount: true,
-        errorRate: true, createdAt: true, updatedAt: true,
+        errorRate: true, hasAudio: true, audioDurationSec: true,
+        createdAt: true, updatedAt: true,
       },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -64,6 +67,7 @@ export async function GET(req: NextRequest) {
         ? Math.round(((r.attemptCount - r.correctCount) / r.attemptCount) * 100)
         : null,
     })),
+    items: rows,  // alias for new UI
     total,
     page,
     pageSize,
@@ -119,6 +123,7 @@ export async function DELETE(req: NextRequest) {
 
 // Create a new question (admin only)
 const createSchema = z.object({
+  module: z.enum(["NCLEX", "TOEIC", "IELTS"]).default("NCLEX"),
   stem: z.string().min(5),
   stemZh: z.string().optional(),
   scenarioEn: z.string().optional(),
@@ -140,6 +145,7 @@ const createSchema = z.object({
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).default("MEDIUM"),
   status: z.enum(["DRAFT", "APPROVED"]).default("DRAFT"),
   tags: z.array(z.string()).default([]),
+  audioScript: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {

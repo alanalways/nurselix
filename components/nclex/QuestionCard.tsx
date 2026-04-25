@@ -4,7 +4,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Languages } from "lucide-react";
 import Badge from "@/components/ui/Badge";
+import AudioPlayer from "@/components/audio/AudioPlayer";
 import type { Question } from "@/types";
+
+const TOEIC_LISTENING_PARTS = new Set(["Part 1", "Part 2", "Part 3", "Part 4"]);
 
 interface QuestionCardProps {
   question: Question;
@@ -58,13 +61,46 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
         </div>
       </div>
 
-      {/* Stem — font scales with --font-scale */}
-      <p
-        className="text-[var(--text-primary)] leading-relaxed font-sora"
-        style={{ fontSize: "calc(1rem * var(--font-scale))" }}
-      >
-        {question.stem}
-      </p>
+      {/* Audio player — TOEIC listening parts (1-4) or any question with audio */}
+      {question.hasAudio && (
+        <div className="mb-4">
+          <AudioPlayer
+            questionId={question.id}
+            label={
+              question.module === "TOEIC" && question.domain
+                ? `${question.domain} · 聽力`
+                : "聽力音檔"
+            }
+          />
+        </div>
+      )}
+
+      {/* Stem — for TOEIC listening parts the stem text is hidden until answered (it's the script).
+          For everything else it's just the question text. */}
+      {(() => {
+        const isToeicListening =
+          question.module === "TOEIC"
+          && question.domain
+          && TOEIC_LISTENING_PARTS.has(question.domain);
+        if (isToeicListening) {
+          return (
+            <p
+              className="text-[var(--text-secondary)] italic font-sora"
+              style={{ fontSize: "calc(0.9rem * var(--font-scale))" }}
+            >
+              請聽音檔後選擇最適合的答案。
+            </p>
+          );
+        }
+        return (
+          <p
+            className="text-[var(--text-primary)] leading-relaxed font-sora"
+            style={{ fontSize: "calc(1rem * var(--font-scale))" }}
+          >
+            {question.stem}
+          </p>
+        );
+      })()}
 
       {/* Chinese stem (toggled) */}
       {showZh && question.stemZh && (
