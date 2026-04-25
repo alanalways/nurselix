@@ -35,6 +35,7 @@ export type NclexMode =
 export interface CreateSessionInput {
   userId: string;
   mode: NclexMode;
+  module?: "NCLEX" | "TOEIC" | "IELTS";
   targetCount?: number;
   timeLimitSec?: number;
   domainFilter?: string[];
@@ -61,7 +62,7 @@ export interface NextQuestionResult {
 
 export async function createSession(input: CreateSessionInput) {
   const {
-    userId, mode, targetCount, timeLimitSec,
+    userId, mode, module: qModule = "NCLEX", targetCount, timeLimitSec,
     domainFilter = [], difficultyFilter = [], isAssessment = false,
   } = input;
 
@@ -77,6 +78,7 @@ export async function createSession(input: CreateSessionInput) {
     data: {
       userId,
       mode,
+      module: qModule,
       isAssessment: isAssessment || mode === "ASSESSMENT",
       targetCount: targetCount ?? null,
       timeLimitSec: timeLimitSec ?? null,
@@ -164,6 +166,7 @@ export function computeStop(session: {
 
 interface CandidateQuery {
   mode: NclexMode;
+  module?: string;
   userId: string;
   domainFilter: string[];
   difficultyFilter: ("EASY" | "MEDIUM" | "HARD")[];
@@ -209,7 +212,7 @@ async function fetchCandidates(q: CandidateQuery, limit = 400): Promise<Candidat
   }
 
   const where: Record<string, unknown> = {
-    module: "NCLEX",
+    module: q.module ?? "NCLEX",
     status: "APPROVED",
   };
   if (q.domainFilter.length > 0) where.domain = { in: q.domainFilter };
@@ -304,6 +307,7 @@ export async function getNextQuestionForSession(sessionId: string, userId: strin
   const poolSize = session.mode === "PRACTICE" || session.mode === "TUTOR" ? 300 : 500;
   const candidates = await fetchCandidates({
     mode: session.mode as NclexMode,
+    module: session.module,
     userId,
     domainFilter: session.domainFilter,
     difficultyFilter: session.difficultyFilter as ("EASY" | "MEDIUM" | "HARD")[],

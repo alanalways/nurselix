@@ -27,7 +27,7 @@ const navItems = [
 ];
 
 const secondaryItems = [
-  { href: "/toeic", icon: Star, label: "TOEIC", badge: "即將推出" },
+  { href: "/toeic", icon: Star, label: "TOEIC", badge: null },
   { href: "/ielts", icon: Star, label: "IELTS", badge: "即將推出" },
 ];
 

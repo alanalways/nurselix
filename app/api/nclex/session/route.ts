@@ -9,6 +9,7 @@ import type { Plan } from "@/types";
 
 const schema = z.object({
   mode: z.enum(["CAT", "PRACTICE", "TUTOR", "MOCK", "ASSESSMENT", "MINI_CAT", "ERROR_CHALLENGE"]),
+  module: z.enum(["NCLEX", "TOEIC", "IELTS"]).optional(),
   targetCount: z.number().int().min(1).max(300).optional(),
   timeLimitSec: z.number().int().min(60).max(86400).optional(),
   domainFilter: z.array(z.string()).max(8).optional(),
@@ -127,6 +128,7 @@ export async function POST(req: NextRequest) {
     const created = await createSession({
       userId: session.user.id,
       mode: input.mode,
+      module: input.module,
       targetCount,
       timeLimitSec,
       domainFilter: input.domainFilter,

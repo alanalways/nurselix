@@ -10,6 +10,7 @@ import type { SessionMode } from "@/types";
 interface StarterProps {
   mode: SessionMode;
   title: string;
+  module?: "NCLEX" | "TOEIC" | "IELTS";
   /** Options forwarded to POST /api/nclex/session */
   targetCount?: number;
   timeLimitSec?: number;
@@ -32,6 +33,7 @@ interface CreatedSession {
 export default function SessionStarter({
   mode,
   title,
+  module: qModule,
   targetCount,
   timeLimitSec,
   domainFilter,
@@ -58,6 +60,7 @@ export default function SessionStarter({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mode,
+            module: qModule,
             targetCount,
             timeLimitSec,
             domainFilter,
