@@ -22,6 +22,7 @@ interface StarterProps {
   showCountdown?: boolean;
   countdownSec?: number;
   showExplanationAfterAnswer?: boolean;
+  resultsBasePath?: string;
 }
 
 interface CreatedSession {
@@ -42,6 +43,7 @@ export default function SessionStarter({
   showCountdown,
   countdownSec,
   showExplanationAfterAnswer,
+  resultsBasePath,
 }: StarterProps) {
   const router = useRouter();
   const [session, setSession] = useState<CreatedSession | null>(null);
@@ -127,12 +129,14 @@ export default function SessionStarter({
     <ExamShell
       sessionId={session.sessionId}
       mode={mode}
+      module={qModule}
       title={title}
       targetCount={session.targetCount}
       showCountdown={showCountdown}
       countdownSec={countdownSec ?? session.timeLimitSec ?? undefined}
       showTheta={showTheta}
       showExplanationAfterAnswer={showExplanationAfterAnswer}
+      resultsBasePath={resultsBasePath}
     />
   );
 }

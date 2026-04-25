@@ -30,6 +30,7 @@ function ToeicPracticeInner() {
         targetCount={count}
         domainFilter={selectedPart === "__ALL__" ? undefined : [selectedPart]}
         showExplanationAfterAnswer
+        resultsBasePath="/toeic/results"
       />
     );
   }

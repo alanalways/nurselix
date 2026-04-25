@@ -38,6 +38,7 @@ interface ExamShellProps {
   sessionId: string;
   /** Retained for API parity / future per-mode tweaks. */
   mode?: SessionMode;
+  module?: "NCLEX" | "TOEIC" | "IELTS";
   title: string;
   targetCount?: number | null;
   showCountdown?: boolean;
@@ -46,17 +47,21 @@ interface ExamShellProps {
   /** Practice / Tutor */
   showExplanationAfterAnswer?: boolean;
   onFinished?: (sessionId: string) => void;
+  /** Override the results page path (default: /nclex/results) */
+  resultsBasePath?: string;
 }
 
 export default function ExamShell({
   sessionId,
   title,
+  module: qModule = "NCLEX",
   targetCount,
   showCountdown,
   countdownSec,
   showTheta = false,
   showExplanationAfterAnswer = false,
   onFinished,
+  resultsBasePath = "/nclex/results",
 }: ExamShellProps) {
   const router = useRouter();
 
@@ -107,7 +112,7 @@ export default function ExamShell({
       // ignore
     }
     if (onFinished) onFinished(sessionId);
-    else router.replace(`/nclex/results/${sessionId}`);
+    else router.replace(`${resultsBasePath}/${sessionId}`);
   }, [sessionId, onFinished, router]);
 
   const loadNextQuestion = useCallback(async () => {
@@ -282,7 +287,7 @@ export default function ExamShell({
   // For Practice / Tutor synthetic question display (ExplanationPanel expects Question-shaped input)
   const questionForPanel = lastAnswer && question ? {
     id: question.id,
-    module: "NCLEX" as const,
+    module: qModule as "NCLEX" | "TOEIC" | "IELTS",
     questionType: question.questionType,
     stem: question.stem,
     stemZh: question.stemZh,
@@ -437,7 +442,7 @@ export default function ExamShell({
                 <QuestionCard
                   question={{
                     id: question.id,
-                    module: "NCLEX",
+                    module: qModule as "NCLEX" | "TOEIC" | "IELTS",
                     questionType: question.questionType,
                     stem: question.stem,
                     stemZh: question.stemZh,
