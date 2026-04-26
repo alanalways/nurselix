@@ -1,11 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Flag } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 
 const REASONS = ["答案有誤", "解析不清楚", "題目有錯誤", "選項不完整", "其他"];
+
+const SESSION_KEY = "reported_questions";
+
+function getReported(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function markReported(questionId: string) {
+  try {
+    const s = getReported();
+    s.add(questionId);
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(Array.from(s)));
+  } catch {
+    // ignore
+  }
+}
 
 export default function ReportButton({ questionId }: { questionId: string }) {
   const [open, setOpen] = useState(false);
@@ -14,6 +35,11 @@ export default function ReportButton({ questionId }: { questionId: string }) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alreadyReported, setAlreadyReported] = useState(false);
+
+  useEffect(() => {
+    setAlreadyReported(getReported().has(questionId));
+  }, [questionId]);
 
   const handleSubmit = async () => {
     if (!selected || submitting) return;
@@ -30,6 +56,8 @@ export default function ReportButton({ questionId }: { questionId: string }) {
         setError(body.error ?? "回報失敗");
         return;
       }
+      markReported(questionId);
+      setAlreadyReported(true);
       setSubmitted(true);
       setTimeout(() => {
         setOpen(false);
@@ -43,6 +71,15 @@ export default function ReportButton({ questionId }: { questionId: string }) {
       setSubmitting(false);
     }
   };
+
+  if (alreadyReported) {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-[var(--success)] opacity-70 cursor-default select-none">
+        <Flag size={12} />
+        已回報
+      </span>
+    );
+  }
 
   return (
     <>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Flag, Loader2 } from "lucide-react";
+import { Flag, Loader2, Trash2 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 
@@ -28,6 +28,8 @@ export default function AdminReportsPage() {
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [deduping, setDeduping] = useState(false);
+  const [dedupMsg, setDedupMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +64,21 @@ export default function AdminReportsPage() {
 
   const pendingCount = rows.filter((r) => r.status === "pending").length;
 
+  const runDedup = async () => {
+    setDeduping(true);
+    setDedupMsg(null);
+    try {
+      const res = await fetch("/api/admin/reports?action=dedup", { method: "POST" });
+      const body = await res.json();
+      setDedupMsg(body.message ?? "完成");
+      await load();
+    } catch {
+      setDedupMsg("清理失敗");
+    } finally {
+      setDeduping(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -76,6 +93,18 @@ export default function AdminReportsPage() {
             <span className="text-sm text-[var(--warning)] font-semibold">{pendingCount} 待處理</span>
           </div>
         )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={runDedup}
+          disabled={deduping}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--error)] hover:text-[var(--error)] transition-colors disabled:opacity-40"
+        >
+          {deduping ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+          清理重複回報
+        </button>
+        {dedupMsg && <span className="text-xs text-[var(--text-muted)]">{dedupMsg}</span>}
       </div>
 
       <div className="flex gap-2">

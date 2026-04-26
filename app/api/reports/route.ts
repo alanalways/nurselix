@@ -24,6 +24,19 @@ export async function POST(req: NextRequest) {
     const exists = await prisma.question.findUnique({ where: { id: questionId }, select: { id: true } });
     if (!exists) return NextResponse.json({ error: "Question not found" }, { status: 404 });
 
+    // Deduplicate: if this user already has a pending/reviewed report for this question, skip
+    const duplicate = await prisma.questionReport.findFirst({
+      where: {
+        userId: session.user.id,
+        questionId,
+        status: { in: ["pending", "reviewed"] },
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      return NextResponse.json({ ok: true, id: duplicate.id, duplicate: true });
+    }
+
     const created = await prisma.questionReport.create({
       data: { userId: session.user.id, questionId, reason, detail, status: "pending" },
       select: { id: true },
