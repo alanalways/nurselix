@@ -40,3 +40,10 @@ nclex_core_questions.json
 public/*.js.map
 .sentryclirc
 .env.sentry-build-plugin
+
+# Quality scanner runtime outputs
+scripts/last-quality-scan.json
+scripts/open-issues.json
+scripts/real-critical.json
+scripts/false-positives.json
+scripts/nim-test-results.json

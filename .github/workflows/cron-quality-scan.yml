@@ -1,0 +1,17 @@
+name: Quality Deep Scan
+on:
+  schedule:
+    # Daily 03:00 UTC (台灣 11:00)
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Trigger quality scan
+        run: |
+          curl -fsSL --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/quality-scan?autoArchive=1"

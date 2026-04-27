@@ -133,6 +133,16 @@ export default function AdminDashboard() {
       animate={{ opacity: 1, y: 0 }}
       className="p-6 space-y-6"
     >
+      <a href="/admin/command-center" className="block bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-xl p-4 hover:opacity-95 transition shadow-md">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm opacity-90">⚡ 新功能</div>
+            <div className="text-lg font-bold">指揮中心 — 統一健康度儀表板 + 行銷部</div>
+          </div>
+          <span className="text-2xl">→</span>
+        </div>
+      </a>
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">管理總覽</h1>
         <div className="flex items-center gap-2 flex-wrap">

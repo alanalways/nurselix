@@ -1,0 +1,17 @@
+name: Daily Health Report
+on:
+  schedule:
+    # Daily 09:00 UTC (台灣 17:00)
+    - cron: "0 9 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate narrative
+        run: |
+          curl -fsSL --max-time 180 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/daily-health-report"

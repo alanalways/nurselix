@@ -1,0 +1,17 @@
+name: Marketing Daily
+on:
+  schedule:
+    # Daily 10:00 UTC (台灣 18:00)
+    - cron: "0 10 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  marketing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Trigger marketing team
+        run: |
+          curl -fsSL --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/marketing-daily"
