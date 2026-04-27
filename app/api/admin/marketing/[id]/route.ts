@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin";
 
-export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  if (!(await isAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { id } = await ctx.params;
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  const guard = await requireAdmin();
+  if (guard instanceof NextResponse) return guard;
+  const { id } = await params;
   const body = await req.json();
   const data: any = {};
   if (body.status) {

@@ -5,7 +5,7 @@
  * Manually trigger one marketing-team agent run.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { isAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin";
 import { generateSocialPost, saveSocialPost } from "@/lib/agents/marketing/socialAgent";
 import { generateSeoArticle, saveSeoArticle } from "@/lib/agents/marketing/seoAgent";
 import { collectAnalyticsSnapshot, analyzeAndAdvise } from "@/lib/agents/marketing/analyticsAgent";
@@ -13,7 +13,8 @@ import { generateEmail, saveEmailDraft } from "@/lib/agents/marketing/emailAgent
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
-  if (!(await isAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (guard instanceof NextResponse) return guard;
   const { task, payload } = await req.json();
 
   try {

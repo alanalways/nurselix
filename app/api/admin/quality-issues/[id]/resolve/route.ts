@@ -4,13 +4,16 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isAdmin } from "@/lib/admin";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin";
 
-export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  if (!(await isAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const session = await auth();
-  const { id } = await ctx.params;
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  const guard = await requireAdmin();
+  if (guard instanceof NextResponse) return guard;
+  const session = guard;
+  const { id } = await params;
   const body = await req.json();
   const { resolution, action = "RESOLVED" } = body;
 

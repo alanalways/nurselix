@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     prisma.questionReport.groupBy({
       by: ["questionId"],
       where: { createdAt: { gte: new Date(Date.now() - 86400000) }, status: "PENDING" },
-      _count: true,
+      _count: { _all: true },
       orderBy: { _count: { questionId: "desc" } },
       take: 5,
     }),
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
         issueCountDelta: todayRpt.openIssueCount - yesterdayRpt.openIssueCount,
         healthScoreDelta: todayRpt.healthScore - yesterdayRpt.healthScore,
       } : undefined,
-      topReportedQuestions: topReported.map(t => ({ id: t.questionId, reportCount: t._count as number })),
+      topReportedQuestions: topReported.map(t => ({ id: t.questionId, reportCount: t._count._all })),
     });
 
     await prisma.qualityHealthReport.update({

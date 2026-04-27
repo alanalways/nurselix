@@ -88,13 +88,13 @@ export async function collectAnalyticsSnapshot(): Promise<AnalyticsSnapshot> {
     prisma.user.count({ where: { plan: "FREE" } }),
     prisma.user.count({ where: { trialEndsAt: { gt: now } } }),
     prisma.order.count({ where: { createdAt: { gte: d30 } } }),
-    prisma.order.aggregate({ where: { createdAt: { gte: d30 }, status: "COMPLETED" }, _sum: { amount: true } }),
-    prisma.userSession.count({ where: { createdAt: { gte: d7 }, endedAt: null } }),
-    prisma.userSession.count({ where: { createdAt: { gte: d7 } } }),
+    prisma.order.aggregate({ where: { createdAt: { gte: d30 }, status: "paid" }, _sum: { amount: true } }),
+    prisma.userSession.count({ where: { startedAt: { gte: d7 }, endedAt: null } }),
+    prisma.userSession.count({ where: { startedAt: { gte: d7 } } }),
     prisma.userAnswer.groupBy({
       by: ["questionId"],
       where: { answeredAt: { gte: d7 } },
-      _count: true,
+      _count: { _all: true },
       orderBy: { _count: { questionId: "desc" } },
       take: 10,
     }).then(async rows => {
@@ -105,7 +105,7 @@ export async function collectAnalyticsSnapshot(): Promise<AnalyticsSnapshot> {
       const byDomain = new Map<string, number>();
       rows.forEach(r => {
         const d = map.get(r.questionId) || "Unknown";
-        byDomain.set(d, (byDomain.get(d) || 0) + (r._count as number));
+        byDomain.set(d, (byDomain.get(d) || 0) + r._count._all);
       });
       return Array.from(byDomain.entries()).map(([domain, attempts]) => ({ domain, attempts })).sort((a,b)=>b.attempts-a.attempts).slice(0, 5);
     }),
@@ -113,7 +113,7 @@ export async function collectAnalyticsSnapshot(): Promise<AnalyticsSnapshot> {
 
   // active = users who had a session in last 7d
   const activeUsers = await prisma.userSession.findMany({
-    where: { createdAt: { gte: d7 } },
+    where: { startedAt: { gte: d7 } },
     select: { userId: true },
     distinct: ["userId"],
   });

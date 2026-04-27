@@ -6,12 +6,13 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  if (!(await isAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+export async function GET(_req: NextRequest) {
+  const guard = await requireAdmin();
+  if (guard instanceof NextResponse) return guard;
 
   const today = new Date().toISOString().slice(0, 10);
   const d7Date = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
     prisma.hermesJob.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
-      select: { id: true, type: true, status: true, attempts: true, createdAt: true, error: true },
+      select: { id: true, sessionId: true, status: true, attempts: true, createdAt: true, error: true },
     }),
     prisma.marketingContent.findMany({
       where: { status: "draft" },
