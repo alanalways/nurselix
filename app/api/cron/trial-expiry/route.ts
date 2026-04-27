@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
 
-  // 1. Send warning emails to users whose trial expires in 1 or 3 days
+  // 1. Send warning emails — parallel per day window
   const warnDays = [1, 3];
   let warnSent = 0;
   for (const days of warnDays) {
@@ -33,59 +33,45 @@ export async function GET(req: NextRequest) {
       },
       select: { email: true, name: true },
     });
-    for (const user of users) {
-      if (!user.email) continue;
-      const mail = trialExpiryMail({
-        name: user.name ?? "同學",
-        daysLeft: days,
-        upgradeUrl: `${SITE_URL}/pricing`,
-      });
-      await sendMail({ to: user.email, ...mail }).catch((err) => {
-        console.warn("[cron/trial-expiry] mail failed:", err?.message ?? err);
-      });
-      warnSent++;
-    }
+    const results = await Promise.allSettled(
+      users
+        .filter((u) => !!u.email)
+        .map((user) => {
+          const mail = trialExpiryMail({
+            name: user.name ?? "同學",
+            daysLeft: days,
+            upgradeUrl: `${SITE_URL}/pricing`,
+          });
+          return sendMail({ to: user.email!, ...mail });
+        })
+    );
+    warnSent += results.filter((r) => r.status === "fulfilled" && r.value).length;
   }
 
-  // 2. Downgrade users whose trial has expired and have no active subscription
-  const expired = await prisma.user.findMany({
+  // 2. Bulk downgrade trial-expired users (single UPDATE instead of N individual updates)
+  const trialDowngraded = await prisma.user.updateMany({
     where: {
       plan: { not: "FREE" },
       trialEndsAt: { lt: now },
       subscriptionEndsAt: null,
     },
-    select: { id: true },
+    data: { plan: "FREE" },
   });
 
-  let downgraded = 0;
-  for (const user of expired) {
-    await prisma.user.update({ where: { id: user.id }, data: { plan: "FREE" } });
-    downgraded++;
-  }
-
-  // 3. Downgrade users whose paid subscription has expired
-  const subExpired = await prisma.user.findMany({
+  // 3. Bulk downgrade subscription-expired users
+  const subDowngraded = await prisma.user.updateMany({
     where: {
       plan: { not: "FREE" },
       subscriptionEndsAt: { lt: now },
     },
-    select: { id: true },
+    data: { plan: "FREE", subscriptionEndsAt: null },
   });
-
-  let subDowngraded = 0;
-  for (const user of subExpired) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { plan: "FREE", subscriptionEndsAt: null },
-    });
-    subDowngraded++;
-  }
 
   return NextResponse.json({
     ok: true,
     warnSent,
-    trialDowngraded: downgraded,
-    subDowngraded,
+    trialDowngraded: trialDowngraded.count,
+    subDowngraded: subDowngraded.count,
     timestamp: now.toISOString(),
   });
 }

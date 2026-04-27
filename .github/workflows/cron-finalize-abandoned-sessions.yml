@@ -9,10 +9,12 @@ on:
 jobs:
   run-cron:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Call finalize-abandoned-sessions endpoint
         run: |
           STATUS=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
+            --max-time 120 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/cron/finalize-abandoned-sessions")
           cat /tmp/body.txt

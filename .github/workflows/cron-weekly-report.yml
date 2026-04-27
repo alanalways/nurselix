@@ -9,10 +9,12 @@ on:
 jobs:
   run-cron:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Call weekly-report endpoint
         run: |
           STATUS=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
+            --max-time 300 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/cron/weekly-report")
           cat /tmp/body.txt

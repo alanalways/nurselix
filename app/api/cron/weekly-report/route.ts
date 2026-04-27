@@ -29,51 +29,61 @@ export async function GET(req: NextRequest) {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  // Send to all users with PRO/ELITE plan (active learners)
   const users = await prisma.user.findMany({
     where: { plan: { in: ["PRO", "ELITE"] }, email: { not: "" } },
     select: { id: true, email: true, name: true },
   });
 
-  let sent = 0;
-  let skipped = 0;
-
-  for (const user of users) {
-    if (!user.email) { skipped++; continue; }
-
-    const stats = await prisma.userDailyStats.findMany({
-      where: { userId: user.id, statDate: { gte: sevenDaysAgo } },
-      orderBy: { statDate: "desc" },
-    });
-
-    const totalDone = stats.reduce((s, r) => s + r.questionsDone, 0);
-    if (totalDone === 0) { skipped++; continue; }
-
-    const totalCorrect = stats.reduce((s, r) => s + r.correctCount, 0);
-    const accuracy = Math.round((totalCorrect / totalDone) * 100);
-    const streak = stats.filter(r => r.questionsDone > 0).length;
-
-    const ds = domainStats(stats);
-    const domainEntries = Object.entries(ds)
-      .filter(([, v]) => v.done >= 3)
-      .map(([domain, v]) => ({ domain, accuracy: Math.round((v.correct / v.done) * 100) }))
-      .sort((a, b) => b.accuracy - a.accuracy);
-
-    const topDomain = domainEntries[0]?.domain ?? "—";
-    const weakDomain = domainEntries[domainEntries.length - 1]?.domain ?? "—";
-
-    const mail = weeklyReportMail({
-      name: user.name ?? "同學",
-      questionsDone: totalDone,
-      accuracy,
-      streak,
-      topDomain,
-      weakDomain,
-    });
-
-    const ok = await sendMail({ to: user.email, ...mail });
-    if (ok) sent++; else skipped++;
+  // Fetch all users' stats in one query, then group in memory
+  const allStats = await prisma.userDailyStats.findMany({
+    where: {
+      userId: { in: users.map((u) => u.id) },
+      statDate: { gte: sevenDaysAgo },
+    },
+  });
+  const statsByUser = new Map<string, typeof allStats>();
+  for (const s of allStats) {
+    const arr = statsByUser.get(s.userId) ?? [];
+    arr.push(s);
+    statsByUser.set(s.userId, arr);
   }
 
-  return NextResponse.json({ ok: true, sent, skipped });
+  // Build and send emails in parallel
+  const results = await Promise.allSettled(
+    users
+      .filter((u) => !!u.email)
+      .map(async (user) => {
+        const stats = statsByUser.get(user.id) ?? [];
+        const totalDone = stats.reduce((s, r) => s + r.questionsDone, 0);
+        if (totalDone === 0) return "skipped";
+
+        const totalCorrect = stats.reduce((s, r) => s + r.correctCount, 0);
+        const accuracy = Math.round((totalCorrect / totalDone) * 100);
+        const streak = stats.filter((r) => r.questionsDone > 0).length;
+
+        const ds = domainStats(stats);
+        const domainEntries = Object.entries(ds)
+          .filter(([, v]) => v.done >= 3)
+          .map(([domain, v]) => ({ domain, accuracy: Math.round((v.correct / v.done) * 100) }))
+          .sort((a, b) => b.accuracy - a.accuracy);
+
+        const mail = weeklyReportMail({
+          name: user.name ?? "同學",
+          questionsDone: totalDone,
+          accuracy,
+          streak,
+          topDomain: domainEntries[0]?.domain ?? "—",
+          weakDomain: domainEntries[domainEntries.length - 1]?.domain ?? "—",
+        });
+
+        const ok = await sendMail({ to: user.email!, ...mail });
+        return ok ? "sent" : "failed";
+      })
+  );
+
+  const sent    = results.filter((r) => r.status === "fulfilled" && r.value === "sent").length;
+  const skipped = results.filter((r) => r.status === "fulfilled" && r.value === "skipped").length;
+  const failed  = results.filter((r) => r.status === "rejected" || r.value === "failed").length;
+
+  return NextResponse.json({ ok: true, sent, skipped, failed });
 }
