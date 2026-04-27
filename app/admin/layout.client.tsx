@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, BookOpen, Users, BarChart3,
-  Flag, MessageSquare, Bot, LogOut, Sparkles, Activity, FlaskConical, Menu, X, Library, TrendingUp, FileBarChart2, Volume2
+  Flag, MessageSquare, Bot, LogOut, Sparkles, Activity, FlaskConical, Menu, X, Library, TrendingUp, FileBarChart2, Volume2, ShieldAlert
 } from "lucide-react";
 import { NurslixIconSquare } from "@/components/ui/NurslixIcon";
 import { cn } from "@/lib/utils/cn";
@@ -19,6 +19,7 @@ const adminNav = [
   { href: "/admin/questions", icon: BookOpen, label: "題庫管理" },
   { href: "/admin/questions/quality", icon: Sparkles, label: "題目品質" },
   { href: "/admin/questions/spot-check", icon: FlaskConical, label: "人工抽查" },
+  { href: "/admin/questions/content-audit", icon: ShieldAlert, label: "AI 內容審核" },
   { href: "/admin/toeic", icon: Volume2, label: "TOEIC + TTS" },
   { href: "/admin/vocab", icon: Library, label: "單字詞庫" },
   { href: "/admin/upgrade-requests", icon: TrendingUp, label: "升級申請" },
