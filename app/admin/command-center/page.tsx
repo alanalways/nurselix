@@ -16,11 +16,16 @@ import SpotCheckTab from "./tabs/SpotCheckTab";
 import AuditTab from "./tabs/AuditTab";
 import MarketingTab from "./tabs/MarketingTab";
 import AgentControlTab from "./tabs/AgentControlTab";
+import UsersTab from "./tabs/UsersTab";
+import ToeicTab from "./tabs/ToeicTab";
+import VocabTab from "./tabs/VocabTab";
+import AnalyticsTab from "./tabs/AnalyticsTab";
 import { MastheadRule, MetaText } from "./tabs/journal-ui";
 import { cn } from "@/lib/utils/cn";
 
 const TAB_ORDER: TabKey[] = [
   "overview", "quality", "reports", "spot-check", "audit", "marketing", "agents",
+  "users", "toeic", "vocab", "analytics",
 ];
 
 const TAB_KICKER: Record<TabKey, string> = {
@@ -31,6 +36,10 @@ const TAB_KICKER: Record<TabKey, string> = {
   audit: "V",
   marketing: "VI",
   agents: "VII",
+  users: "VIII",
+  toeic: "IX",
+  vocab: "X",
+  analytics: "XI",
 };
 
 function CommandCenterInner() {
@@ -134,6 +143,10 @@ function CommandCenterInner() {
           {tab === "audit" && <AuditTab />}
           {tab === "marketing" && <MarketingTab />}
           {tab === "agents" && <AgentControlTab />}
+          {tab === "users" && <UsersTab />}
+          {tab === "toeic" && <ToeicTab />}
+          {tab === "vocab" && <VocabTab />}
+          {tab === "analytics" && <AnalyticsTab />}
         </div>
       </div>
     </div>
@@ -148,6 +161,10 @@ const TAB_HEADLINES: Record<TabKey, string> = {
   audit: "What the editor flagged.",
   marketing: "The press room.",
   agents: "Compositors at work.",
+  users: "The readership.",
+  toeic: "The English edition.",
+  vocab: "The lexicon.",
+  analytics: "The numbers desk.",
 };
 
 export default function CommandCenter() {
