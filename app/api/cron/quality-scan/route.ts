@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
   // Insert new issues (use createMany; manual chunks for big inserts)
   for (let i = 0; i < newIssues.length; i += 500) {
     await prisma.questionQualityIssue.createMany({
-      data: newIssues.slice(i, i + 500),
+      data: newIssues.slice(i, i + 500) as any,
       skipDuplicates: true,
     });
   }
@@ -109,13 +109,13 @@ export async function GET(req: NextRequest) {
       totalQuestions: questions.length,
       approvedCount: approved, draftCount: draft, archivedCount: archived,
       openIssueCount: stats.questionsWithIssues, healthScore,
-      summary: { byRule: stats.issuesByRule, bySeverity: stats.issuesBySeverity },
+      summary: { byRule: stats.issuesByRule, bySeverity: stats.issuesBySeverity } as any,
     },
     update: {
       totalQuestions: questions.length,
       approvedCount: approved, draftCount: draft, archivedCount: archived,
       openIssueCount: stats.questionsWithIssues, healthScore,
-      summary: { byRule: stats.issuesByRule, bySeverity: stats.issuesBySeverity },
+      summary: { byRule: stats.issuesByRule, bySeverity: stats.issuesBySeverity } as any,
     },
   });
 

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         data: {
           contentType: "AD_COPY", platform: "internal",
           title: `Marketing analytics ${new Date().toISOString().slice(0,10)}`,
-          body: advice.analysis, meta: { snapshot: snap },
+          body: advice.analysis, meta: { snapshot: snap } as any,
           modelUsed: advice.modelUsed, status: "draft",
         },
       });

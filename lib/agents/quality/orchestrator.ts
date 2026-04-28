@@ -52,7 +52,7 @@ export async function processReportTriageBatch(opts?: { limit?: number; autoArch
         await prisma.questionVersion.create({
           data: {
             questionId: report.questionId,
-            snapshot: { status: "APPROVED → DRAFT", reason: "auto-archived by triage agent", reportId: report.id },
+            snapshot: { status: "APPROVED → DRAFT", reason: "auto-archived by triage agent", reportId: report.id } as any,
             changedBy: "agent:triage",
             reason: `Triage verdict: ${verdict.verdict} (${verdict.severity})`,
             agentInitiated: true,
@@ -106,7 +106,7 @@ export async function proposeRepairsForCritical(opts?: { limit?: number }) {
               verdict: verdict,
               issueId: issue.id,
               applied: false,
-            },
+            } as any,
             changedBy: "agent:repair",
             reason: `Auto-repair proposal for ${issue.ruleId}: ${repair.changeSummary}`,
             agentInitiated: true,

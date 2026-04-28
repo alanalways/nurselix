@@ -74,7 +74,7 @@ export async function saveSeoArticle(article: { title: string; body: string; met
       platform: "blog",
       title: article.title,
       body: article.body,
-      meta: article.meta,
+      meta: article.meta as any,
       modelUsed: article.modelUsed,
       status: "draft",
     },

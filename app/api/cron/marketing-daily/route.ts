@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
           platform: "internal",
           title: `Marketing analytics ${new Date().toISOString().slice(0,10)}`,
           body: advice.analysis,
-          meta: { snapshot },
+          meta: { snapshot } as any,
           modelUsed: advice.modelUsed,
           status: "draft",
         },

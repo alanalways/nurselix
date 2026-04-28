@@ -32,14 +32,14 @@ function buildLLM(opt: ModelOption, temperature: number, timeoutMs: number): Bas
       temperature,
       maxRetries: 1, // we handle our own fallback
       timeout: timeoutMs,
-    });
+    } as any);
   }
   return new ChatGoogleGenerativeAI({
     model: opt.modelId,
     apiKey: pickGeminiKey(),
     temperature,
     maxRetries: 1,
-  });
+  } as any);
 }
 
 export interface RunAgentOptions {
@@ -88,7 +88,7 @@ export async function runAgent(
     const start = Date.now();
     try {
       const llm = buildLLM(opt, temperature, timeoutMs);
-      const res = await llm.invoke(messages);
+      const res = await llm.invoke(messages as any);
       const text = typeof res.content === "string"
         ? res.content
         : Array.isArray(res.content)

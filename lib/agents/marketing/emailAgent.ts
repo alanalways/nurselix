@@ -56,7 +56,7 @@ export async function saveEmailDraft(email: { subject: string; body: string; cam
       platform: "newsletter",
       title: email.subject,
       body: email.body,
-      meta: { campaign: email.campaign },
+      meta: { campaign: email.campaign } as any,
       modelUsed: email.modelUsed,
       status: "draft",
     },
