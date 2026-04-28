@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Loader2, Shuffle, Flag, Eye, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import Badge from "@/components/ui/Badge";
+import { cn } from "@/lib/utils/cn";
 
 interface Q {
   id: string;
@@ -18,6 +19,11 @@ interface Q {
   createdBy?: string;
 }
 
+const SELECT_CLS = "border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-[var(--gold)]";
+const INPUT_CLS = "border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-[var(--gold)] placeholder:text-[var(--text-muted)]";
+const BTN_CLS = "px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--gold)] hover:border-[var(--gold)]/40 flex items-center gap-1 text-sm transition disabled:opacity-50";
+const PRIMARY_BTN_CLS = "px-3 py-1.5 rounded-lg bg-[var(--gold)] text-[#080E1A] font-semibold hover:opacity-90 flex items-center gap-1 text-sm transition disabled:opacity-50";
+
 export default function SpotCheckTab() {
   const [n, setN] = useState(20);
   const [domain, setDomain] = useState("");
@@ -27,7 +33,7 @@ export default function SpotCheckTab() {
   const [loading, setLoading] = useState(false);
   const [idx, setIdx] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [flagged, setFlagged] = useState<Record<string, string>>({}); // id → note
+  const [flagged, setFlagged] = useState<Record<string, string>>({});
 
   const sample = async () => {
     setLoading(true);
@@ -63,44 +69,43 @@ export default function SpotCheckTab() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white border rounded-lg p-4 space-y-3">
-        <div className="font-semibold">抽樣設定</div>
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-3">
+        <div className="font-semibold text-[var(--text-primary)] text-sm">抽樣設定</div>
         <div className="flex flex-wrap gap-2 items-center">
-          <label className="text-sm flex items-center gap-1">
+          <label className="text-sm text-[var(--text-secondary)] flex items-center gap-1">
             樣本數
-            <select value={n} onChange={e => setN(Number(e.target.value))} className="border rounded px-2 py-1">
+            <select value={n} onChange={e => setN(Number(e.target.value))} className={SELECT_CLS}>
               <option value={10}>10</option><option value={20}>20</option>
               <option value={50}>50</option><option value={100}>100</option>
             </select>
           </label>
           <input type="text" placeholder="domain" value={domain} onChange={e => setDomain(e.target.value)}
-            className="border rounded px-2 py-1 text-sm w-40" />
-          <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className="border rounded px-2 py-1 text-sm">
+            className={cn(INPUT_CLS, "w-40")} />
+          <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className={SELECT_CLS}>
             <option value="">所有難度</option>
             <option value="EASY">EASY</option><option value="MEDIUM">MEDIUM</option><option value="HARD">HARD</option>
           </select>
           <input type="text" placeholder="createdBy" value={createdBy} onChange={e => setCreatedBy(e.target.value)}
-            className="border rounded px-2 py-1 text-sm w-40" />
-          <button onClick={sample} disabled={loading}
-            className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center gap-1 text-sm disabled:opacity-50">
+            className={cn(INPUT_CLS, "w-40")} />
+          <button onClick={sample} disabled={loading} className={PRIMARY_BTN_CLS}>
             {loading ? <Loader2 className="animate-spin" size={14} /> : <Shuffle size={14} />} 抽樣
           </button>
         </div>
       </div>
 
       {questions.length === 0 ? (
-        <div className="text-gray-500 bg-white border rounded-lg p-8 text-center">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] text-sm">
           設定條件後按「抽樣」開始
         </div>
       ) : (
-        <div className="bg-white border rounded-lg p-6 space-y-4">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">{idx + 1} / {questions.length}</div>
+            <div className="text-sm text-[var(--text-muted)]">{idx + 1} / {questions.length}</div>
             <div className="flex gap-2">
               <button onClick={() => { setIdx(Math.max(0, idx - 1)); setShowAnswer(false); }} disabled={idx === 0}
-                className="px-2 py-1 border rounded hover:bg-gray-50 disabled:opacity-50"><ChevronLeft size={14} /></button>
+                className={cn(BTN_CLS, "px-2 py-1.5")}><ChevronLeft size={14} /></button>
               <button onClick={() => { setIdx(Math.min(questions.length - 1, idx + 1)); setShowAnswer(false); }} disabled={idx === questions.length - 1}
-                className="px-2 py-1 border rounded hover:bg-gray-50 disabled:opacity-50"><ChevronRight size={14} /></button>
+                className={cn(BTN_CLS, "px-2 py-1.5")}><ChevronRight size={14} /></button>
             </div>
           </div>
 
@@ -109,48 +114,53 @@ export default function SpotCheckTab() {
               <div className="flex flex-wrap gap-2">
                 {q.domain && <Badge>{q.domain}</Badge>}
                 {q.difficulty && <Badge>{q.difficulty}</Badge>}
-                <span className="text-xs text-gray-500">{q.id.slice(0, 8)}</span>
+                <span className="text-xs text-[var(--text-muted)] font-mono">{q.id.slice(0, 8)}</span>
               </div>
               <div>
-                <div className="text-sm font-medium mb-1">題幹</div>
-                <div className="text-sm">{q.stem}</div>
-                {q.stemZh && <div className="text-sm text-gray-600 mt-1">{q.stemZh}</div>}
+                <div className="text-xs font-medium mb-1 text-[var(--text-muted)] uppercase">題幹</div>
+                <div className="text-sm text-[var(--text-primary)]">{q.stem}</div>
+                {q.stemZh && <div className="text-sm text-[var(--text-secondary)] mt-1">{q.stemZh}</div>}
               </div>
               <div className="space-y-1">
                 {[["A", q.optionA], ["B", q.optionB], ["C", q.optionC], ["D", q.optionD], ...(q.optionE ? [["E", q.optionE]] : [])].map(([k, v]) => (
-                  <div key={k} className={`text-sm p-2 rounded border ${showAnswer && q.correctAnswer.includes(k as string) ? "bg-emerald-50 border-emerald-300" : "bg-gray-50"}`}>
-                    <span className="font-semibold mr-2">{k}.</span> {v}
+                  <div key={k as string} className={cn(
+                    "text-sm p-3 rounded-lg border",
+                    showAnswer && q.correctAnswer.includes(k as string)
+                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
+                      : "bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-primary)]"
+                  )}>
+                    <span className="font-semibold mr-2 text-[var(--gold)]">{k}.</span> {v}
                   </div>
                 ))}
               </div>
               {showAnswer ? (
-                <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
-                  <div className="font-semibold">正確答案：{q.correctAnswer}</div>
-                  {q.explanationZh && <div className="mt-2 text-gray-700 whitespace-pre-wrap">{q.explanationZh}</div>}
+                <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 text-sm">
+                  <div className="font-semibold text-blue-400">正確答案：{q.correctAnswer}</div>
+                  {q.explanationZh && <div className="mt-2 text-[var(--text-secondary)] whitespace-pre-wrap">{q.explanationZh}</div>}
                 </div>
               ) : (
-                <button onClick={() => setShowAnswer(true)} className="text-sm text-blue-600 hover:underline">顯示答案與解析</button>
+                <button onClick={() => setShowAnswer(true)} className="text-sm text-[var(--gold)] hover:underline">顯示答案與解析</button>
               )}
-              <div className="flex items-center gap-2 pt-2 border-t">
+              <div className="flex items-center gap-2 pt-3 border-t border-[var(--border-subtle)]">
                 {flagged[q.id] ? (
-                  <button onClick={() => unflag(q.id)} className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm flex items-center gap-1">
+                  <button onClick={() => unflag(q.id)}
+                    className="px-3 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center gap-1 text-sm transition">
                     <Flag size={14} fill="currentColor" /> 已標記（取消）
                   </button>
                 ) : (
                   <button onClick={() => {
                     const note = prompt("為何標記？") || "flagged";
                     flag(q.id, note);
-                  }} className="px-3 py-1 border border-red-300 text-red-700 rounded hover:bg-red-50 text-sm flex items-center gap-1">
+                  }} className="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center gap-1 text-sm transition">
                     <Flag size={14} /> 標記為可疑
                   </button>
                 )}
-                <Link href={`/admin/questions/${q.id}`} target="_blank"
-                  className="px-3 py-1 border rounded hover:bg-gray-50 flex items-center gap-1 text-sm">
+                <Link href={`/admin/questions/${q.id}`} target="_blank" className={BTN_CLS}>
                   <Eye size={14} /> 編輯
                 </Link>
-                <span className="ml-auto text-xs text-gray-500">已標記 {Object.keys(flagged).length} 題</span>
+                <span className="ml-auto text-xs text-[var(--text-muted)]">已標記 {Object.keys(flagged).length} 題</span>
                 {Object.keys(flagged).length > 0 && (
-                  <button onClick={exportFlagged} className="px-3 py-1 border rounded hover:bg-gray-50 flex items-center gap-1 text-sm">
+                  <button onClick={exportFlagged} className={BTN_CLS}>
                     <Download size={14} /> 匯出 CSV
                   </button>
                 )}

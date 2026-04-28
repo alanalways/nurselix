@@ -2,16 +2,15 @@
 /**
  * Unified Admin Command Center — single-page with tabs.
  *
- * Replaces the 5 scattered admin pages with a single dashboard. Tab
- * selection is driven by ?tab= query param so old URLs / bookmarks can
- * redirect cleanly.
+ * Embeds inside the existing AdminLayoutClient (which has the outer
+ * sidebar + header). This component renders ONLY the inner content with
+ * horizontal tabs at the top, matching the dark Nurslix theme.
  */
 import { useEffect, useState, useCallback, Suspense } from "react";
-import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard, FileWarning, MessageSquareWarning, ScanSearch,
-  ShieldCheck, Megaphone, Bot, ChevronRight, Loader2,
+  ShieldCheck, Megaphone, Bot, Loader2,
 } from "lucide-react";
 import { TAB_LABELS, TAB_DESCRIPTIONS, type TabKey } from "./tabs/types";
 import OverviewTab from "./tabs/OverviewTab";
@@ -21,6 +20,7 @@ import SpotCheckTab from "./tabs/SpotCheckTab";
 import AuditTab from "./tabs/AuditTab";
 import MarketingTab from "./tabs/MarketingTab";
 import AgentControlTab from "./tabs/AgentControlTab";
+import { cn } from "@/lib/utils/cn";
 
 const TAB_ICONS: Record<TabKey, any> = {
   overview: LayoutDashboard,
@@ -42,7 +42,6 @@ function CommandCenterInner() {
   const tab = (sp.get("tab") as TabKey) || "overview";
   const [counts, setCounts] = useState<Partial<Record<TabKey, number>>>({});
 
-  // Fetch per-tab badge counts (e.g., open issues, pending reports)
   const loadCounts = useCallback(async () => {
     try {
       const r = await fetch("/api/admin/command-center", { cache: "no-store" });
@@ -60,16 +59,16 @@ function CommandCenterInner() {
   const switchTab = (k: TabKey) => router.replace(`/admin/command-center?tab=${k}`);
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen">
-      {/* Sidebar */}
-      <aside className="lg:w-60 border-r bg-white">
-        <div className="p-4 border-b">
-          <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1">
-            <ChevronRight size={14} className="rotate-180" /> 返回管理首頁
-          </Link>
-          <h1 className="text-lg font-bold mt-2">指揮中心</h1>
-        </div>
-        <nav className="p-2 space-y-1">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
+      {/* Header */}
+      <div className="mb-4 md:mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)]">指揮中心</h1>
+        <p className="text-sm text-[var(--text-muted)] mt-1">{TAB_DESCRIPTIONS[tab]}</p>
+      </div>
+
+      {/* Horizontal tabs */}
+      <div className="border-b border-[var(--border-subtle)] mb-6 overflow-x-auto">
+        <nav className="flex gap-1 min-w-max">
           {TAB_ORDER.map(k => {
             const Icon = TAB_ICONS[k];
             const active = tab === k;
@@ -78,46 +77,50 @@ function CommandCenterInner() {
               <button
                 key={k}
                 onClick={() => switchTab(k)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left transition ${
-                  active ? "bg-emerald-50 text-emerald-700 font-medium" : "hover:bg-gray-50 text-gray-700"
-                }`}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap",
+                  active
+                    ? "border-[var(--gold)] text-[var(--gold)] font-semibold"
+                    : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                )}
               >
-                <Icon size={16} />
-                <span className="flex-1">{TAB_LABELS[k]}</span>
+                <Icon size={15} />
+                <span>{TAB_LABELS[k]}</span>
                 {count !== undefined && count > 0 && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    active ? "bg-emerald-200 text-emerald-800" : "bg-gray-200 text-gray-700"
-                  }`}>{count}</span>
+                  <span className={cn(
+                    "ml-1 text-[10px] px-1.5 py-0.5 rounded-full font-mono",
+                    active
+                      ? "bg-[var(--gold)]/20 text-[var(--gold)]"
+                      : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                  )}>{count}</span>
                 )}
               </button>
             );
           })}
         </nav>
-      </aside>
+      </div>
 
       {/* Content */}
-      <main className="flex-1 overflow-auto bg-gray-50">
-        <div className="p-6 max-w-[1400px] mx-auto">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold">{TAB_LABELS[tab]}</h2>
-            <p className="text-sm text-gray-600 mt-1">{TAB_DESCRIPTIONS[tab]}</p>
-          </div>
-          {tab === "overview" && <OverviewTab onJump={switchTab} />}
-          {tab === "quality" && <QualityTab />}
-          {tab === "reports" && <ReportsTab />}
-          {tab === "spot-check" && <SpotCheckTab />}
-          {tab === "audit" && <AuditTab />}
-          {tab === "marketing" && <MarketingTab />}
-          {tab === "agents" && <AgentControlTab />}
-        </div>
-      </main>
+      <div>
+        {tab === "overview" && <OverviewTab onJump={switchTab} />}
+        {tab === "quality" && <QualityTab />}
+        {tab === "reports" && <ReportsTab />}
+        {tab === "spot-check" && <SpotCheckTab />}
+        {tab === "audit" && <AuditTab />}
+        {tab === "marketing" && <MarketingTab />}
+        {tab === "agents" && <AgentControlTab />}
+      </div>
     </div>
   );
 }
 
 export default function CommandCenter() {
   return (
-    <Suspense fallback={<div className="p-8 flex items-center gap-2"><Loader2 className="animate-spin" /> 載入中...</div>}>
+    <Suspense fallback={
+      <div className="p-8 flex items-center gap-2 text-[var(--text-muted)]">
+        <Loader2 className="animate-spin text-[var(--gold)]" size={20} /> 載入中...
+      </div>
+    }>
       <CommandCenterInner />
     </Suspense>
   );
