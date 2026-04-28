@@ -2,8 +2,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Loader2, RefreshCw, CheckCircle2, XCircle, Eye, Filter } from "lucide-react";
-import Badge from "@/components/ui/Badge";
 import { cn } from "@/lib/utils/cn";
+import { SectionLabel, MetaText, JournalRow, JournalCta, Pill, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
 
 interface Issue {
   id: string;
@@ -26,15 +26,14 @@ interface Issue {
   };
 }
 
-const SEVERITY_STYLES: Record<string, string> = {
-  CRITICAL: "border-red-500/40 bg-red-500/10 text-red-400",
-  HIGH: "border-orange-500/40 bg-orange-500/10 text-orange-400",
-  MEDIUM: "border-amber-500/40 bg-amber-500/10 text-amber-400",
-  LOW: "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]",
+const SEVERITY_TONE: Record<string, "danger" | "warning" | "neutral" | "muted"> = {
+  CRITICAL: "danger",
+  HIGH: "warning",
+  MEDIUM: "neutral",
+  LOW: "muted",
 };
 
-const SELECT_CLS = "border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-[var(--gold)]";
-const BTN_CLS = "px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--gold)] hover:border-[var(--gold)]/40 flex items-center gap-1 text-sm transition";
+const SELECT_CLS = "border border-[var(--j-line)] bg-transparent text-[var(--j-ink)] px-2 py-1 text-sm focus:outline-none focus:border-[var(--j-phosphor)]";
 
 export default function QualityTab() {
   const [items, setItems] = useState<Issue[]>([]);
@@ -74,79 +73,91 @@ export default function QualityTab() {
   const allRules = Array.from(new Set(items.map(i => i.ruleId))).sort();
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3">
-        <Filter size={15} className="text-[var(--text-muted)]" />
-        <select value={severity} onChange={e => setSeverity(e.target.value)} className={SELECT_CLS}>
+    <div className="space-y-6">
+      {/* Filters bar */}
+      <div className="border-y border-[var(--j-line)] py-3 flex flex-wrap items-center gap-3">
+        <Filter size={14} className="text-[var(--j-ink-muted)]" />
+        <select value={severity} onChange={e => setSeverity(e.target.value)} className={SELECT_CLS} style={FONT_MONO}>
           <option value="">所有嚴重度</option>
           <option value="CRITICAL">CRITICAL</option>
           <option value="HIGH">HIGH</option>
           <option value="MEDIUM">MEDIUM</option>
           <option value="LOW">LOW</option>
         </select>
-        <select value={ruleId} onChange={e => setRuleId(e.target.value)} className={SELECT_CLS}>
+        <select value={ruleId} onChange={e => setRuleId(e.target.value)} className={SELECT_CLS} style={FONT_MONO}>
           <option value="">所有規則</option>
           {allRules.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
-        <select value={status} onChange={e => setStatus(e.target.value)} className={SELECT_CLS}>
+        <select value={status} onChange={e => setStatus(e.target.value)} className={SELECT_CLS} style={FONT_MONO}>
           <option value="OPEN">OPEN</option>
           <option value="RESOLVED">RESOLVED</option>
           <option value="IGNORED">IGNORED</option>
           <option value="AUTO_ARCHIVED">AUTO_ARCHIVED</option>
         </select>
-        <button onClick={load} className={cn(BTN_CLS, "ml-auto")}>
-          <RefreshCw size={14} /> 重新整理
+        <button onClick={load} className="ml-auto text-sm text-[var(--j-ink-dim)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition" style={FONT_MONO}>
+          <RefreshCw size={13} /> refresh
         </button>
       </div>
 
+      {/* List */}
       {loading ? (
-        <div className="flex items-center gap-2 text-[var(--text-muted)] py-4">
-          <Loader2 className="animate-spin text-[var(--gold)]" size={18} /> 載入中...
+        <div className="flex items-center gap-2 text-[var(--j-ink-dim)] py-4 italic" style={FONT_DISPLAY}>
+          <Loader2 className="animate-spin text-[var(--j-phosphor)]" size={18} /> Reading the page proofs…
         </div>
       ) : items.length === 0 ? (
-        <div className="text-[var(--text-muted)] rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center">
-          <CheckCircle2 size={32} className="mx-auto text-emerald-400 mb-2" />
-          <div className="text-sm">沒有符合條件的 issue</div>
+        <div className="border border-[var(--j-line)] bg-[var(--j-bg-card)] p-12 text-center">
+          <CheckCircle2 size={32} className="mx-auto text-[var(--j-phosphor)] mb-3" />
+          <div className="italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>— No errata. The page is clean.</div>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div>
+          <div className="mb-4 text-sm text-[var(--j-ink-dim)] italic" style={FONT_DISPLAY}>
+            {items.length} entries · sorted by severity then detected time
+          </div>
           {items.map(it => (
-            <div key={it.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 hover:border-[var(--border-subtle)]/80 transition">
-              <div className="flex items-start gap-3">
-                <span className={cn("text-[10px] px-2 py-1 rounded border font-mono", SEVERITY_STYLES[it.severity] || SEVERITY_STYLES.LOW)}>
-                  {it.severity}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <Badge>{it.ruleId}</Badge>
-                    <Badge>{it.status}</Badge>
-                    <Badge>Q.{it.question.status}</Badge>
-                    {it.question.difficulty && <Badge>{it.question.difficulty}</Badge>}
-                    <span className="text-xs text-[var(--text-muted)]">{new Date(it.detectedAt).toLocaleString("zh-TW")}</span>
-                  </div>
-                  <div className="text-sm text-[var(--text-primary)] mb-1">{it.detail}</div>
-                  <div className="text-sm text-[var(--text-secondary)] line-clamp-2">{it.question.stemZh || it.question.stem.slice(0, 200)}</div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1 font-mono">id={it.questionId.slice(0, 8)} · ans={it.question.correctAnswer}</div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Link href={`/admin/questions/${it.questionId}`} target="_blank" className={cn(BTN_CLS, "text-xs")}>
-                    <Eye size={12} /> 編輯
-                  </Link>
-                  {it.status === "OPEN" && (
-                    <>
-                      <button onClick={() => resolve(it.id, "RESOLVED")} disabled={resolving === it.id}
-                        className="px-2 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 flex items-center gap-1 text-xs disabled:opacity-50 transition">
-                        <CheckCircle2 size={12} /> 已解決
-                      </button>
-                      <button onClick={() => resolve(it.id, "IGNORED")} disabled={resolving === it.id}
-                        className="px-2 py-1 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] flex items-center gap-1 text-xs disabled:opacity-50 transition">
-                        <XCircle size={12} /> 假陽性
-                      </button>
-                    </>
-                  )}
-                </div>
+            <article key={it.id} className="grid grid-cols-[80px_1fr_auto] gap-4 py-4 border-b border-[var(--j-line)]/60 hover:bg-[var(--j-phosphor-soft)] transition-colors">
+              <div className="flex flex-col gap-1.5">
+                <Pill tone={SEVERITY_TONE[it.severity] || "muted"}>{it.severity}</Pill>
+                <MetaText className="!text-[var(--j-ink-muted)]">{new Date(it.detectedAt).toLocaleDateString("zh-TW")}</MetaText>
               </div>
-            </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  <Pill>{it.ruleId}</Pill>
+                  <Pill tone="muted">Q.{it.question.status}</Pill>
+                  {it.question.difficulty && <Pill tone="muted">{it.question.difficulty}</Pill>}
+                </div>
+                <div className="text-[var(--j-ink)] mb-1 leading-snug" style={FONT_ZH}>
+                  {it.detail}
+                </div>
+                <div className="text-sm text-[var(--j-ink-dim)] line-clamp-2 mb-1.5" style={FONT_ZH}>
+                  {it.question.stemZh || it.question.stem.slice(0, 220)}
+                </div>
+                <MetaText>id={it.questionId.slice(0, 8)} · ans={it.question.correctAnswer}</MetaText>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Link href={`/admin/questions/${it.questionId}`} target="_blank"
+                  className="px-3 py-1.5 text-xs text-[var(--j-ink-dim)] border border-[var(--j-line)] hover:border-[var(--j-phosphor)] hover:text-[var(--j-phosphor)] flex items-center gap-1 italic transition"
+                  style={FONT_DISPLAY}>
+                  <Eye size={12} /> open
+                </Link>
+                {it.status === "OPEN" && (
+                  <>
+                    <button onClick={() => resolve(it.id, "RESOLVED")} disabled={resolving === it.id}
+                      className="px-3 py-1.5 text-xs italic text-[var(--j-phosphor)] border border-[var(--j-phosphor-line)] hover:bg-[var(--j-phosphor-soft)] flex items-center gap-1 disabled:opacity-50 transition"
+                      style={FONT_DISPLAY}>
+                      <CheckCircle2 size={12} /> resolved
+                    </button>
+                    <button onClick={() => resolve(it.id, "IGNORED")} disabled={resolving === it.id}
+                      className="px-3 py-1.5 text-xs italic text-[var(--j-ink-muted)] border border-[var(--j-line)] hover:text-[var(--j-ink)] flex items-center gap-1 disabled:opacity-50 transition"
+                      style={FONT_DISPLAY}>
+                      <XCircle size={12} /> false alarm
+                    </button>
+                  </>
+                )}
+              </div>
+            </article>
           ))}
         </div>
       )}

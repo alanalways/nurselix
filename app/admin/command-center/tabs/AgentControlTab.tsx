@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Bot, Loader2, RefreshCw, ExternalLink, Activity, CheckCircle2, XCircle, Clock } from "lucide-react";
-import Badge from "@/components/ui/Badge";
+import { Loader2, RefreshCw, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { SectionLabel, MetaText, Pill, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
 
 interface AgentsData {
   timestamp: string;
@@ -16,17 +16,25 @@ interface AgentsData {
 }
 
 const CRON_WORKFLOWS = [
-  { name: "Quality Deep Scan", file: "cron-quality-scan.yml", time: "每日 03:00 UTC（台 11:00）", desc: "18 規則掃描題庫 + 寫入 QualityHealthReport" },
-  { name: "Report Triage", file: "cron-report-triage.yml", time: "每日 04:00 UTC（台 12:00）", desc: "Kimi-K2.5 處理 PENDING 回報" },
-  { name: "Error Rate Recompute", file: "cron-error-rate-recompute.yml", time: "每日 05:00 UTC（台 13:00）", desc: "重算 errorRate 欄位" },
-  { name: "Daily Health Report", file: "cron-daily-health-report.yml", time: "每日 09:00 UTC（台 17:00）", desc: "MiniMax 生成健康度敘事" },
-  { name: "Marketing Daily", file: "cron-marketing-daily.yml", time: "每日 10:00 UTC（台 18:00）", desc: "產社群貼文 + 週一 SEO + 週五 analytics" },
-  { name: "Ops Daily", file: "cron-ops.yml", time: "每日 02:00 UTC（台 10:00）", desc: "現有 ops 報表（CTO/PM/Ops agents）" },
+  { name: "Quality Deep Scan", file: "cron-quality-scan.yml", time: "03:00 UTC · 11:00 TWN", desc: "18 規則掃描題庫 · 寫入 QualityHealthReport" },
+  { name: "Report Triage", file: "cron-report-triage.yml", time: "04:00 UTC · 12:00 TWN", desc: "Kimi-K2.5 處理 PENDING 回報" },
+  { name: "Error Rate Recompute", file: "cron-error-rate-recompute.yml", time: "05:00 UTC · 13:00 TWN", desc: "重算 errorRate 欄位" },
+  { name: "Daily Health Report", file: "cron-daily-health-report.yml", time: "09:00 UTC · 17:00 TWN", desc: "MiniMax 生成健康度敘事" },
+  { name: "Marketing Daily", file: "cron-marketing-daily.yml", time: "10:00 UTC · 18:00 TWN", desc: "社群 + 週一 SEO + 週五 analytics" },
+  { name: "Ops Daily", file: "cron-ops.yml", time: "02:00 UTC · 10:00 TWN", desc: "現有 ops 報表（CTO/PM/Ops agents）" },
 ];
 
 const REPO = "alanalways/nurselix";
 
-const BTN_CLS = "px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--gold)] hover:border-[var(--gold)]/40 flex items-center gap-1 text-sm transition disabled:opacity-50";
+const MODEL_TABLE: Array<[string, string, string]> = [
+  ["題庫品質審查", "deepseek-ai/deepseek-v4-pro", "kimi-k2.5 → gemini-3-flash"],
+  ["修補建議", "deepseek-ai/deepseek-v4-pro", "gemini-3-flash → flash-lite"],
+  ["健康度敘事", "minimaxai/minimax-m2.7", "gemini-3.1-flash-lite → 2.5-flash"],
+  ["使用者回報判讀", "moonshotai/kimi-k2.5", "deepseek-v4-pro → gemini-3-flash"],
+  ["行銷文案", "minimaxai/minimax-m2.7", "gemini-3.1-flash-lite → 2.5-flash"],
+  ["行銷分析", "deepseek-ai/deepseek-v4-pro", "minimax-m2.7 → gemini-3-flash"],
+  ["Hermes 教學（不動）", "claude-haiku-4-5-20251001", "—"],
+];
 
 export default function AgentControlTab() {
   const [data, setData] = useState<AgentsData | null>(null);
@@ -52,119 +60,120 @@ export default function AgentControlTab() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* 服務健康度 */}
-      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
-        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2 font-semibold text-sm text-[var(--text-primary)]">
-          <Activity size={16} className="text-[var(--gold)]" /> 服務健康度
-        </div>
-        <div className="p-5">
-          {loading && !data ? (
-            <Loader2 className="animate-spin text-[var(--gold)]" size={18} />
-          ) : data && (
-            <div className="grid grid-cols-2 gap-3">
-              <ServiceCard name="PostgreSQL" healthy={data.services.database.healthy} />
-              <ServiceCard name="Redis" healthy={data.services.redis.healthy} />
-            </div>
-          )}
-        </div>
+    <div className="space-y-10">
+      {/* Services */}
+      <div>
+        <SectionLabel className="mb-3">Health · 服務狀態</SectionLabel>
+        {loading && !data ? (
+          <Loader2 className="animate-spin text-[var(--j-phosphor)]" size={18} />
+        ) : data && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ServiceCard name="PostgreSQL" healthy={data.services.database.healthy} />
+            <ServiceCard name="Redis" healthy={data.services.redis.healthy} />
+          </div>
+        )}
       </div>
 
-      {/* Hermes Job Queue */}
+      {/* Hermes queue */}
       {data && (
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
-          <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between">
-            <span className="flex items-center gap-2 font-semibold text-sm text-[var(--text-primary)]">
-              <Bot size={16} className="text-[var(--gold)]" /> Hermes 教學 Agent (Anthropic Haiku 4.5)
-            </span>
-            <button onClick={load} className={cn(BTN_CLS, "text-xs")}>
-              <RefreshCw size={12} /> 重新整理
+        <div>
+          <div className="flex items-baseline justify-between mb-3">
+            <SectionLabel>Hermes · Anthropic Haiku 4.5 教學 agent</SectionLabel>
+            <button onClick={load} className="text-xs text-[var(--j-ink-dim)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition" style={FONT_MONO}>
+              <RefreshCw size={11} /> refresh
             </button>
           </div>
-          <div className="p-5 space-y-3">
-            <div className="grid grid-cols-5 divide-x divide-[var(--border-subtle)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
-              <Stat label="Pending" value={data.hermesJobs.pending} color="text-[var(--text-muted)]" />
-              <Stat label="Running" value={data.hermesJobs.running} color="text-blue-400" />
-              <Stat label="Retryable" value={data.hermesJobs.retryable} color="text-amber-400" />
-              <Stat label="Done" value={data.hermesJobs.done} color="text-emerald-400" />
-              <Stat label="Exhausted" value={data.hermesJobs.exhausted} color="text-red-400" />
-            </div>
-            {data.hermesJobs.lastSuccessAt && (
-              <div className="text-xs text-[var(--text-muted)]">最後成功：{new Date(data.hermesJobs.lastSuccessAt).toLocaleString("zh-TW")}</div>
-            )}
-            {data.hermesJobs.retryable > 0 && (
-              <button onClick={retry} disabled={retrying}
-                className="px-3 py-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-lg hover:bg-amber-500/25 text-sm disabled:opacity-50 flex items-center gap-1 transition">
-                {retrying ? <Loader2 className="animate-spin" size={14} /> : null} 立即重試
-              </button>
-            )}
-            {data.hermesJobs.recentExhausted?.length > 0 && (
-              <div>
-                <div className="text-sm font-medium mb-2 text-red-400">最近失敗 (exhausted)</div>
-                <ul className="text-xs space-y-1">
-                  {data.hermesJobs.recentExhausted.slice(0, 3).map(j => (
-                    <li key={j.id} className="text-[var(--text-secondary)] font-mono">
-                      {j.sessionId.slice(0, 8)} · {j.attempts} 次嘗試 · {j.error?.slice(0, 60)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Cron Workflows */}
-      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
-        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2 font-semibold text-sm text-[var(--text-primary)]">
-          <Clock size={16} className="text-[var(--gold)]" /> Cron Workflows
-        </div>
-        <div className="p-5 space-y-3">
-          <div className="text-xs text-[var(--text-muted)]">手動觸發在 GitHub Actions 頁面：點 workflow 名稱進去，按右上角「Run workflow」</div>
-          <div className="grid gap-2">
-            {CRON_WORKFLOWS.map(w => (
-              <div key={w.file} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 flex items-center gap-3 hover:border-[var(--gold)]/30 transition">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm flex items-center gap-2 flex-wrap text-[var(--text-primary)]">
-                    {w.name}
-                    <Badge>{w.time}</Badge>
-                  </div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1">{w.desc}</div>
-                </div>
-                <Link href={`https://github.com/${REPO}/actions/workflows/${w.file}`} target="_blank"
-                  className={cn(BTN_CLS, "text-xs flex-shrink-0")}>
-                  <ExternalLink size={12} /> GitHub
-                </Link>
+          <div className="grid grid-cols-5 border border-[var(--j-line)]">
+            {[
+              ["pending", data.hermesJobs.pending, "text-[var(--j-ink-muted)]"],
+              ["running", data.hermesJobs.running, "text-[var(--j-phosphor)]"],
+              ["retryable", data.hermesJobs.retryable, "text-[#c77a28]"],
+              ["done", data.hermesJobs.done, "text-[var(--j-phosphor)]"],
+              ["exhausted", data.hermesJobs.exhausted, "text-[var(--j-red)]"],
+            ].map(([label, val, color], i, arr) => (
+              <div key={label as string} className={cn(
+                "py-4 px-2 text-center",
+                i < arr.length - 1 && "border-r border-[var(--j-line)]"
+              )}>
+                <div className={cn("italic text-2xl mb-1", color as string)} style={FONT_DISPLAY}>{val as number}</div>
+                <MetaText>{label as string}</MetaText>
               </div>
             ))}
           </div>
+          {data.hermesJobs.lastSuccessAt && (
+            <MetaText className="block mt-2">
+              last success · {new Date(data.hermesJobs.lastSuccessAt).toLocaleString("zh-TW")}
+            </MetaText>
+          )}
+          {data.hermesJobs.retryable > 0 && (
+            <button onClick={retry} disabled={retrying}
+              className="mt-3 px-4 py-2 text-sm italic text-[#c77a28] border border-[#c77a28]/40 hover:bg-[#c77a28]/10 disabled:opacity-50 flex items-center gap-1 transition"
+              style={FONT_DISPLAY}>
+              {retrying ? <Loader2 className="animate-spin" size={13} /> : null} retry now
+            </button>
+          )}
+          {data.hermesJobs.recentExhausted?.length > 0 && (
+            <div className="mt-4">
+              <SectionLabel className="!mt-0 mb-2 !text-[var(--j-red)]">Recent failures</SectionLabel>
+              <ul className="space-y-1">
+                {data.hermesJobs.recentExhausted.slice(0, 3).map(j => (
+                  <li key={j.id} className="text-xs text-[var(--j-ink-dim)]" style={FONT_MONO}>
+                    {j.sessionId.slice(0, 8)} · {j.attempts}× tries · {j.error?.slice(0, 60)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cron */}
+      <div>
+        <div className="flex items-baseline justify-between mb-3">
+          <SectionLabel>Cron · 排程任務</SectionLabel>
+          <MetaText>trigger from GitHub Actions</MetaText>
+        </div>
+        <div className="border border-[var(--j-line)]">
+          {CRON_WORKFLOWS.map((w, i) => (
+            <div key={w.file} className={cn(
+              "grid grid-cols-[1fr_auto] gap-4 px-4 py-3 items-center hover:bg-[var(--j-phosphor-soft)] transition",
+              i < CRON_WORKFLOWS.length - 1 && "border-b border-[var(--j-line)]"
+            )}>
+              <div>
+                <div className="flex items-baseline gap-3 mb-1">
+                  <span className="italic text-[var(--j-ink)]" style={FONT_DISPLAY}>{w.name}</span>
+                  <MetaText>{w.time}</MetaText>
+                </div>
+                <div className="text-xs text-[var(--j-ink-dim)]" style={FONT_ZH}>{w.desc}</div>
+              </div>
+              <Link href={`https://github.com/${REPO}/actions/workflows/${w.file}`} target="_blank"
+                className="px-3 py-1.5 text-xs italic text-[var(--j-ink-dim)] border border-[var(--j-line)] hover:border-[var(--j-phosphor)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition"
+                style={FONT_DISPLAY}>
+                <ExternalLink size={11} /> github
+              </Link>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Model Registry */}
-      <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
-        <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2 font-semibold text-sm text-[var(--text-primary)]">
-          Agent Teams 模型分配
-        </div>
-        <div className="p-5 overflow-x-auto">
+      {/* Model registry */}
+      <div>
+        <SectionLabel className="mb-3">Model registry · agent teams 模型分配</SectionLabel>
+        <div className="border border-[var(--j-line)] overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-left text-[var(--text-muted)] text-xs uppercase">
-              <tr><th className="py-2 pr-3">任務</th><th className="pr-3">主模型</th><th>備援</th></tr>
+            <thead className="border-b border-[var(--j-line-strong)]">
+              <tr className="text-left text-[10px] tracking-[0.15em] uppercase text-[var(--j-ink-dim)]" style={FONT_MONO}>
+                <th className="py-3 px-4">Task</th>
+                <th className="py-3 px-4">Primary</th>
+                <th className="py-3 px-4">Fallback chain</th>
+              </tr>
             </thead>
             <tbody>
-              {[
-                ["題庫品質審查", "deepseek-ai/deepseek-v4-pro", "kimi-k2.5 → gemini-3-flash"],
-                ["修補建議", "deepseek-ai/deepseek-v4-pro", "gemini-3-flash → gemini-3.1-flash-lite"],
-                ["健康度報告", "minimaxai/minimax-m2.7", "gemini-3.1-flash-lite → gemini-2.5-flash"],
-                ["使用者回報判讀", "moonshotai/kimi-k2.5", "deepseek-v4-pro → gemini-3-flash"],
-                ["行銷文案", "minimaxai/minimax-m2.7", "gemini-3.1-flash-lite → gemini-2.5-flash"],
-                ["行銷分析", "deepseek-ai/deepseek-v4-pro", "minimax-m2.7 → gemini-3-flash"],
-                ["Hermes 教學（既有，不動）", "claude-haiku-4-5-20251001", "—"],
-              ].map(([task, primary, fallback]) => (
-                <tr key={task} className="border-t border-[var(--border-subtle)]/50">
-                  <td className="py-2 pr-3 font-medium text-[var(--text-primary)]">{task}</td>
-                  <td className="text-[var(--gold)] font-mono text-xs pr-3">{primary}</td>
-                  <td className="text-[var(--text-muted)] font-mono text-xs">{fallback}</td>
+              {MODEL_TABLE.map(([task, primary, fallback], i) => (
+                <tr key={task} className={cn("hover:bg-[var(--j-phosphor-soft)] transition", i < MODEL_TABLE.length - 1 && "border-b border-[var(--j-line)]")}>
+                  <td className="py-3 px-4 text-[var(--j-ink)] italic" style={FONT_DISPLAY}>{task}</td>
+                  <td className="py-3 px-4 text-xs text-[var(--j-phosphor)]" style={FONT_MONO}>{primary}</td>
+                  <td className="py-3 px-4 text-xs text-[var(--j-ink-muted)]" style={FONT_MONO}>{fallback}</td>
                 </tr>
               ))}
             </tbody>
@@ -178,25 +187,16 @@ export default function AgentControlTab() {
 function ServiceCard({ name, healthy }: { name: string; healthy: boolean }) {
   return (
     <div className={cn(
-      "p-3 rounded-xl border flex items-center gap-2",
+      "px-4 py-3 border flex items-center gap-3",
       healthy
-        ? "bg-emerald-500/5 border-emerald-500/30"
-        : "bg-red-500/5 border-red-500/30"
+        ? "border-[var(--j-phosphor-line)] bg-[var(--j-phosphor-soft)]"
+        : "border-[var(--j-red)]/40 bg-[var(--j-red)]/10"
     )}>
-      {healthy ? <CheckCircle2 size={18} className="text-emerald-400" /> : <XCircle size={18} className="text-red-400" />}
+      {healthy ? <CheckCircle2 size={16} className="text-[var(--j-phosphor)]" /> : <XCircle size={16} className="text-[var(--j-red)]" />}
       <div>
-        <div className="font-medium text-sm text-[var(--text-primary)]">{name}</div>
-        <div className="text-xs text-[var(--text-muted)]">{healthy ? "正常" : "異常"}</div>
+        <div className="italic text-[var(--j-ink)]" style={FONT_DISPLAY}>{name}</div>
+        <MetaText>{healthy ? "running · 正常" : "down · 異常"}</MetaText>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="text-center py-3">
-      <div className={cn("text-2xl font-bold", color)}>{value}</div>
-      <div className="text-xs text-[var(--text-muted)] mt-1">{label}</div>
     </div>
   );
 }

@@ -1,9 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Loader2, RefreshCw, MessageSquareWarning, Eye, Clock } from "lucide-react";
-import Badge from "@/components/ui/Badge";
-import { cn } from "@/lib/utils/cn";
+import { Loader2, RefreshCw, Eye, Clock, Mail } from "lucide-react";
+import { SectionLabel, MetaText, Pill, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
 
 interface Report {
   id: string;
@@ -21,19 +20,18 @@ interface Report {
   question?: { id: string; stem: string; domain?: string; difficulty?: string };
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  pending: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  IN_REVIEW: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  reviewed: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  RESOLVED_FIXED: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  RESOLVED_INVALID: "bg-[var(--bg-elevated)] text-[var(--text-muted)] border-[var(--border-subtle)]",
-  RESOLVED_DUPLICATE: "bg-[var(--bg-elevated)] text-[var(--text-muted)] border-[var(--border-subtle)]",
-  resolved: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+const STATUS_TONE: Record<string, "warning" | "phosphor" | "muted" | "neutral"> = {
+  PENDING: "warning",
+  pending: "warning",
+  IN_REVIEW: "phosphor",
+  reviewed: "phosphor",
+  RESOLVED_FIXED: "phosphor",
+  RESOLVED_INVALID: "muted",
+  RESOLVED_DUPLICATE: "muted",
+  resolved: "phosphor",
 };
 
-const SELECT_CLS = "border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-[var(--gold)]";
-const BTN_CLS = "px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--gold)] hover:border-[var(--gold)]/40 flex items-center gap-1 text-sm transition";
+const SELECT_CLS = "border border-[var(--j-line)] bg-transparent text-[var(--j-ink)] px-2 py-1 text-sm focus:outline-none focus:border-[var(--j-phosphor)]";
 
 export default function ReportsTab() {
   const [items, setItems] = useState<Report[]>([]);
@@ -65,9 +63,11 @@ export default function ReportsTab() {
   const pendingCount = items.filter(r => r.status === "PENDING" || r.status === "pending").length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3">
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={SELECT_CLS}>
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="border-y border-[var(--j-line)] py-3 flex flex-wrap items-center gap-3">
+        <Mail size={14} className="text-[var(--j-ink-muted)]" />
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={SELECT_CLS} style={FONT_MONO}>
           <option value="">所有狀態</option>
           <option value="PENDING">PENDING（待處理）</option>
           <option value="pending">pending（舊版）</option>
@@ -76,60 +76,68 @@ export default function ReportsTab() {
           <option value="RESOLVED_INVALID">RESOLVED_INVALID（無效）</option>
           <option value="RESOLVED_DUPLICATE">RESOLVED_DUPLICATE（重複）</option>
         </select>
-        <span className="text-sm text-[var(--text-muted)]">共 {items.length} 筆，待處理 {pendingCount}</span>
-        <div className="ml-auto flex gap-2">
-          <button onClick={dedup} disabled={dedupRunning} className={cn(BTN_CLS, "disabled:opacity-50")}>
-            {dedupRunning ? <Loader2 className="animate-spin" size={14} /> : null} 清除重複
+        <span className="text-sm italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+          {items.length} letters · {pendingCount} unread
+        </span>
+        <div className="ml-auto flex gap-3 text-sm">
+          <button onClick={dedup} disabled={dedupRunning}
+            className="text-[var(--j-ink-dim)] hover:text-[var(--j-phosphor)] flex items-center gap-1 italic disabled:opacity-50 transition"
+            style={FONT_DISPLAY}>
+            {dedupRunning ? <Loader2 className="animate-spin" size={13} /> : null} merge duplicates
           </button>
-          <button onClick={load} className={BTN_CLS}>
-            <RefreshCw size={14} /> 重新整理
+          <button onClick={load} className="text-[var(--j-ink-dim)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition" style={FONT_MONO}>
+            <RefreshCw size={13} /> refresh
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-[var(--text-muted)] py-4">
-          <Loader2 className="animate-spin text-[var(--gold)]" size={18} /> 載入中...
+        <div className="flex items-center gap-2 text-[var(--j-ink-dim)] py-4 italic" style={FONT_DISPLAY}>
+          <Loader2 className="animate-spin text-[var(--j-phosphor)]" size={18} /> Reading the post bag…
         </div>
       ) : items.length === 0 ? (
-        <div className="text-[var(--text-muted)] rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-sm">尚無回報</div>
+        <div className="border border-[var(--j-line)] bg-[var(--j-bg-card)] p-12 text-center italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+          — Empty post bag.
+        </div>
       ) : (
-        <div className="space-y-2">
+        <div>
           {items.map(r => (
-            <div key={r.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
-              <div className="flex items-start gap-3">
-                <MessageSquareWarning size={18} className="text-[var(--text-muted)] mt-1" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className={cn("text-[10px] px-2 py-1 rounded border font-mono", STATUS_STYLES[r.status] || "bg-[var(--bg-elevated)] text-[var(--text-muted)]")}>
-                      {r.status}
-                    </span>
-                    {r.reasonCategory && <Badge>{r.reasonCategory}</Badge>}
-                    {r.triageVerdict && <Badge>AI: {r.triageVerdict}</Badge>}
-                    <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                      <Clock size={11} /> {new Date(r.createdAt).toLocaleString("zh-TW")}
-                    </span>
-                  </div>
-                  <div className="text-sm font-medium text-[var(--text-primary)]">{r.reason}</div>
-                  {r.detail && <div className="text-sm text-[var(--text-secondary)] mt-1">{r.detail}</div>}
-                  {r.triageNotes && (
-                    <div className="text-xs text-[var(--text-secondary)] mt-2 bg-[var(--bg-elevated)] rounded-lg p-2 border-l-2 border-blue-500/40">
-                      <span className="font-semibold text-blue-400">AI 分流結論：</span>{r.triageNotes}
-                    </div>
-                  )}
-                  {r.question && (
-                    <div className="text-sm text-[var(--text-secondary)] mt-2 line-clamp-2">{r.question.stem.slice(0, 180)}</div>
-                  )}
-                  <div className="text-xs text-[var(--text-muted)] mt-1 font-mono">
-                    {r.user?.email && <span>by {r.user.email}</span>}
-                    {r.question && <span> · qid={r.questionId.slice(0,8)}{r.question.domain ? ` · ${r.question.domain}` : ""}</span>}
-                  </div>
-                </div>
-                <Link href={`/admin/questions/${r.questionId}`} target="_blank" className={cn(BTN_CLS, "text-xs h-fit")}>
-                  <Eye size={12} /> 題目
-                </Link>
+            <article key={r.id} className="grid grid-cols-[100px_1fr_auto] gap-4 py-4 border-b border-[var(--j-line)]/60 hover:bg-[var(--j-phosphor-soft)] transition-colors">
+              <div className="flex flex-col gap-1.5">
+                <Pill tone={STATUS_TONE[r.status] || "muted"}>{r.status}</Pill>
+                <MetaText className="flex items-center gap-1">
+                  <Clock size={10} /> {new Date(r.createdAt).toLocaleDateString("zh-TW")}
+                </MetaText>
               </div>
-            </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  {r.reasonCategory && <Pill>{r.reasonCategory}</Pill>}
+                  {r.triageVerdict && <Pill tone="phosphor">AI · {r.triageVerdict}</Pill>}
+                </div>
+                <div className="italic text-[var(--j-ink)] mb-1" style={FONT_DISPLAY}>{r.reason}</div>
+                {r.detail && <div className="text-sm text-[var(--j-ink-dim)] mb-1.5" style={FONT_ZH}>{r.detail}</div>}
+                {r.triageNotes && (
+                  <div className="text-xs text-[var(--j-ink-dim)] mt-2 pl-3 border-l-2 border-[var(--j-phosphor-line)]" style={FONT_ZH}>
+                    <span className="text-[var(--j-phosphor)]" style={FONT_MONO}>EDITOR · </span>
+                    {r.triageNotes}
+                  </div>
+                )}
+                {r.question && (
+                  <div className="text-sm text-[var(--j-ink-dim)] mt-2 line-clamp-2" style={FONT_ZH}>{r.question.stem.slice(0, 200)}</div>
+                )}
+                <MetaText className="mt-2 block">
+                  {r.user?.email && <span>by {r.user.email}</span>}
+                  {r.question && <span> · qid={r.questionId.slice(0,8)}{r.question.domain ? ` · ${r.question.domain}` : ""}</span>}
+                </MetaText>
+              </div>
+
+              <Link href={`/admin/questions/${r.questionId}`} target="_blank"
+                className="px-3 py-1.5 text-xs text-[var(--j-ink-dim)] border border-[var(--j-line)] hover:border-[var(--j-phosphor)] hover:text-[var(--j-phosphor)] flex items-center gap-1 italic transition h-fit"
+                style={FONT_DISPLAY}>
+                <Eye size={12} /> open
+              </Link>
+            </article>
           ))}
         </div>
       )}

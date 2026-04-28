@@ -2,8 +2,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Loader2, Shuffle, Flag, Eye, ChevronLeft, ChevronRight, Download } from "lucide-react";
-import Badge from "@/components/ui/Badge";
 import { cn } from "@/lib/utils/cn";
+import { SectionLabel, MetaText, JournalCta, Pill, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
 
 interface Q {
   id: string;
@@ -19,10 +19,8 @@ interface Q {
   createdBy?: string;
 }
 
-const SELECT_CLS = "border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-[var(--gold)]";
-const INPUT_CLS = "border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-[var(--gold)] placeholder:text-[var(--text-muted)]";
-const BTN_CLS = "px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--gold)] hover:border-[var(--gold)]/40 flex items-center gap-1 text-sm transition disabled:opacity-50";
-const PRIMARY_BTN_CLS = "px-3 py-1.5 rounded-lg bg-[var(--gold)] text-[#080E1A] font-semibold hover:opacity-90 flex items-center gap-1 text-sm transition disabled:opacity-50";
+const SELECT_CLS = "border border-[var(--j-line)] bg-transparent text-[var(--j-ink)] px-2 py-1 text-sm focus:outline-none focus:border-[var(--j-phosphor)]";
+const INPUT_CLS = "border border-[var(--j-line)] bg-transparent text-[var(--j-ink)] px-2 py-1 text-sm focus:outline-none focus:border-[var(--j-phosphor)] placeholder:text-[var(--j-ink-muted)] placeholder:italic";
 
 export default function SpotCheckTab() {
   const [n, setN] = useState(20);
@@ -68,106 +66,140 @@ export default function SpotCheckTab() {
   const q = questions[idx];
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-3">
-        <div className="font-semibold text-[var(--text-primary)] text-sm">抽樣設定</div>
-        <div className="flex flex-wrap gap-2 items-center">
-          <label className="text-sm text-[var(--text-secondary)] flex items-center gap-1">
+    <div className="space-y-6">
+      {/* Setup */}
+      <div className="border-y border-[var(--j-line)] py-4">
+        <SectionLabel className="mb-3">Sample setup · 抽樣設定</SectionLabel>
+        <div className="flex flex-wrap gap-3 items-center">
+          <label className="text-sm text-[var(--j-ink-dim)] flex items-center gap-2" style={FONT_ZH}>
             樣本數
-            <select value={n} onChange={e => setN(Number(e.target.value))} className={SELECT_CLS}>
+            <select value={n} onChange={e => setN(Number(e.target.value))} className={SELECT_CLS} style={FONT_MONO}>
               <option value={10}>10</option><option value={20}>20</option>
               <option value={50}>50</option><option value={100}>100</option>
             </select>
           </label>
           <input type="text" placeholder="domain" value={domain} onChange={e => setDomain(e.target.value)}
             className={cn(INPUT_CLS, "w-40")} />
-          <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className={SELECT_CLS}>
+          <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className={SELECT_CLS} style={FONT_MONO}>
             <option value="">所有難度</option>
             <option value="EASY">EASY</option><option value="MEDIUM">MEDIUM</option><option value="HARD">HARD</option>
           </select>
           <input type="text" placeholder="createdBy" value={createdBy} onChange={e => setCreatedBy(e.target.value)}
             className={cn(INPUT_CLS, "w-40")} />
-          <button onClick={sample} disabled={loading} className={PRIMARY_BTN_CLS}>
-            {loading ? <Loader2 className="animate-spin" size={14} /> : <Shuffle size={14} />} 抽樣
-          </button>
+          <JournalCta primary onClick={sample} disabled={loading}>
+            {loading ? <Loader2 className="animate-spin inline mr-1" size={13} /> : <Shuffle size={13} className="inline mr-1" />}
+            Draw a sample
+          </JournalCta>
         </div>
       </div>
 
       {questions.length === 0 ? (
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] text-sm">
-          設定條件後按「抽樣」開始
+        <div className="border border-[var(--j-line)] bg-[var(--j-bg-card)] p-12 text-center italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+          — Set conditions, then draw a sample to begin reading.
         </div>
       ) : (
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-[var(--text-muted)]">{idx + 1} / {questions.length}</div>
+        <article className="border border-[var(--j-line)] bg-[var(--j-bg-card)] p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <MetaText>
+              {idx + 1} / {questions.length} · drawn {questions.length} of {n}
+            </MetaText>
             <div className="flex gap-2">
               <button onClick={() => { setIdx(Math.max(0, idx - 1)); setShowAnswer(false); }} disabled={idx === 0}
-                className={cn(BTN_CLS, "px-2 py-1.5")}><ChevronLeft size={14} /></button>
+                className="px-2 py-1.5 border border-[var(--j-line)] hover:border-[var(--j-phosphor)] hover:text-[var(--j-phosphor)] disabled:opacity-30 disabled:hover:border-[var(--j-line)] transition">
+                <ChevronLeft size={14} />
+              </button>
               <button onClick={() => { setIdx(Math.min(questions.length - 1, idx + 1)); setShowAnswer(false); }} disabled={idx === questions.length - 1}
-                className={cn(BTN_CLS, "px-2 py-1.5")}><ChevronRight size={14} /></button>
+                className="px-2 py-1.5 border border-[var(--j-line)] hover:border-[var(--j-phosphor)] hover:text-[var(--j-phosphor)] disabled:opacity-30 disabled:hover:border-[var(--j-line)] transition">
+                <ChevronRight size={14} />
+              </button>
             </div>
           </div>
 
           {q && (
             <>
-              <div className="flex flex-wrap gap-2">
-                {q.domain && <Badge>{q.domain}</Badge>}
-                {q.difficulty && <Badge>{q.difficulty}</Badge>}
-                <span className="text-xs text-[var(--text-muted)] font-mono">{q.id.slice(0, 8)}</span>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {q.domain && <Pill>{q.domain}</Pill>}
+                {q.difficulty && <Pill tone="muted">{q.difficulty}</Pill>}
+                <MetaText>{q.id.slice(0, 8)}</MetaText>
               </div>
-              <div>
-                <div className="text-xs font-medium mb-1 text-[var(--text-muted)] uppercase">題幹</div>
-                <div className="text-sm text-[var(--text-primary)]">{q.stem}</div>
-                {q.stemZh && <div className="text-sm text-[var(--text-secondary)] mt-1">{q.stemZh}</div>}
+
+              {/* Stem */}
+              <div className="mb-6">
+                <SectionLabel className="mb-2">Stem</SectionLabel>
+                <p className="text-[var(--j-ink)] leading-[1.7]" style={FONT_ZH}>{q.stem}</p>
+                {q.stemZh && <p className="text-[var(--j-ink-dim)] mt-2 leading-[1.7]" style={FONT_ZH}>{q.stemZh}</p>}
               </div>
-              <div className="space-y-1">
-                {[["A", q.optionA], ["B", q.optionB], ["C", q.optionC], ["D", q.optionD], ...(q.optionE ? [["E", q.optionE]] : [])].map(([k, v]) => (
-                  <div key={k as string} className={cn(
-                    "text-sm p-3 rounded-lg border",
-                    showAnswer && q.correctAnswer.includes(k as string)
-                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
-                      : "bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-primary)]"
-                  )}>
-                    <span className="font-semibold mr-2 text-[var(--gold)]">{k}.</span> {v}
-                  </div>
-                ))}
+
+              {/* Options */}
+              <div className="space-y-2 mb-6">
+                {[["A", q.optionA], ["B", q.optionB], ["C", q.optionC], ["D", q.optionD], ...(q.optionE ? [["E", q.optionE]] : [])].map(([k, v]) => {
+                  const isCorrect = showAnswer && q.correctAnswer.includes(k as string);
+                  return (
+                    <div key={k as string} className={cn(
+                      "flex gap-3 p-3 border transition",
+                      isCorrect
+                        ? "border-[var(--j-phosphor)] bg-[var(--j-phosphor-soft)]"
+                        : "border-[var(--j-line)] bg-transparent"
+                    )}>
+                      <span className={cn("italic w-6 flex-shrink-0", isCorrect ? "text-[var(--j-phosphor)]" : "text-[var(--j-ink-dim)]")} style={FONT_DISPLAY}>
+                        {k}.
+                      </span>
+                      <span className="text-[var(--j-ink)]" style={FONT_ZH}>{v}</span>
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Answer + explanation */}
               {showAnswer ? (
-                <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 text-sm">
-                  <div className="font-semibold text-blue-400">正確答案：{q.correctAnswer}</div>
-                  {q.explanationZh && <div className="mt-2 text-[var(--text-secondary)] whitespace-pre-wrap">{q.explanationZh}</div>}
+                <div className="border-l-2 border-[var(--j-phosphor)] pl-4 mb-6">
+                  <SectionLabel className="mb-2">Editor's note · 解析</SectionLabel>
+                  <div className="italic text-[var(--j-ink)] mb-2" style={FONT_DISPLAY}>正確答案 · {q.correctAnswer}</div>
+                  {q.explanationZh && <p className="text-[var(--j-ink-dim)] leading-[1.8] whitespace-pre-wrap" style={FONT_ZH}>{q.explanationZh}</p>}
                 </div>
               ) : (
-                <button onClick={() => setShowAnswer(true)} className="text-sm text-[var(--gold)] hover:underline">顯示答案與解析</button>
+                <button onClick={() => setShowAnswer(true)} className="text-sm italic text-[var(--j-phosphor)] hover:underline mb-6 block" style={FONT_DISPLAY}>
+                  reveal answer & note →
+                </button>
               )}
-              <div className="flex items-center gap-2 pt-3 border-t border-[var(--border-subtle)]">
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-4 border-t border-[var(--j-line)]">
                 {flagged[q.id] ? (
                   <button onClick={() => unflag(q.id)}
-                    className="px-3 py-1.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center gap-1 text-sm transition">
-                    <Flag size={14} fill="currentColor" /> 已標記（取消）
+                    className="px-3 py-1.5 text-sm italic text-[var(--j-red)] border border-[var(--j-red)] flex items-center gap-1 transition"
+                    style={FONT_DISPLAY}>
+                    <Flag size={13} fill="currentColor" /> flagged · click to clear
                   </button>
                 ) : (
                   <button onClick={() => {
-                    const note = prompt("為何標記？") || "flagged";
+                    const note = prompt("Why are you flagging this?") || "flagged";
                     flag(q.id, note);
-                  }} className="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center gap-1 text-sm transition">
-                    <Flag size={14} /> 標記為可疑
+                  }} className="px-3 py-1.5 text-sm italic text-[var(--j-red)] border border-[var(--j-line)] hover:border-[var(--j-red)] flex items-center gap-1 transition"
+                    style={FONT_DISPLAY}>
+                    <Flag size={13} /> mark as suspect
                   </button>
                 )}
-                <Link href={`/admin/questions/${q.id}`} target="_blank" className={BTN_CLS}>
-                  <Eye size={14} /> 編輯
+                <Link href={`/admin/questions/${q.id}`} target="_blank"
+                  className="px-3 py-1.5 text-sm italic text-[var(--j-ink-dim)] border border-[var(--j-line)] hover:border-[var(--j-phosphor)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition"
+                  style={FONT_DISPLAY}>
+                  <Eye size={13} /> edit
                 </Link>
-                <span className="ml-auto text-xs text-[var(--text-muted)]">已標記 {Object.keys(flagged).length} 題</span>
+                <span className="ml-auto text-xs italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+                  flagged · {Object.keys(flagged).length}
+                </span>
                 {Object.keys(flagged).length > 0 && (
-                  <button onClick={exportFlagged} className={BTN_CLS}>
-                    <Download size={14} /> 匯出 CSV
+                  <button onClick={exportFlagged}
+                    className="px-3 py-1.5 text-sm italic text-[var(--j-ink-dim)] border border-[var(--j-line)] hover:border-[var(--j-phosphor)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition"
+                    style={FONT_DISPLAY}>
+                    <Download size={13} /> export csv
                   </button>
                 )}
               </div>
             </>
           )}
-        </div>
+        </article>
       )}
     </div>
   );

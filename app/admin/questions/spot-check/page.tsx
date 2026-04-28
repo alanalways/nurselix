@@ -123,7 +123,7 @@ export default function SpotCheckPage() {
     <div className="p-6 space-y-5 max-w-4xl mx-auto">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">題目品質抽查</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">人工抽查</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
             隨機抽取題目，逐題標記「OK」或「有問題」，找出需要人工修正的題目
           </p>

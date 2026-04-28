@@ -1,12 +1,9 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import {
-  Activity, AlertTriangle, CheckCircle2, Loader2, RefreshCw,
-  History, MessageSquareWarning, Megaphone, TrendingUp, TrendingDown, Minus,
-} from "lucide-react";
-import Badge from "@/components/ui/Badge";
+import { Loader2, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { SectionLabel, DisplayTitle, MetaText, PaperCard, JournalRow, JournalCta, Pill, StatNumber, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
 import type { TabKey } from "./types";
 
 interface DashboardData {
@@ -38,13 +35,13 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
   useEffect(() => { load(); const t = setInterval(load, 30_000); return () => clearInterval(t); }, [load]);
 
   if (loading && !data) return (
-    <div className="flex items-center gap-2 text-[var(--text-muted)] py-6">
-      <Loader2 className="animate-spin text-[var(--gold)]" size={18} /> 載入指揮中心...
+    <div className="flex items-center gap-2 text-[var(--j-ink-dim)] py-6 italic" style={FONT_DISPLAY}>
+      <Loader2 className="animate-spin text-[var(--j-phosphor)]" size={18} /> Reading today's edition…
     </div>
   );
   if (error) return (
-    <div className="text-[var(--error)] py-6">
-      錯誤：{error} <button onClick={load} className="underline ml-2 text-[var(--gold)]">重試</button>
+    <div className="text-[var(--j-red)] py-6">
+      錯誤：{error} <button onClick={load} className="underline ml-2 italic" style={FONT_DISPLAY}>retry</button>
     </div>
   );
   if (!data) return null;
@@ -52,178 +49,219 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
   const score = data.health.today?.healthScore ?? null;
   const yesterday = data.health.trend?.[1]?.healthScore ?? null;
   const scoreDelta = score !== null && yesterday !== null ? score - yesterday : null;
-  const scoreColor = score === null
-    ? "from-[var(--bg-elevated)] to-[var(--bg-elevated)] text-[var(--text-muted)]"
-    : score >= 90 ? "from-emerald-500/20 to-emerald-500/5 border-emerald-500/30 text-emerald-400"
-    : score >= 70 ? "from-amber-500/20 to-amber-500/5 border-amber-500/30 text-amber-400"
-    : "from-red-500/20 to-red-500/5 border-red-500/30 text-red-400";
-  const scoreLabel = score === null ? "—" : score >= 90 ? "✅ 良好" : score >= 70 ? "⚠️ 注意" : "🚨 警示";
+  const scoreLabel = score === null ? "—"
+    : score >= 90 ? "良好 · in good order"
+    : score >= 70 ? "注意 · keep an eye"
+    : "警示 · attention";
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <button onClick={load}
-          className="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--gold)] hover:border-[var(--gold)]/40 flex items-center gap-2 text-sm transition">
-          <RefreshCw size={14} /> 重新整理
-        </button>
-      </div>
+    <div className="space-y-12">
+      {/* Editorial grid: 2fr / 1fr */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8 lg:gap-14">
+        {/* LEFT — lead story + features */}
+        <div>
+          <SectionLabel className="mb-4">Today's Lead</SectionLabel>
+          <h2 className="italic tracking-tight text-[var(--j-ink)] leading-[0.92] mb-4"
+            style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.5rem, 5vw, 4.5rem)", letterSpacing: "-0.025em" }}>
+            {score !== null && score >= 90 ? "All in order today." : score !== null && score >= 70 ? "A few notes to attend." : "Some things to read closely."}
+          </h2>
+          <p className="text-base lg:text-[17px] leading-[1.8] text-[var(--j-ink-dim)] mb-8 max-w-[560px]" style={FONT_ZH}>
+            題庫 <span className="italic text-[var(--j-ink)]" style={FONT_DISPLAY}>{data.questions.total.toLocaleString()}</span> 題,
+            待處理問題 <span className="italic text-[var(--j-ink)]" style={FONT_DISPLAY}>{data.issues.openCount}</span> 件,
+            其中 <span className="italic text-[var(--j-red)]" style={FONT_DISPLAY}>{data.issues.critical?.length ?? 0}</span> 件需立即處置。
+            最近 <span className="italic text-[var(--j-ink)]" style={FONT_DISPLAY}>{data.recentChanges.length}</span> 筆自動修改剛剛入庫。
+          </p>
 
-      {/* Top stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={cn("p-4 rounded-xl border bg-gradient-to-br", scoreColor)}>
-          <div className="text-xs opacity-70">健康度</div>
-          <div className="text-3xl font-bold flex items-center gap-2 mt-1">
-            {score !== null ? `${score}` : "—"}
-            {score !== null && <span className="text-base opacity-60">/100</span>}
-            {scoreDelta !== null && (scoreDelta > 0 ? <TrendingUp size={18} /> : scoreDelta < 0 ? <TrendingDown size={18} /> : <Minus size={18} />)}
+          <div className="flex flex-wrap gap-2 mb-12">
+            <JournalCta primary onClick={() => onJump("quality")}>翻到 品質 · Inspect quality →</JournalCta>
+            <JournalCta onClick={() => onJump("reports")}>讀者來信 · Reader letters</JournalCta>
+            <button onClick={load} className="px-3 py-2 text-sm text-[var(--j-ink-dim)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition" style={FONT_MONO}>
+              <RefreshCw size={13} /> refresh
+            </button>
           </div>
-          <div className="text-xs mt-1 opacity-80">{scoreLabel}</div>
-        </div>
-        <Stat label="題庫總數" value={data.questions.total}
-          hint={`核可 ${data.questions.approved} / 草稿 ${data.questions.draft} / 封存 ${data.questions.archived}`} />
-        <Stat label="待處理問題" value={data.issues.openCount}
-          hint={`Critical ${data.issues.critical?.length ?? 0} 題`}
-          warning={data.issues.openCount > 50}
-          onClick={() => onJump("quality")} />
-        <Stat label="待處理回報" value={data.reports.pendingCount}
-          hint={`累計 ${data.reports.totalCount}`}
-          warning={data.reports.pendingCount > 5}
-          onClick={() => onJump("reports")} />
-      </div>
 
-      <Section title="近 7 天健康度趨勢" icon={<Activity size={16} className="text-[var(--gold)]" />}>
-        <TrendChart data={data.health.trend} />
-      </Section>
-
-      <Section title={`待處理 Critical 問題 (${data.issues.critical?.length ?? 0})`}
-        icon={<AlertTriangle size={16} className="text-[var(--error)]" />}>
-        {data.issues.critical?.length === 0 ? (
-          <div className="text-emerald-400 flex items-center gap-2 text-sm py-2">
-            <CheckCircle2 size={16} /> 沒有 Critical 問題
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-[var(--text-muted)] text-xs uppercase">
-                <tr><th className="py-2 pr-2">題目 ID</th><th className="pr-2">規則</th><th className="pr-2">嚴重度</th><th>偵測詳情</th></tr>
-              </thead>
-              <tbody>
-                {data.issues.critical?.slice(0, 10).map((i: any) => (
-                  <tr key={i.id} className="border-t border-[var(--border-subtle)]/50 hover:bg-[var(--bg-elevated)]/30">
-                    <td className="py-2 pr-2">
-                      <Link className="text-[var(--gold)] hover:underline font-mono text-xs" href={`/admin/questions/${i.questionId}`}>
-                        {i.questionId.slice(0, 8)}
-                      </Link>
-                    </td>
-                    <td className="pr-2"><Badge>{i.ruleId}</Badge></td>
-                    <td className="pr-2"><span className="text-[var(--error)] font-medium text-xs">{i.severity}</span></td>
-                    <td className="text-xs text-[var(--text-secondary)] max-w-md truncate">{i.detail}</td>
-                  </tr>
+          {/* Critical issues column */}
+          <div className="border-t-2 border-[var(--j-line-strong)] pt-6 mb-12">
+            <div className="flex justify-between items-baseline mb-4">
+              <SectionLabel>Critical · 急件</SectionLabel>
+              <span className="text-[13px] italic text-[var(--j-ink-dim)] cursor-pointer hover:text-[var(--j-phosphor)]"
+                onClick={() => onJump("quality")} style={FONT_DISPLAY}>
+                see all {data.issues.openCount} →
+              </span>
+            </div>
+            {data.issues.critical?.length === 0 ? (
+              <div className="py-3 text-sm italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+                — Nothing on the wire. 沒有 critical 問題。
+              </div>
+            ) : (
+              <div>
+                {data.issues.critical?.slice(0, 6).map((i: any) => (
+                  <Link key={i.id} href={`/admin/questions/${i.questionId}`} target="_blank">
+                    <JournalRow>
+                      <div className="grid grid-cols-[60px_120px_1fr] gap-4 items-baseline">
+                        <span className="text-[var(--j-red)] text-[10px] tracking-[0.15em] uppercase" style={FONT_MONO}>{i.severity}</span>
+                        <span className="text-[var(--j-ink-dim)] text-[10px] tracking-wider uppercase" style={FONT_MONO}>{i.ruleId}</span>
+                        <span className="text-[var(--j-ink)] text-sm truncate" style={FONT_ZH}>{i.detail}</span>
+                      </div>
+                    </JournalRow>
+                  </Link>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
-        )}
-      </Section>
 
-      <Section title="最近使用者回報" icon={<MessageSquareWarning size={16} className="text-[var(--gold)]" />}>
-        {data.reports.recent.length === 0 ? <div className="text-[var(--text-muted)] text-sm">尚無回報</div> : (
-          <ul className="space-y-2">
-            {data.reports.recent.slice(0, 6).map((r: any) => (
-              <li key={r.id} className="border-b border-[var(--border-subtle)]/50 pb-2 text-sm">
-                <span className="text-[var(--text-muted)] text-xs mr-2">{new Date(r.createdAt).toLocaleDateString("zh-TW")}</span>
-                <Badge>{r.status}</Badge>
-                <span className="ml-2 font-medium text-[var(--text-primary)]">{r.reason}</span>
-                {r.detail && <span className="text-[var(--text-secondary)]"> — {r.detail}</span>}
-                <Link className="ml-2 text-[var(--gold)] hover:underline text-xs" href={`/admin/questions/${r.questionId}`}>查看題目</Link>
-              </li>
+          {/* Recent reports */}
+          <div className="border-t border-[var(--j-line)] pt-6 mb-12">
+            <div className="flex justify-between items-baseline mb-4">
+              <SectionLabel>Letters · 讀者來信</SectionLabel>
+              <span className="text-[13px] italic text-[var(--j-ink-dim)] cursor-pointer hover:text-[var(--j-phosphor)]"
+                onClick={() => onJump("reports")} style={FONT_DISPLAY}>
+                go to mailbox →
+              </span>
+            </div>
+            {data.reports.recent.length === 0 ? (
+              <div className="py-3 text-sm italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>— Empty post bag.</div>
+            ) : (
+              <div>
+                {data.reports.recent.slice(0, 5).map((r: any) => (
+                  <Link key={r.id} href={`/admin/questions/${r.questionId}`} target="_blank">
+                    <JournalRow>
+                      <div className="flex items-baseline gap-3 flex-wrap">
+                        <MetaText>{new Date(r.createdAt).toLocaleDateString("zh-TW")}</MetaText>
+                        <Pill tone={r.status === "PENDING" || r.status === "pending" ? "warning" : "muted"}>{r.status}</Pill>
+                        <span className="text-[var(--j-ink)] italic" style={FONT_DISPLAY}>{r.reason}</span>
+                        {r.detail && <span className="text-[var(--j-ink-dim)] text-sm" style={FONT_ZH}>— {r.detail}</span>}
+                      </div>
+                    </JournalRow>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recent auto changes */}
+          <div className="border-t border-[var(--j-line)] pt-6">
+            <div className="flex justify-between items-baseline mb-4">
+              <SectionLabel>Recent edits · 自動修改</SectionLabel>
+              <MetaText>by agents</MetaText>
+            </div>
+            {data.recentChanges.length === 0 ? (
+              <div className="py-3 text-sm italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>— No recent edits.</div>
+            ) : (
+              <div>
+                {data.recentChanges.slice(0, 5).map((v: any) => (
+                  <Link key={v.id} href={`/admin/questions/${v.questionId}`} target="_blank">
+                    <JournalRow>
+                      <div className="flex items-baseline gap-3 flex-wrap">
+                        <MetaText>{new Date(v.createdAt).toLocaleString("zh-TW")}</MetaText>
+                        {v.agentInitiated && <Pill tone="phosphor">agent</Pill>}
+                        <span className="text-[var(--j-ink-dim)] text-xs" style={FONT_MONO}>{v.changedBy}</span>
+                        <span className="text-[var(--j-ink)] text-sm" style={FONT_ZH}>{v.reason}</span>
+                      </div>
+                    </JournalRow>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT — newspaper sidebar */}
+        <aside>
+          {/* Health score — the big number */}
+          <PaperCard dark className="mb-5">
+            <MetaText className="!text-[rgba(243,239,228,0.5)]">Health Score · today</MetaText>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="italic tracking-tight text-[var(--j-phosphor)] leading-none"
+                style={{ fontFamily: "var(--font-display)", fontSize: "5rem", letterSpacing: "-0.04em" }}>
+                {score !== null ? score : "—"}
+              </span>
+              {scoreDelta !== null && (
+                <span className="text-[11px] text-[var(--j-phosphor)] tracking-wider" style={FONT_MONO}>
+                  {scoreDelta > 0 ? <TrendingUp size={12} className="inline mr-1" /> : scoreDelta < 0 ? <TrendingDown size={12} className="inline mr-1" /> : <Minus size={12} className="inline mr-1" />}
+                  {scoreDelta > 0 ? "+" : ""}{scoreDelta}
+                </span>
+              )}
+            </div>
+            <div className="border-t border-[rgba(243,239,228,0.2)] pt-3 mt-4 text-xs text-[rgba(243,239,228,0.75)] leading-[1.65]" style={FONT_ZH}>
+              {score !== null ? (
+                <>當前題庫 <span className="text-[var(--j-phosphor)]">{scoreLabel}</span>。
+                  待處理 <span className="italic text-[var(--j-bg)]" style={FONT_DISPLAY}>{data.issues.openCount}</span> 件,
+                  Critical <span className="italic text-[var(--j-bg)]" style={FONT_DISPLAY}>{data.issues.critical?.length ?? 0}</span> 件。</>
+              ) : (
+                <>今日尚未產生健康度快照。下一次自動掃描 <span className="italic">03:00 UTC</span>。</>
+              )}
+            </div>
+          </PaperCard>
+
+          {/* Stats stack */}
+          <div className="border border-[var(--j-line-strong)] mb-5">
+            {[
+              ["題庫總數", data.questions.total.toLocaleString(), `核可 ${data.questions.approved}`],
+              ["草稿", String(data.questions.draft), "drafts"],
+              ["封存", String(data.questions.archived), "archived"],
+              ["待處理回報", String(data.reports.pendingCount), `累計 ${data.reports.totalCount}`],
+            ].map(([k, v, u], i) => (
+              <div key={i} className={cn(
+                "grid grid-cols-[1fr_auto] px-4 py-3 items-baseline",
+                i < 3 && "border-b border-[var(--j-line)]"
+              )}>
+                <div className="text-sm text-[var(--j-ink-dim)]" style={FONT_ZH}>{k}</div>
+                <StatNumber value={v} unit={u} />
+              </div>
             ))}
-          </ul>
-        )}
-      </Section>
+          </div>
 
-      <Section title="最近自動修改" icon={<History size={16} className="text-[var(--gold)]" />}>
-        {data.recentChanges.length === 0 ? <div className="text-[var(--text-muted)] text-sm">尚無修改</div> : (
-          <ul className="space-y-2">
-            {data.recentChanges.slice(0, 6).map((v: any) => (
-              <li key={v.id} className="border-b border-[var(--border-subtle)]/50 pb-2 text-sm">
-                <span className="text-[var(--text-muted)] text-xs mr-2">{new Date(v.createdAt).toLocaleString("zh-TW")}</span>
-                {v.agentInitiated && <Badge>agent</Badge>}
-                <span className="ml-2 text-[var(--text-secondary)]">{v.changedBy}</span>
-                <span className="ml-2 text-[var(--text-primary)]">{v.reason}</span>
-                <Link className="ml-2 text-[var(--gold)] hover:underline text-xs" href={`/admin/questions/${v.questionId}`}>題目</Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+          {/* 7-day chart */}
+          <div className="border border-[var(--j-line)] p-4 mb-5">
+            <SectionLabel className="mb-3 !mt-0">Last 7 days</SectionLabel>
+            <TrendChart data={data.health.trend} />
+          </div>
 
-      <Section title={`行銷部草稿 (${data.marketing.drafts.length})`}
-        icon={<Megaphone size={16} className="text-[var(--gold)]" />}>
-        {data.marketing.drafts.length === 0 ? <div className="text-[var(--text-muted)] text-sm">尚無草稿</div> : (
-          <ul className="space-y-2">
-            {data.marketing.drafts.slice(0, 5).map((m: any) => (
-              <li key={m.id} className="border-b border-[var(--border-subtle)]/50 pb-2 text-sm">
-                <Badge>{m.contentType}</Badge>
-                <Badge>{m.platform || "—"}</Badge>
-                <span className="ml-2 font-medium text-[var(--text-primary)]">{m.title || "(無標題)"}</span>
-                <span className="ml-2 text-[var(--text-muted)] text-xs">{new Date(m.generatedAt).toLocaleDateString("zh-TW")}</span>
-                <button onClick={() => onJump("marketing")} className="ml-2 text-[var(--gold)] hover:underline text-xs">查看</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
-    </div>
-  );
-}
-
-function Stat({ label, value, hint, warning, onClick }: { label: string; value: number; hint?: string; warning?: boolean; onClick?: () => void }) {
-  const className = cn(
-    "p-4 rounded-xl border text-left transition",
-    warning
-      ? "border-amber-500/30 bg-amber-500/5"
-      : "border-[var(--border-subtle)] bg-[var(--bg-surface)]",
-    onClick && "hover:border-[var(--gold)]/40 hover:shadow-lg cursor-pointer w-full"
-  );
-  const inner = (
-    <>
-      <div className="text-xs text-[var(--text-muted)]">{label}</div>
-      <div className="text-2xl font-bold mt-1 text-[var(--text-primary)]">{value}</div>
-      {hint && <div className="text-xs text-[var(--text-muted)] mt-1">{hint}</div>}
-    </>
-  );
-  if (onClick) {
-    return <button onClick={onClick} className={className}>{inner}</button>;
-  }
-  return <div className={className}>{inner}</div>;
-}
-
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
-      <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2 font-semibold text-[var(--text-primary)] text-sm">
-        {icon} {title}
+          {/* Marketing drafts shortcut */}
+          <div onClick={() => onJump("marketing")}
+            className="bg-[var(--j-bg-card)] border border-[var(--j-line-strong)] p-5 cursor-pointer transition-all hover:-translate-y-px hover:border-[var(--j-phosphor)]">
+            <SectionLabel className="!mt-0 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--j-phosphor)]" />
+              Press Room
+            </SectionLabel>
+            <div className="italic tracking-tight text-[var(--j-ink)] mb-2"
+              style={{ fontFamily: "var(--font-display)", fontSize: "1.4rem", letterSpacing: "-0.01em" }}>
+              {data.marketing.drafts.length} drafts pending
+            </div>
+            <div className="text-xs text-[var(--j-ink-dim)] leading-[1.6]" style={FONT_ZH}>
+              行銷部產生的內容草稿,等你審稿與發布 →
+            </div>
+          </div>
+        </aside>
       </div>
-      <div className="p-5">{children}</div>
     </div>
   );
 }
 
 function TrendChart({ data }: { data: any[] }) {
-  if (!data || data.length === 0) return <div className="text-[var(--text-muted)] text-sm">尚無數據</div>;
-  // Pad to 7 days
+  if (!data || data.length === 0) return (
+    <div className="text-[var(--j-ink-muted)] text-xs italic py-2" style={{ fontFamily: "var(--font-display)" }}>
+      尚無數據 · 等待第一次掃描
+    </div>
+  );
   const sorted = data.slice().reverse();
   return (
-    <div className="flex items-end gap-2 h-32">
-      {sorted.map(d => {
-        const h = (d.healthScore / 100) * 100;
-        const color = d.healthScore >= 90 ? "bg-emerald-500" : d.healthScore >= 70 ? "bg-amber-500" : "bg-red-500";
+    <div className="grid grid-cols-7 gap-1.5">
+      {sorted.map((d, i) => {
+        const h = Math.max(8, (d.healthScore / 100) * 60);
+        const isLast = i === sorted.length - 1;
         return (
-          <div key={d.period} className="flex-1 flex flex-col items-center gap-1 min-w-[30px]">
-            <div className="text-xs text-[var(--text-secondary)]">{d.healthScore}</div>
-            <div className={cn(color, "w-full rounded-t transition-all")} style={{ height: `${h}%` }} />
-            <div className="text-[10px] text-[var(--text-muted)]">{d.period.slice(5)}</div>
+          <div key={d.period} className="flex flex-col items-center gap-1">
+            <div className="w-full h-[60px] flex items-end">
+              <div className={cn(
+                "w-full transition-all",
+                isLast ? "bg-[var(--j-phosphor)]" : "bg-[var(--j-ink)] opacity-75"
+              )} style={{ height: `${h}px` }} />
+            </div>
+            <div className="text-[9px] text-[var(--j-ink-dim)]" style={{ fontFamily: "var(--font-mono)" }}>
+              {d.period.slice(8, 10)}
+            </div>
           </div>
         );
       })}

@@ -288,6 +288,25 @@ export default function QuestionQualityPage() {
         </div>
       </div>
 
+      {/* Banner: link to new command-center quality tab (covers 18-rule scanner) */}
+      <a href="/admin/command-center?tab=quality"
+        className="block border-l-4 border-[var(--j-phosphor)] bg-[var(--j-phosphor-soft)] px-4 py-3 hover:bg-[var(--j-phosphor)]/15 transition">
+        <div className="flex items-baseline justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-[10px] tracking-[0.2em] uppercase text-[var(--j-phosphor)] mb-1"
+              style={{ fontFamily: "var(--font-mono)" }}>
+              — Editor's note
+            </div>
+            <div className="italic text-[var(--text-primary)] text-base"
+              style={{ fontFamily: "var(--font-display)" }}>
+              本頁僅顯示舊規則（缺解析、解析過短、缺中文題幹等）。新一代 18 條規則（副詞污染、答案矛盾、選項失衡⋯）的問題清單請見指揮中心 · 品質。
+            </div>
+          </div>
+          <span className="text-[var(--j-phosphor)] italic flex-shrink-0"
+            style={{ fontFamily: "var(--font-display)" }}>翻到指揮中心 →</span>
+        </div>
+      </a>
+
       {/* Summary cards */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">

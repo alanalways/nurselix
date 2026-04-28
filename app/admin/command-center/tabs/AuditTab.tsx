@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Loader2, Play, RefreshCw, ShieldCheck, AlertTriangle, X, Eye } from "lucide-react";
-import Badge from "@/components/ui/Badge";
+import { Loader2, Play, RefreshCw, AlertTriangle, X, Eye } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { SectionLabel, MetaText, JournalCta, Pill, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
 
 interface AuditResult {
   questionId: string;
@@ -26,15 +26,13 @@ interface AuditJob {
   message: string;
 }
 
-const VERDICT_STYLES: Record<string, string> = {
-  CORRECT: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  NEEDS_REVIEW: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  ERROR: "bg-red-500/15 text-red-400 border-red-500/30",
+const VERDICT_TONE: Record<string, "phosphor" | "warning" | "danger" | "muted"> = {
+  CORRECT: "phosphor",
+  NEEDS_REVIEW: "warning",
+  ERROR: "danger",
 };
 
-const SELECT_CLS = "border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-[var(--gold)]";
-const BTN_CLS = "px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--gold)] hover:border-[var(--gold)]/40 flex items-center gap-1 text-sm transition disabled:opacity-50";
-const PRIMARY_BTN_CLS = "px-3 py-1.5 rounded-lg bg-[var(--gold)] text-[#080E1A] font-semibold hover:opacity-90 flex items-center gap-1 text-sm transition disabled:opacity-50";
+const SELECT_CLS = "border border-[var(--j-line)] bg-transparent text-[var(--j-ink)] px-2 py-1 text-sm focus:outline-none focus:border-[var(--j-phosphor)]";
 
 export default function AuditTab() {
   const [job, setJob] = useState<AuditJob | null>(null);
@@ -65,7 +63,7 @@ export default function AuditTab() {
       alert("已有一個審核工作正在進行");
       return;
     }
-    if (!confirm(`啟動 AI 內容審核（範圍：${scope}）？\n會用 Gemini 對題目逐一檢查臨床正確性，可能消耗大量 API 額度。`)) return;
+    if (!confirm(`啟動 AI 內容審核（範圍：${scope}）？\n會用 Gemini 對題目逐一檢查臨床正確性,可能消耗大量 API 額度。`)) return;
     setStarting(true);
     try {
       const r = await fetch("/api/admin/questions/content-audit", {
@@ -91,110 +89,115 @@ export default function AuditTab() {
   const filtered = job?.results?.filter(r => filter === "all" || r.verdict === filter) || [];
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-3">
-        <div className="font-semibold flex items-center gap-2 text-sm text-[var(--text-primary)]">
-          <ShieldCheck size={16} className="text-[var(--gold)]" /> AI 內容審核
-        </div>
-        <div className="text-sm text-[var(--text-muted)]">用 Gemini 檢查題目臨床正確性，可選範圍：被回報過、已核可、全部。</div>
-        <div className="flex flex-wrap gap-2 items-center">
-          <select value={scope} onChange={e => setScope(e.target.value as any)} className={SELECT_CLS}>
+    <div className="space-y-6">
+      {/* Setup */}
+      <div className="border-y border-[var(--j-line)] py-4">
+        <SectionLabel className="mb-3">Audit setup · 審核設定</SectionLabel>
+        <p className="text-sm text-[var(--j-ink-dim)] mb-4 max-w-2xl" style={FONT_ZH}>
+          用 Gemini 對題目逐一檢查臨床正確性。可選範圍：被回報過、已核可、全部。
+        </p>
+        <div className="flex flex-wrap gap-3 items-center">
+          <select value={scope} onChange={e => setScope(e.target.value as any)} className={SELECT_CLS} style={FONT_MONO}>
             <option value="reported">僅含待審回報（reported）</option>
             <option value="approved">所有 APPROVED 題（approved）</option>
             <option value="all">全部題目（all）</option>
           </select>
-          <button onClick={start} disabled={starting || job?.status === "running"} className={PRIMARY_BTN_CLS}>
-            {starting ? <Loader2 className="animate-spin" size={14} /> : <Play size={14} />} 啟動審核
-          </button>
-          <button onClick={load} className={BTN_CLS}>
-            <RefreshCw size={14} /> 重新整理
+          <JournalCta primary onClick={start} disabled={starting || job?.status === "running"}>
+            {starting ? <Loader2 className="animate-spin inline mr-1" size={13} /> : <Play size={13} className="inline mr-1" />}
+            Start audit
+          </JournalCta>
+          <button onClick={load} className="text-sm text-[var(--j-ink-dim)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition" style={FONT_MONO}>
+            <RefreshCw size={13} /> refresh
           </button>
           {job && job.status !== "running" && (
-            <button onClick={clear} className={cn(BTN_CLS, "text-red-400 hover:text-red-300")}>
-              <X size={14} /> 清除
+            <button onClick={clear} className="text-sm italic text-[var(--j-red)] hover:underline flex items-center gap-1 transition" style={FONT_DISPLAY}>
+              <X size={13} /> clear
             </button>
           )}
         </div>
       </div>
 
       {!job ? (
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-[var(--text-muted)] text-sm">
-          尚無審核工作
+        <div className="border border-[var(--j-line)] bg-[var(--j-bg-card)] p-12 text-center italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+          — No audit yet. Press start to begin.
         </div>
       ) : (
         <>
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+          {/* Status */}
+          <div className="border border-[var(--j-line)] bg-[var(--j-bg-card)] p-5">
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <Badge>{job.status}</Badge>
-              <Badge>{job.scope}</Badge>
-              <span className="text-sm text-[var(--text-muted)]">啟動於 {new Date(job.startedAt).toLocaleString("zh-TW")}</span>
-              {job.finishedAt && <span className="text-sm text-[var(--text-muted)]">完成於 {new Date(job.finishedAt).toLocaleString("zh-TW")}</span>}
+              <Pill>{job.status}</Pill>
+              <Pill tone="muted">{job.scope}</Pill>
+              <MetaText>started · {new Date(job.startedAt).toLocaleString("zh-TW")}</MetaText>
+              {job.finishedAt && <MetaText>finished · {new Date(job.finishedAt).toLocaleString("zh-TW")}</MetaText>}
             </div>
             {job.status === "running" && (
-              <div className="space-y-1">
-                <div className="text-sm text-[var(--text-secondary)]">{job.message}</div>
-                <div className="w-full bg-[var(--bg-elevated)] rounded-full h-2">
-                  <div className="bg-[var(--gold)] h-2 rounded-full transition-all" style={{ width: `${(job.done / Math.max(1, job.total)) * 100}%` }} />
+              <div className="space-y-2">
+                <div className="text-sm text-[var(--j-ink-dim)]" style={FONT_ZH}>{job.message}</div>
+                <div className="w-full bg-[var(--j-bg-inset)] h-1">
+                  <div className="bg-[var(--j-phosphor)] h-1 transition-all" style={{ width: `${(job.done / Math.max(1, job.total)) * 100}%` }} />
                 </div>
-                <div className="text-xs text-[var(--text-muted)]">{job.done} / {job.total}（錯誤 {job.errors}）</div>
+                <MetaText>{job.done} / {job.total} · errors {job.errors}</MetaText>
               </div>
             )}
             {job.status === "done" && (
-              <div className="text-sm text-[var(--text-secondary)]">
-                完成：總共 {job.total} 題，需複審 {job.results.filter(r => r.verdict === "NEEDS_REVIEW").length}，正確 {job.results.filter(r => r.verdict === "CORRECT").length}，錯誤 {job.errors}
+              <div className="text-sm text-[var(--j-ink-dim)]" style={FONT_ZH}>
+                Done · 總共 <span className="italic text-[var(--j-ink)]" style={FONT_DISPLAY}>{job.total}</span> 題,
+                需複審 <span className="italic text-[#c77a28]" style={FONT_DISPLAY}>{job.results.filter(r => r.verdict === "NEEDS_REVIEW").length}</span>,
+                正確 <span className="italic text-[var(--j-phosphor)]" style={FONT_DISPLAY}>{job.results.filter(r => r.verdict === "CORRECT").length}</span>,
+                錯誤 <span className="italic text-[var(--j-red)]" style={FONT_DISPLAY}>{job.errors}</span>
               </div>
             )}
           </div>
 
           {job.results.length > 0 && (
             <>
-              <div className="flex gap-2 items-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 flex-wrap">
-                <span className="text-sm text-[var(--text-muted)]">過濾：</span>
+              <div className="border-y border-[var(--j-line)] py-3 flex gap-3 items-center flex-wrap">
+                <SectionLabel className="!mt-0">Filter</SectionLabel>
                 {(["all", "NEEDS_REVIEW", "CORRECT", "ERROR"] as const).map(f => (
                   <button key={f} onClick={() => setFilter(f)}
                     className={cn(
-                      "px-2 py-1 rounded-lg text-xs transition",
+                      "px-2 py-1 text-xs italic transition border",
                       filter === f
-                        ? "bg-[var(--gold)]/15 text-[var(--gold)] font-medium border border-[var(--gold)]/30"
-                        : "border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    )}>
-                    {f === "all" ? "全部" : f}（{f === "all" ? job.results.length : job.results.filter(r => r.verdict === f).length}）
+                        ? "border-[var(--j-phosphor)] text-[var(--j-phosphor)] bg-[var(--j-phosphor-soft)]"
+                        : "border-transparent text-[var(--j-ink-dim)] hover:text-[var(--j-ink)]"
+                    )}
+                    style={FONT_DISPLAY}>
+                    {f === "all" ? "all" : f.toLowerCase()} · {f === "all" ? job.results.length : job.results.filter(r => r.verdict === f).length}
                   </button>
                 ))}
               </div>
 
-              <div className="space-y-2">
+              <div>
                 {filtered.map((r, i) => (
-                  <div key={`${r.questionId}-${i}`} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
-                    <div className="flex items-start gap-3">
-                      <span className={cn("text-[10px] px-2 py-1 rounded border font-mono", VERDICT_STYLES[r.verdict || ""] || "bg-[var(--bg-elevated)]")}>
-                        {r.verdict || "?"}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs text-[var(--text-muted)] mb-1 font-mono">qid={r.questionId.slice(0, 8)}</div>
-                        {r.issues && r.issues.length > 0 && (
-                          <div className="text-sm">
-                            <div className="font-medium text-amber-400 flex items-center gap-1 mb-1">
-                              <AlertTriangle size={14} /> 發現問題
-                            </div>
-                            <ul className="list-disc list-inside text-[var(--text-secondary)] space-y-0.5">
-                              {r.issues.map((iss, k) => <li key={k}>{iss}</li>)}
-                            </ul>
+                  <article key={`${r.questionId}-${i}`} className="grid grid-cols-[100px_1fr_auto] gap-4 py-4 border-b border-[var(--j-line)]/60">
+                    <Pill tone={VERDICT_TONE[r.verdict || ""] || "muted"}>{r.verdict || "?"}</Pill>
+                    <div className="min-w-0">
+                      <MetaText className="block mb-1.5">qid={r.questionId.slice(0, 8)}</MetaText>
+                      {r.issues && r.issues.length > 0 && (
+                        <div>
+                          <div className="italic text-[#c77a28] flex items-center gap-1 mb-1" style={FONT_DISPLAY}>
+                            <AlertTriangle size={13} /> issues found
                           </div>
-                        )}
-                        {r.suggestion && (
-                          <div className="text-sm mt-2 bg-blue-500/5 border border-blue-500/20 rounded-lg p-2">
-                            <span className="font-medium text-blue-400">建議：</span>
-                            <span className="text-[var(--text-secondary)]">{r.suggestion}</span>
-                          </div>
-                        )}
-                        {r.error && <div className="text-sm text-[var(--error)] mt-1">錯誤：{r.error}</div>}
-                      </div>
-                      <Link href={`/admin/questions/${r.questionId}`} target="_blank" className={cn(BTN_CLS, "text-xs h-fit")}>
-                        <Eye size={12} /> 編輯
-                      </Link>
+                          <ul className="list-disc list-inside text-sm text-[var(--j-ink-dim)] space-y-0.5" style={FONT_ZH}>
+                            {r.issues.map((iss, k) => <li key={k}>{iss}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                      {r.suggestion && (
+                        <div className="text-sm mt-2 pl-3 border-l-2 border-[var(--j-phosphor-line)]" style={FONT_ZH}>
+                          <span className="italic text-[var(--j-phosphor)]" style={FONT_DISPLAY}>建議 · </span>
+                          <span className="text-[var(--j-ink-dim)]">{r.suggestion}</span>
+                        </div>
+                      )}
+                      {r.error && <div className="text-sm text-[var(--j-red)] mt-1" style={FONT_ZH}>錯誤：{r.error}</div>}
                     </div>
-                  </div>
+                    <Link href={`/admin/questions/${r.questionId}`} target="_blank"
+                      className="px-3 py-1.5 text-xs italic text-[var(--j-ink-dim)] border border-[var(--j-line)] hover:border-[var(--j-phosphor)] hover:text-[var(--j-phosphor)] flex items-center gap-1 transition h-fit"
+                      style={FONT_DISPLAY}>
+                      <Eye size={12} /> open
+                    </Link>
+                  </article>
                 ))}
               </div>
             </>
