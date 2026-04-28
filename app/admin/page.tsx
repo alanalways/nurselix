@@ -136,8 +136,9 @@ export default function AdminDashboard() {
       <a href="/admin/command-center" className="block bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-xl p-4 hover:opacity-95 transition shadow-md">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm opacity-90">⚡ 新功能</div>
-            <div className="text-lg font-bold">指揮中心 — 統一健康度儀表板 + 行銷部</div>
+            <div className="text-sm opacity-90">⚡ 一頁式管理</div>
+            <div className="text-lg font-bold">指揮中心 — 健康度 / 品質 / 回報 / 抽查 / 審核 / 行銷部 / Agent</div>
+            <div className="text-xs opacity-80 mt-1">7 個 tab 整合舊有 5 個分散頁面 + 新增 Agent Teams 與行銷部</div>
           </div>
           <span className="text-2xl">→</span>
         </div>
