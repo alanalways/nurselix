@@ -47,3 +47,6 @@ scripts/open-issues.json
 scripts/real-critical.json
 scripts/false-positives.json
 scripts/nim-test-results.json
+scripts/audit-200-results.json
+scripts/audit-calibration-results.json
+scripts/audit-progress.json

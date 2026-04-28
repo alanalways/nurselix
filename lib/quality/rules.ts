@@ -92,8 +92,8 @@ export const RULES: Rule[] = [
         .filter(Boolean).join(" ");
       const hits = countOccurrences(combined, ADVERBS);
       if (hits >= 40) return { ruleId: "adverb_pollution", severity: "CRITICAL", detail: `Severe noise: ${hits} adverbs`, meta: { hits } };
-      if (hits >= 8) return { ruleId: "adverb_pollution", severity: "HIGH", detail: `Heavy noise: ${hits} adverbs`, meta: { hits } };
-      if (hits >= 3) return { ruleId: "adverb_pollution", severity: "MEDIUM", detail: `Mild noise: ${hits} adverbs`, meta: { hits } };
+      if (hits >= 12) return { ruleId: "adverb_pollution", severity: "HIGH", detail: `Heavy noise: ${hits} adverbs`, meta: { hits } };
+      if (hits >= 6) return { ruleId: "adverb_pollution", severity: "MEDIUM", detail: `Mild noise: ${hits} adverbs`, meta: { hits } };
       return null;
     },
   },
@@ -124,10 +124,20 @@ export const RULES: Rule[] = [
         || /which action breaks/i.test(stemAll)
         || /which observation indicates the (client |patient )?needs/i.test(stemAll)
         || /needs further/i.test(stemAll)
-        || /which.+inappropriate/i.test(stemAll)
         || /needs? clarification/i.test(stemAll)
-        || /需要進一步(指導|教學|衛教|教育|澄清)/.test(stemAll)
-        || /何者(不|錯誤|不適當|不正確)/.test(stemAll);
+        || /which.+inappropriate/i.test(stemAll)
+        || /which (statement |action )?(would not|should not|is not)/i.test(stemAll)
+        || /needs correction/i.test(stemAll)
+        || /requires correction/i.test(stemAll)
+        || /breaks (sterile|aseptic)/i.test(stemAll)
+        || /violates/i.test(stemAll)
+        || /contraindicated/i.test(stemAll)
+        || /需要進一步(指導|教學|衛教|教育|澄清|修正)/.test(stemAll)
+        || /表示需要(進一步|更多)/.test(stemAll)
+        || /何者(不|錯誤|不適當|不正確|需要修正)/.test(stemAll)
+        || /哪項.*(錯誤|不適當|不正確|需要修正)/.test(stemAll)
+        || /違反/.test(stemAll)
+        || /禁忌/.test(stemAll);
       if (isNegativeStem) return null;
 
       const correct = getCorrectLetters(q);
@@ -150,10 +160,37 @@ export const RULES: Rule[] = [
   },
   {
     id: "wrong_option_marked_correct",
-    description: "An incorrect option's rationale starts with '正確' (says it's correct)",
+    description: "An incorrect option's rationale starts with '正確' (says it's correct) — skipped for 'find the wrong / find what needs correction' stems",
     severity: "HIGH",
     check: (q) => {
       if (!q.optionRationales || typeof q.optionRationales !== "object") return null;
+      // Skip "find the wrong / find the inappropriate / requires correction" type stems.
+      // In these stems, the correct answer IS the wrong/inappropriate option, so the
+      // OTHER options (which are correct behaviors) legitimately have rationale starting with "正確".
+      const stemAll = `${q.stem || ""} ${q.stemZh || ""}`;
+      const isNegativeStem =
+        /requires? (further |additional |immediate )?(teaching|instruction|education|clarification|correction|intervention)/i.test(stemAll)
+        || /indicates? (a )?need for (further |additional )?(teaching|instruction|education|clarification|correction)/i.test(stemAll)
+        || /is (NOT |inappropriate|incorrect|contraindicated|wrong)/i.test(stemAll)
+        || /which action breaks/i.test(stemAll)
+        || /which observation indicates the (client |patient )?needs/i.test(stemAll)
+        || /needs further/i.test(stemAll)
+        || /needs? clarification/i.test(stemAll)
+        || /which.+inappropriate/i.test(stemAll)
+        || /which (statement |action )?(would not|should not|is not)/i.test(stemAll)
+        || /needs correction/i.test(stemAll)
+        || /requires correction/i.test(stemAll)
+        || /breaks (sterile|aseptic)/i.test(stemAll)
+        || /violates/i.test(stemAll)
+        || /contraindicated/i.test(stemAll)
+        || /需要進一步(指導|教學|衛教|教育|澄清|修正)/.test(stemAll)
+        || /表示需要(進一步|更多)/.test(stemAll)
+        || /何者(不|錯誤|不適當|不正確|需要修正)/.test(stemAll)
+        || /哪項.*(錯誤|不適當|不正確|需要修正)/.test(stemAll)
+        || /違反/.test(stemAll)
+        || /禁忌/.test(stemAll);
+      if (isNegativeStem) return null;
+
       const correct = new Set(getCorrectLetters(q));
       const offenders: string[] = [];
       for (const letter of ["A","B","C","D","E","F"]) {

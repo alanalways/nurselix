@@ -62,8 +62,8 @@ const RULES = [
     const combined = [q.stem, q.optionA, q.optionB, q.optionC, q.optionD, q.optionE, q.optionF].filter(Boolean).join(" ");
     const hits = countOcc(combined, ADVERBS);
     if (hits >= 40) return { severity: "CRITICAL", detail: `Severe noise: ${hits} adverbs`, meta: { hits } };
-    if (hits >= 8) return { severity: "HIGH", detail: `Heavy noise: ${hits} adverbs`, meta: { hits } };
-    if (hits >= 3) return { severity: "MEDIUM", detail: `Mild noise: ${hits} adverbs`, meta: { hits } };
+    if (hits >= 12) return { severity: "HIGH", detail: `Heavy noise: ${hits} adverbs`, meta: { hits } };
+    if (hits >= 6) return { severity: "MEDIUM", detail: `Mild noise: ${hits} adverbs`, meta: { hits } };
     return null;
   }},
   { id: "irrelevant_noise_rationale", severity: "CRITICAL", check: q => {
@@ -81,7 +81,12 @@ const RULES = [
       || /is (NOT |inappropriate|incorrect|contraindicated|wrong)/i.test(stemAll)
       || /which action breaks/i.test(stemAll) || /needs further/i.test(stemAll)
       || /needs? clarification/i.test(stemAll) || /which.+inappropriate/i.test(stemAll)
-      || /需要進一步(指導|教學|衛教|教育|澄清)/.test(stemAll) || /何者(不|錯誤|不適當|不正確)/.test(stemAll);
+      || /which (statement |action )?(would not|should not|is not)/i.test(stemAll)
+      || /needs correction/i.test(stemAll) || /requires correction/i.test(stemAll)
+      || /breaks (sterile|aseptic)/i.test(stemAll) || /violates/i.test(stemAll) || /contraindicated/i.test(stemAll)
+      || /需要進一步(指導|教學|衛教|教育|澄清|修正)/.test(stemAll) || /表示需要(進一步|更多)/.test(stemAll)
+      || /何者(不|錯誤|不適當|不正確|需要修正)/.test(stemAll) || /哪項.*(錯誤|不適當|不正確|需要修正)/.test(stemAll)
+      || /違反/.test(stemAll) || /禁忌/.test(stemAll);
     if (isNegStem) return null;
     const offenders = [];
     for (const letter of getCorrect(q)) {
@@ -96,6 +101,22 @@ const RULES = [
   }},
   { id: "wrong_option_marked_correct", severity: "HIGH", check: q => {
     if (!q.optionRationales || typeof q.optionRationales !== "object") return null;
+    // Skip "find the wrong / requires correction" type stems; in those, the
+    // OTHER (non-correct) options are correct behaviors and rationale "正確" is fine.
+    const stemAll = `${q.stem || ""} ${q.stemZh || ""}`;
+    const isNegStem = /requires? (further |additional |immediate )?(teaching|instruction|education|clarification|correction|intervention)/i.test(stemAll)
+      || /indicates? (a )?need for (further |additional )?(teaching|instruction|education|clarification|correction)/i.test(stemAll)
+      || /is (NOT |inappropriate|incorrect|contraindicated|wrong)/i.test(stemAll)
+      || /which action breaks/i.test(stemAll) || /needs further/i.test(stemAll)
+      || /needs? clarification/i.test(stemAll) || /which.+inappropriate/i.test(stemAll)
+      || /which (statement |action )?(would not|should not|is not)/i.test(stemAll)
+      || /needs correction/i.test(stemAll) || /requires correction/i.test(stemAll)
+      || /breaks (sterile|aseptic)/i.test(stemAll) || /violates/i.test(stemAll) || /contraindicated/i.test(stemAll)
+      || /需要進一步(指導|教學|衛教|教育|澄清|修正)/.test(stemAll) || /表示需要(進一步|更多)/.test(stemAll)
+      || /何者(不|錯誤|不適當|不正確|需要修正)/.test(stemAll) || /哪項.*(錯誤|不適當|不正確|需要修正)/.test(stemAll)
+      || /違反/.test(stemAll) || /禁忌/.test(stemAll);
+    if (isNegStem) return null;
+
     const correct = new Set(getCorrect(q));
     const offenders = [];
     for (const letter of ["A","B","C","D","E","F"]) {
@@ -273,14 +294,17 @@ async function main() {
     const BATCH = 500;
     for (let i = 0; i < newIssues.length; i += BATCH) {
       const chunk = newIssues.slice(i, i + BATCH);
-      const values = chunk.map((_, idx) => {
-        const o = idx * 6;
-        return `($${o+1}, $${o+2}, $${o+3}, $${o+4}, $${o+5}::jsonb, $${o+6})`;
-      }).join(",");
-      const params = chunk.flatMap(n => [n.questionId, n.ruleId, n.severity, n.detail, JSON.stringify(n.meta), n.contentHash]);
+      // Per-row VALUES with explicit uuid generation
+      const valueStrs = [];
+      const params = [];
+      let p = 0;
+      chunk.forEach(n => {
+        valueStrs.push(`(gen_random_uuid()::text, $${++p}, $${++p}, $${++p}, $${++p}, $${++p}::jsonb, $${++p})`);
+        params.push(n.questionId, n.ruleId, n.severity, n.detail, JSON.stringify(n.meta), n.contentHash);
+      });
       await client.query(`
-        INSERT INTO "QuestionQualityIssue" ("questionId","ruleId","severity","detail","meta","contentHash")
-        VALUES ${values}
+        INSERT INTO "QuestionQualityIssue" ("id","questionId","ruleId","severity","detail","meta","contentHash")
+        VALUES ${valueStrs.join(",")}
         ON CONFLICT ("questionId","ruleId","contentHash") DO NOTHING;
       `, params);
     }
@@ -311,8 +335,8 @@ async function main() {
   if (!DRY_RUN) {
     await client.query(`
       INSERT INTO "QualityHealthReport"
-        ("periodType","period","totalQuestions","approvedCount","draftCount","archivedCount","openIssueCount","healthScore","summary")
-      VALUES ('daily',$1,$2,$3,$4,$5,$6,$7,$8::jsonb)
+        ("id","periodType","period","totalQuestions","approvedCount","draftCount","archivedCount","openIssueCount","healthScore","summary")
+      VALUES (gen_random_uuid()::text,'daily',$1,$2,$3,$4,$5,$6,$7,$8::jsonb)
       ON CONFLICT ("periodType","period") DO UPDATE SET
         "totalQuestions"=EXCLUDED."totalQuestions",
         "approvedCount"=EXCLUDED."approvedCount",
