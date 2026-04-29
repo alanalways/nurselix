@@ -148,7 +148,7 @@ ${q.optionE ? `E. ${q.optionE}\n` : ""}${q.optionF ? `F. ${q.optionF}\n` : ""}
 請輸出 JSON。`;
 }
 
-async function callNIM(modelId, messages, timeout = 60_000) {
+async function callNIM(modelId, messages, timeout = 180_000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeout);
   try {
@@ -169,7 +169,7 @@ async function callNIM(modelId, messages, timeout = 60_000) {
 }
 
 let _gemIdx = 0;
-async function callGemini(modelId, messages, timeout = 60_000) {
+async function callGemini(modelId, messages, timeout = 120_000) {
   if (!GEMINI_KEYS.length) throw new Error("No Gemini API keys");
   const apiKey = GEMINI_KEYS[_gemIdx++ % GEMINI_KEYS.length];
   const ctrl = new AbortController();
