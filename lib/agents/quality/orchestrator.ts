@@ -14,8 +14,9 @@ import type { QuestionShape } from "@/lib/quality/rules";
  */
 export async function processReportTriageBatch(opts?: { limit?: number; autoArchive?: boolean }) {
   const limit = opts?.limit ?? 30;
+  // Older reports may have lowercase 'pending' from a prior schema; accept both.
   const reports = await prisma.questionReport.findMany({
-    where: { status: "PENDING", triagedAt: null },
+    where: { status: { in: ["PENDING", "pending"] }, triagedAt: null },
     include: { question: true },
     take: limit,
     orderBy: { createdAt: "asc" },
@@ -29,7 +30,13 @@ export async function processReportTriageBatch(opts?: { limit?: number; autoArch
         report.question as unknown as QuestionShape,
       );
 
-      // Update QuestionReport with triage outcome
+      // Determine post-triage status:
+      //   - NEEDS_FIX or LIKELY_VALID/LIKELY_INVALID → IN_REVIEW (move out of PENDING
+      //     so admins can act on the agent verdict instead of seeing it look untouched)
+      //   - UNCERTAIN → keep PENDING (agent doesn't know; human still owes a look)
+      const nextStatus =
+        verdict.verdict === "UNCERTAIN" ? report.status : "IN_REVIEW";
+
       await prisma.questionReport.update({
         where: { id: report.id },
         data: {
@@ -38,7 +45,7 @@ export async function processReportTriageBatch(opts?: { limit?: number; autoArch
           triageNotes: verdict.reasoning,
           triagedByModel: verdict._meta.modelUsed,
           triagedAt: new Date(),
-          status: verdict.shouldAutoArchive ? "IN_REVIEW" : report.status,
+          status: nextStatus,
         },
       });
 

@@ -60,7 +60,13 @@ export default function ReportsTab() {
     } finally { setDedupRunning(false); }
   };
 
-  const pendingCount = items.filter(r => r.status === "PENDING" || r.status === "pending").length;
+  // "unread" = pending AND not yet triaged. After NIM triage runs the row
+  // either transitions to IN_REVIEW or stays PENDING-but-triaged (UNCERTAIN).
+  // Either way it's no longer unread.
+  const unreadCount = items.filter(r =>
+    (r.status === "PENDING" || r.status === "pending") && !r.triagedAt
+  ).length;
+  const triagedCount = items.filter(r => r.triagedAt).length;
 
   return (
     <div className="space-y-6">
@@ -77,7 +83,7 @@ export default function ReportsTab() {
           <option value="RESOLVED_DUPLICATE">RESOLVED_DUPLICATE（重複）</option>
         </select>
         <span className="text-sm italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
-          {items.length} letters · {pendingCount} unread
+          {items.length} letters · {unreadCount} unread{triagedCount > 0 && ` · ${triagedCount} AI-triaged`}
         </span>
         <div className="ml-auto flex gap-3 text-sm">
           <button onClick={dedup} disabled={dedupRunning}
