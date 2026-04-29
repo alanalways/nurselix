@@ -205,13 +205,18 @@ async function audit(q) {
     { role: "user", content: buildUserPrompt(q) },
   ];
 
+  // Track the most recent error from each provider so "All models failed" is informative.
+  const failures = [];
+
   // Try DeepSeek with up to 3 retries on 429 (exponential back-off)
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const text = await callNIM("deepseek-ai/deepseek-v4-pro", messages);
       const data = parseJSON(text);
       if (data) return { ...data, _modelUsed: "deepseek-v4-pro", _attempts: attempt + 1 };
+      failures.push(`deepseek(attempt ${attempt + 1}): parse failed`);
     } catch (e) {
+      failures.push(`deepseek(attempt ${attempt + 1}): ${e?.message || e}`);
       if (e.message === "HTTP_429" && attempt < 2) {
         await new Promise(r => setTimeout(r, (attempt + 1) * 5000)); // 5s, 10s
         continue;
@@ -225,7 +230,10 @@ async function audit(q) {
     const text = await callNIM("moonshotai/kimi-k2.5", messages);
     const data = parseJSON(text);
     if (data) return { ...data, _modelUsed: "kimi-k2.5" };
-  } catch {}
+    failures.push("kimi: parse failed");
+  } catch (e) {
+    failures.push(`kimi: ${e?.message || e}`);
+  }
 
   // Fallback Gemini
   for (const id of ["gemini-3-flash-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-flash"]) {
@@ -233,10 +241,14 @@ async function audit(q) {
       const text = await callGemini(id, messages);
       const data = parseJSON(text);
       if (data) return { ...data, _modelUsed: id };
-    } catch {}
+      failures.push(`${id}: parse failed`);
+    } catch (e) {
+      failures.push(`${id}: ${e?.message || e}`);
+    }
   }
 
-  throw new Error("All models failed");
+  // Surface what actually went wrong so we can see in container logs.
+  throw new Error(`All models failed [${failures.slice(0, 3).join(" | ")}]`);
 }
 
 const contentHash = q => crypto.createHash("sha256")
