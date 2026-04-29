@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.zeabur.app/template.json",
+  "name": "nurselix-audit-worker",
+  "description": "Long-running NIM audit worker for Nurslix question bank quality scan",
+  "build": {
+    "dockerfile": "Dockerfile.audit"
+  },
+  "ports": [],
+  "volumes": [
+    {
+      "id": "audit-progress",
+      "dir": "/data"
+    }
+  ]
+}

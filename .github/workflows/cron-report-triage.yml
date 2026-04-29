@@ -8,10 +8,10 @@ on:
 jobs:
   triage:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - name: Trigger triage
         run: |
-          curl -fsSL --max-time 300 \
+          curl -fsSL --max-time 720 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/cron/report-triage?limit=30&autoArchive=1"

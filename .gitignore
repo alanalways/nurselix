@@ -50,3 +50,26 @@ scripts/nim-test-results.json
 scripts/audit-200-results.json
 scripts/audit-calibration-results.json
 scripts/audit-progress.json
+
+# Audit worker runtime artifacts (don't commit progress/logs/sample data)
+scripts/audit-parallel-progress.json
+scripts/audit-codex-progress.json
+scripts/audit-gemini-progress.json
+scripts/audit-failed.json
+scripts/audit-batch-*.json
+scripts/audit-codex.mjs.log
+scripts/codex-run.log
+scripts/gemini-run.log
+scripts/nim-run.log
+scripts/claude-audit-sample.json
+scripts/risky-sample.json
+scripts/fix-source-data*.json
+scripts/fix-source-r2-*.json
+scripts/fix-source-objobj.json
+scripts/fixes-batch*.json
+scripts/fixes-r2-*.json
+scripts/fixes-rollback.json
+scripts/fixes-retry.json
+scripts/fixes-objobj.json
+scripts/uuid-map-*.json
+scripts/subagent-batches/
