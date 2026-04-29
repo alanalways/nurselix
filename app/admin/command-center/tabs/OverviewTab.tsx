@@ -15,6 +15,16 @@ interface DashboardData {
   recentChanges: any[];
   agentStatus: any[];
   marketing: { drafts: any[] };
+  auditProgress?: {
+    nclexTotal: number;
+    auditedCount: number;
+    auditPercent: number;
+    remaining: number;
+    agentIssuesTotal: number;
+    severityBreakdown: Record<string, { open: number; resolved: number }>;
+    manualResolvedCount: number;
+    last24hFindings: number;
+  };
 }
 
 export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void }) {
@@ -211,6 +221,56 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
               </div>
             ))}
           </div>
+
+          {/* NIM Audit Progress — live worker on Zeabur */}
+          {data.auditProgress && (
+            <div className="border border-[var(--j-line-strong)] p-4 mb-5 bg-[var(--j-bg-card)]">
+              <SectionLabel className="!mt-0 mb-3 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--j-phosphor)] animate-pulse" />
+                NIM Audit · 自動審題
+              </SectionLabel>
+              {/* big % */}
+              <div className="flex items-baseline gap-2 mb-3">
+                <span className="italic tracking-tight text-[var(--j-ink)] leading-none"
+                  style={{ fontFamily: "var(--font-display)", fontSize: "2.8rem", letterSpacing: "-0.03em" }}>
+                  {data.auditProgress.auditPercent}%
+                </span>
+                <span className="text-xs text-[var(--j-ink-dim)]" style={FONT_MONO}>
+                  {data.auditProgress.auditedCount.toLocaleString()} / {data.auditProgress.nclexTotal.toLocaleString()}
+                </span>
+              </div>
+              {/* progress bar */}
+              <div className="h-1.5 bg-[var(--j-line)] mb-3 overflow-hidden">
+                <div className="h-full bg-[var(--j-phosphor)] transition-all"
+                  style={{ width: `${Math.min(100, data.auditProgress.auditPercent)}%` }} />
+              </div>
+              <div className="text-[11px] text-[var(--j-ink-dim)] mb-3" style={FONT_ZH}>
+                剩 <span className="italic text-[var(--j-ink)]" style={FONT_DISPLAY}>{data.auditProgress.remaining.toLocaleString()}</span> 題未審。
+                過去 24h 新發現 <span className="italic text-[var(--j-phosphor)]" style={FONT_DISPLAY}>{data.auditProgress.last24hFindings}</span> 件問題。
+              </div>
+              {/* severity breakdown */}
+              <div className="grid grid-cols-2 gap-2 text-[11px] border-t border-[var(--j-line)] pt-3" style={FONT_MONO}>
+                {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map(sev => {
+                  const b = data.auditProgress!.severityBreakdown[sev] || { open: 0, resolved: 0 };
+                  const tone = sev === "CRITICAL" ? "var(--j-red)" : sev === "HIGH" ? "var(--j-ink)" : "var(--j-ink-dim)";
+                  return (
+                    <div key={sev} className="flex justify-between items-baseline">
+                      <span style={{ color: tone, fontSize: "9px", letterSpacing: "0.1em" }}>{sev}</span>
+                      <span className="text-[var(--j-ink)] italic" style={FONT_DISPLAY}>
+                        {b.open}<span className="text-[var(--j-ink-dim)] not-italic" style={FONT_MONO}>/{b.open + b.resolved}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="border-t border-[var(--j-line)] pt-3 mt-3 text-[10px] text-[var(--j-ink-dim)] flex justify-between" style={FONT_MONO}>
+                <span>已修補</span>
+                <span className="text-[var(--j-phosphor)] italic" style={FONT_DISPLAY}>
+                  {data.auditProgress.manualResolvedCount.toLocaleString()} resolved
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* 7-day chart */}
           <div className="border border-[var(--j-line)] p-4 mb-5">

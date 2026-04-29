@@ -23,6 +23,9 @@ export async function GET(_req: NextRequest) {
     pendingReports, totalReports, recentReports,
     recentVersions, agentTeamStatus,
     marketingDrafts,
+    nclexTotal, agentIssuesTotal, agentIssuesBySeverityRaw,
+    auditedQuestionCount, manualResolvedCount,
+    last24hAgentIssues,
   ] = await Promise.all([
     prisma.qualityHealthReport.findUnique({ where: { periodType_period: { periodType: "daily", period: today } } }),
     prisma.qualityHealthReport.findMany({
@@ -63,9 +66,57 @@ export async function GET(_req: NextRequest) {
       take: 10,
       orderBy: { generatedAt: "desc" },
     }),
+    // === NIM Audit Progress ===
+    // Total NCLEX APPROVED questions (the universe NIM is auditing)
+    prisma.question.count({ where: { module: "NCLEX", status: "APPROVED" } }),
+    // Total agent-written issues (NIM/codex/gemini)
+    prisma.questionQualityIssue.count({ where: { ruleId: { startsWith: "agent." } } }),
+    // Issue counts grouped by severity (for the agent.* rules)
+    prisma.questionQualityIssue.groupBy({
+      by: ["severity", "status"],
+      _count: { _all: true },
+      where: { ruleId: { startsWith: "agent." } },
+    }),
+    // Distinct questions that NIM has touched (proxy for "audited count")
+    prisma.questionQualityIssue.findMany({
+      where: { ruleId: { startsWith: "agent." } },
+      select: { questionId: true },
+      distinct: ["questionId"],
+    }),
+    // Questions resolved by claude-manual (the deep fixes I did)
+    prisma.questionQualityIssue.count({
+      where: { resolvedBy: "claude-manual", status: "RESOLVED" },
+    }),
+    // Last 24h findings (to show momentum)
+    prisma.questionQualityIssue.count({
+      where: {
+        ruleId: { startsWith: "agent." },
+        detectedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    }),
   ]);
 
   const statusMap = Object.fromEntries(questionStats.map(s => [s.status, s._count]));
+
+  // === Aggregate audit progress ===
+  const auditedCount = auditedQuestionCount.length;
+  const auditPercent = nclexTotal > 0 ? (auditedCount / nclexTotal) * 100 : 0;
+
+  // Severity breakdown (open + resolved separately)
+  const severityBreakdown: Record<string, { open: number; resolved: number }> = {
+    CRITICAL: { open: 0, resolved: 0 },
+    HIGH: { open: 0, resolved: 0 },
+    MEDIUM: { open: 0, resolved: 0 },
+    LOW: { open: 0, resolved: 0 },
+  };
+  for (const row of agentIssuesBySeverityRaw as any[]) {
+    const sev = row.severity as string;
+    const status = row.status as string;
+    const cnt = (row._count as any)?._all ?? 0;
+    if (!severityBreakdown[sev]) severityBreakdown[sev] = { open: 0, resolved: 0 };
+    if (status === "OPEN") severityBreakdown[sev].open += cnt;
+    else severityBreakdown[sev].resolved += cnt;
+  }
 
   return NextResponse.json({
     timestamp: new Date().toISOString(),
@@ -92,6 +143,17 @@ export async function GET(_req: NextRequest) {
     agentStatus: agentTeamStatus,
     marketing: {
       drafts: marketingDrafts,
+    },
+    // NEW: live audit progress block consumed by Overview tab.
+    auditProgress: {
+      nclexTotal,
+      auditedCount,
+      auditPercent: Math.round(auditPercent * 10) / 10,
+      remaining: nclexTotal - auditedCount,
+      agentIssuesTotal,
+      severityBreakdown,
+      manualResolvedCount,
+      last24hFindings: last24hAgentIssues,
     },
   });
 }
