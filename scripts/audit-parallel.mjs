@@ -328,6 +328,32 @@ function reportLine(msg) {
   console.log(`${msg}  | done=${nextIdx}/${queue.length}  rate=${rate.toFixed(2)}q/s  eta=${isFinite(etaMin) ? etaMin.toFixed(1) : "?"}min  ok=${progress.ok} fix=${progress.needsFix} unc=${progress.uncertain} err=${progress.errors}`);
 }
 
+async function writeHeartbeat(qid, verdict, modelUsed, errMsg) {
+  try {
+    const payload = {
+      at: new Date().toISOString(),
+      qid,
+      verdict: verdict ?? null,
+      modelUsed: modelUsed ?? null,
+      error: errMsg ?? null,
+      done: completedSet.size,
+      total: queue.length + completedSet.size,
+      ok: progress.ok,
+      fix: progress.needsFix,
+      unc: progress.uncertain,
+      err: progress.errors,
+      workers: WORKERS,
+    };
+    await client.query(`
+      INSERT INTO "AppSetting" (key, value, "updatedAt")
+      VALUES ('audit.heartbeat', $1, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW();
+    `, [JSON.stringify(payload)]);
+  } catch (e) {
+    console.log(`[heartbeat] write failed: ${e.message.slice(0, 80)}`);
+  }
+}
+
 async function worker(id) {
   while (true) {
     const myIdx = nextIdx++;
@@ -346,6 +372,7 @@ async function worker(id) {
 
       await writeIssues(client, q.id, hash, result);
       completedSet.add(q.id);
+      await writeHeartbeat(q.id, verdict, result._modelUsed, null);
 
       if (verdict !== "OK") {
         const rules = (result.issues || []).map(x => x.ruleId.replace("agent.", "")).join(",");
@@ -353,7 +380,6 @@ async function worker(id) {
       }
     } catch (e) {
       progress.errors++;
-      // Record failure for later retry but DO NOT mark complete (so retry-failed sees them)
       const existing = failedSet.get(q.id);
       failedSet.set(q.id, {
         qid: q.id,
@@ -362,6 +388,7 @@ async function worker(id) {
         lastTriedAt: new Date().toISOString(),
       });
       console.log(`[w${id}] ${q.id.slice(0,8)} ERROR: ${e.message.slice(0, 80)}`);
+      await writeHeartbeat(q.id, "ERROR", null, e.message.slice(0, 120));
     }
 
     scheduleSave();

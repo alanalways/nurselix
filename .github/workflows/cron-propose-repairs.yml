@@ -1,0 +1,17 @@
+name: Propose Repairs (verifier + repair agent)
+on:
+  schedule:
+    # Daily 05:00 UTC (台灣 13:00) — runs after report-triage (04:00)
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger repair proposal generation
+        run: |
+          curl -fsSL --max-time 720 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/propose-repairs?limit=10"

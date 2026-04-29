@@ -340,6 +340,36 @@ function reportLine(msg) {
   console.log(`${msg}  | done=${nextIdx}/${queue.length}  rate=${rate.toFixed(2)}q/s  eta=${isFinite(etaMin) ? etaMin.toFixed(1) : "?"}min  ok=${progress.ok} fix=${progress.needsFix} unc=${progress.uncertain} err=${progress.errors}`);
 }
 
+// Heartbeat — upsert into AppSetting after every question (success OR error).
+// This is what the admin Overview panel reads to know NIM is alive even when
+// every question comes back OK (no QuestionQualityIssue row written).
+async function writeHeartbeat(qid, verdict, modelUsed, errMsg) {
+  try {
+    const payload = {
+      at: new Date().toISOString(),
+      qid,
+      verdict: verdict ?? null,
+      modelUsed: modelUsed ?? null,
+      error: errMsg ?? null,
+      done: completedSet.size,
+      total: queue.length + completedSet.size,
+      ok: progress.ok,
+      fix: progress.needsFix,
+      unc: progress.uncertain,
+      err: progress.errors,
+      workers: WORKERS,
+    };
+    await client.query(`
+      INSERT INTO "AppSetting" (key, value, "updatedAt")
+      VALUES ('audit.heartbeat', $1, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW();
+    `, [JSON.stringify(payload)]);
+  } catch (e) {
+    // Heartbeat is best-effort. Never let it crash the worker.
+    console.log(`[heartbeat] write failed: ${e.message.slice(0, 80)}`);
+  }
+}
+
 async function worker(id) {
   while (true) {
     const myIdx = nextIdx++;
@@ -358,6 +388,7 @@ async function worker(id) {
 
       await writeIssues(client, q.id, hash, result);
       completedSet.add(q.id);
+      await writeHeartbeat(q.id, verdict, result._modelUsed, null);
 
       if (verdict !== "OK") {
         const rules = (result.issues || []).map(x => x.ruleId.replace("agent.", "")).join(",");
@@ -374,6 +405,7 @@ async function worker(id) {
         lastTriedAt: new Date().toISOString(),
       });
       console.log(`[w${id}] ${q.id.slice(0,8)} ERROR: ${e.message.slice(0, 80)}`);
+      await writeHeartbeat(q.id, "ERROR", null, e.message.slice(0, 120));
     }
 
     scheduleSave();

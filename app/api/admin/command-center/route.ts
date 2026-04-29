@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest) {
     marketingDrafts,
     nclexTotal, agentIssuesTotal, agentIssuesBySeverityRaw,
     auditedQuestionCount, manualResolvedCount,
-    last24hAgentIssues,
+    last24hAgentIssues, heartbeatRow,
   ] = await Promise.all([
     prisma.qualityHealthReport.findUnique({ where: { periodType_period: { periodType: "daily", period: today } } }),
     prisma.qualityHealthReport.findMany({
@@ -94,6 +94,9 @@ export async function GET(_req: NextRequest) {
         detectedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
       },
     }),
+    // Audit-worker heartbeat (written after every question, OK or not).
+    // The presence + freshness of this row is the source of truth for "alive".
+    prisma.appSetting.findUnique({ where: { key: "audit.heartbeat" } }),
   ]);
 
   const statusMap = Object.fromEntries(questionStats.map(s => [s.status, s._count]));
@@ -116,6 +119,33 @@ export async function GET(_req: NextRequest) {
     if (!severityBreakdown[sev]) severityBreakdown[sev] = { open: 0, resolved: 0 };
     if (status === "OPEN") severityBreakdown[sev].open += cnt;
     else severityBreakdown[sev].resolved += cnt;
+  }
+
+  // === Heartbeat decoding ===
+  // The audit-worker writes a JSON blob to AppSetting key='audit.heartbeat' after
+  // every question (OK or not). Freshness of updatedAt = aliveness signal.
+  let heartbeat: any = null;
+  if (heartbeatRow) {
+    try {
+      const data = JSON.parse(heartbeatRow.value);
+      const updatedAt = heartbeatRow.updatedAt;
+      const ageSeconds = Math.round((Date.now() - new Date(updatedAt).getTime()) / 1000);
+      const ageMinutes = Math.round(ageSeconds / 60);
+      // Status thresholds: <5min = alive, <30min = stale, >=30min = dead.
+      let status: "alive" | "stale" | "dead";
+      if (ageSeconds < 300) status = "alive";
+      else if (ageSeconds < 1800) status = "stale";
+      else status = "dead";
+      heartbeat = {
+        ...data,
+        updatedAt,
+        ageSeconds,
+        ageMinutes,
+        status,
+      };
+    } catch {
+      heartbeat = null;
+    }
   }
 
   return NextResponse.json({
@@ -154,6 +184,7 @@ export async function GET(_req: NextRequest) {
       severityBreakdown,
       manualResolvedCount,
       last24hFindings: last24hAgentIssues,
+      heartbeat,
     },
   });
 }

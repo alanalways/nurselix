@@ -24,6 +24,23 @@ interface DashboardData {
     severityBreakdown: Record<string, { open: number; resolved: number }>;
     manualResolvedCount: number;
     last24hFindings: number;
+    heartbeat?: {
+      at: string;
+      qid?: string;
+      verdict?: string | null;
+      modelUsed?: string | null;
+      done?: number;
+      total?: number;
+      ok?: number;
+      fix?: number;
+      unc?: number;
+      err?: number;
+      workers?: number;
+      updatedAt: string;
+      ageSeconds: number;
+      ageMinutes: number;
+      status: "alive" | "stale" | "dead";
+    } | null;
   };
 }
 
@@ -223,12 +240,50 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
           </div>
 
           {/* NIM Audit Progress — live worker on Zeabur */}
-          {data.auditProgress && (
+          {data.auditProgress && (() => {
+            const hb = data.auditProgress.heartbeat;
+            const dotColor = !hb ? "var(--j-ink-dim)"
+              : hb.status === "alive" ? "var(--j-phosphor)"
+              : hb.status === "stale" ? "#d4a017"
+              : "var(--j-red)";
+            const dotPulse = hb?.status === "alive";
+            return (
             <div className="border border-[var(--j-line-strong)] p-4 mb-5 bg-[var(--j-bg-card)]">
               <SectionLabel className="!mt-0 mb-3 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--j-phosphor)] animate-pulse" />
+                <span className={cn("w-1.5 h-1.5 rounded-full", dotPulse && "animate-pulse")}
+                  style={{ background: dotColor }} />
                 NIM Audit · 自動審題
               </SectionLabel>
+
+              {/* Heartbeat status — TRUTH source for "is NIM alive" */}
+              <div className="border-b border-[var(--j-line)] pb-3 mb-3">
+                {hb ? (
+                  <>
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-[10px] tracking-[0.1em] uppercase" style={{ ...FONT_MONO, color: dotColor }}>
+                        {hb.status === "alive" ? "ALIVE · 正在審題" : hb.status === "stale" ? "SLOW · 變慢" : "DOWN · 卡住了"}
+                      </span>
+                      <span className="text-[10px] text-[var(--j-ink-dim)]" style={FONT_MONO}>
+                        {hb.ageMinutes < 1 ? `${hb.ageSeconds}s` : `${hb.ageMinutes}m`} ago
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-[var(--j-ink-dim)] mt-1" style={FONT_ZH}>
+                      最後審題: <span className="italic text-[var(--j-ink)]" style={FONT_DISPLAY}>{new Date(hb.updatedAt).toLocaleString("zh-TW", { hour12: false })}</span>
+                      {hb.workers && <span className="ml-2">· workers={hb.workers}</span>}
+                    </div>
+                    {hb.status !== "alive" && (
+                      <div className="text-[10px] text-[var(--j-red)] mt-1" style={FONT_ZH}>
+                        {hb.status === "dead" ? "→ 去 Zeabur 看 audit-worker logs" : "→ NIM 回應變慢，先觀察 5-10 分鐘"}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-[11px] text-[var(--j-ink-dim)]" style={FONT_ZH}>
+                    <span className="italic" style={FONT_DISPLAY}>等待 audit-worker 第一筆心跳…</span>
+                  </div>
+                )}
+              </div>
+
               {/* big % */}
               <div className="flex items-baseline gap-2 mb-3">
                 <span className="italic tracking-tight text-[var(--j-ink)] leading-none"
@@ -270,7 +325,8 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
                 </span>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* 7-day chart */}
           <div className="border border-[var(--j-line)] p-4 mb-5">
