@@ -98,8 +98,8 @@ async function readState(jobName) {
 async function writeState(jobName, payload) {
   await client.query(`
     INSERT INTO "AppSetting" (key, value, "updatedAt")
-    VALUES ($1, $2, NOW())
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW();
+    VALUES ($1, $2, (NOW() AT TIME ZONE 'UTC'))
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = (NOW() AT TIME ZONE 'UTC');
   `, [`cron.${jobName}`, JSON.stringify(payload)]);
 }
 

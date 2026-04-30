@@ -365,15 +365,15 @@ async function persistToDB() {
     const completedJson = JSON.stringify(Array.from(completedSet));
     await client.query(`
       INSERT INTO "AppSetting" (key, value, "updatedAt")
-      VALUES ($1, $2, NOW())
-      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW();
+      VALUES ($1, $2, (NOW() AT TIME ZONE 'UTC'))
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = (NOW() AT TIME ZONE 'UTC');
     `, [AUDIT_COMPLETED_KEY, completedJson]);
 
     const failedJson = JSON.stringify(Array.from(failedSet.values()));
     await client.query(`
       INSERT INTO "AppSetting" (key, value, "updatedAt")
-      VALUES ($1, $2, NOW())
-      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW();
+      VALUES ($1, $2, (NOW() AT TIME ZONE 'UTC'))
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = (NOW() AT TIME ZONE 'UTC');
     `, [AUDIT_FAILED_KEY, failedJson]);
   } catch (e) {
     console.log(`[persistToDB] failed: ${e.message?.slice(0, 100)}`);
@@ -458,8 +458,8 @@ async function writeHeartbeat(qid, verdict, modelUsed, errMsg) {
     };
     await client.query(`
       INSERT INTO "AppSetting" (key, value, "updatedAt")
-      VALUES ('audit.heartbeat', $1, NOW())
-      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW();
+      VALUES ('audit.heartbeat', $1, (NOW() AT TIME ZONE 'UTC'))
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = (NOW() AT TIME ZONE 'UTC');
     `, [JSON.stringify(payload)]);
   } catch (e) {
     // Heartbeat is best-effort. Never let it crash the worker.

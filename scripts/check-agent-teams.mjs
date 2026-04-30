@@ -13,7 +13,13 @@ const c = new pg.Client({ connectionString: url });
 await c.connect();
 
 const now = new Date();
-const fmt = (d) => d ? new Date(d).toLocaleString("zh-TW", { hour12: false }) : "—";
+// Postgres returns UTC timestamps, parsed by `pg` as Date objects. Most of
+// the time arithmetic just works (now - date), but toLocaleString without a
+// timeZone arg surprises by showing UTC on Windows shells. Force the local
+// time zone explicitly for human-readable output.
+const fmt = (d) => d
+  ? new Date(d).toLocaleString("zh-TW", { hour12: false, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })
+  : "—";
 const minsAgo = (d) => d ? Math.round((now - new Date(d)) / 60000) : null;
 const daysAgo = (d) => d ? ((now - new Date(d)) / 86400000).toFixed(1) : null;
 
