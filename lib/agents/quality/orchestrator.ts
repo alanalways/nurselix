@@ -131,6 +131,33 @@ export async function proposeRepairsForCritical(opts?: { limit?: number; deadlin
         });
       }
 
+      // CRITICAL: mark the issue resolved/ignored so the next cron run
+      // doesn't pull the same row again forever. Without this, propose-repairs
+      // re-processes the same 3 issues every run (we saw this in the first
+      // successful batch — 6 batches × same 3 IDs).
+      let issueNextStatus: "RESOLVED" | "IGNORED" | "OPEN" = "OPEN";
+      let issueResolvedBy: string | null = null;
+      if (verdict.verdict === "OK") {
+        // Verifier disagrees with the rule scanner — issue is a false positive.
+        issueNextStatus = "IGNORED";
+        issueResolvedBy = "agent:verifier-rejected";
+      } else if (repair && repair.confidence >= 70) {
+        // Proposal landed in QuestionVersion; the issue is now "in admin's hands".
+        issueNextStatus = "RESOLVED";
+        issueResolvedBy = "agent:repair-proposed";
+      }
+      // verdict=UNCERTAIN or low-confidence repair → keep OPEN for next round
+      if (issueNextStatus !== "OPEN") {
+        await prisma.questionQualityIssue.update({
+          where: { id: issue.id },
+          data: {
+            status: issueNextStatus,
+            resolvedAt: new Date(),
+            resolvedBy: issueResolvedBy,
+          },
+        });
+      }
+
       results.push({
         issueId: issue.id,
         questionId: issue.questionId,
@@ -138,6 +165,7 @@ export async function proposeRepairsForCritical(opts?: { limit?: number; deadlin
         verdict: verdict.verdict,
         proposalGenerated: !!repair,
         confidence: repair?.confidence,
+        issueStatus: issueNextStatus,
       });
     } catch (e: any) {
       results.push({ issueId: issue.id, ok: false, error: e.message });
