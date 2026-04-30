@@ -943,3 +943,67 @@ model AgentEvaluation {
   @@index([memoryId])
   @@index([rating, createdAt(sort: Desc)])
 }
+
+// ===== Claude manual question audit (Patch 2) =====
+//
+// Records every question Claude personally reviewed. One row per pass over
+// the bank — multiple sessions over multiple days ladder up under one
+// ClaudeAuditSession. Each ClaudeAuditDecision records what was found and
+// what was changed (or NOT changed, with reason).
+//
+// Why a separate table from QuestionVersion: rollback semantics and progress
+// tracking. Admin can revert "everything Claude touched in session X" with
+// one click without affecting other version history.
+model ClaudeAuditSession {
+  id              String   @id @default(uuid())
+  /** Human label for this audit pass, e.g. "2026-05-pass-1". */
+  label           String
+  /** ACTIVE | PAUSED | COMPLETED | ROLLED_BACK */
+  status          String   @default("ACTIVE")
+  /** Total questions targeted (typically 14323 for full NCLEX bank). */
+  targetTotal     Int      @default(0)
+  /** How many decisions written so far. */
+  processedCount  Int      @default(0)
+  /** How many resulted in actual writes to Question. */
+  changedCount    Int      @default(0)
+  /** How many were left untouched (already good). */
+  unchangedCount  Int      @default(0)
+  /** How many were marked DRAFT for human review (e.g. answer disputes). */
+  flaggedCount    Int      @default(0)
+  startedAt       DateTime @default(now())
+  finishedAt      DateTime?
+  /** Free-form notes / why the session was paused / etc. */
+  notes           String?  @db.Text
+
+  decisions       ClaudeAuditDecision[]
+
+  @@index([status, startedAt(sort: Desc)])
+}
+
+model ClaudeAuditDecision {
+  id              String   @id @default(uuid())
+  sessionId       String
+  questionId      String
+  /** UNCHANGED | EDITED | FLAGGED_FOR_REVIEW | ROLLED_BACK */
+  decision        String
+  /** What changed (field names → before/after). Null when UNCHANGED. */
+  changeSummary   Json?
+  /** Snapshot of full Question row before our edit (for rollback). */
+  beforeSnapshot  Json?
+  /** Snapshot of full Question row after our edit. */
+  afterSnapshot   Json?
+  /** Claude's reasoning, ≤ 500 chars. */
+  reasoning       String?  @db.Text
+  /** 0-100; only writes >= 85 actually edit Question. */
+  confidence      Int      @default(0)
+  /** True when this decision was rolled back via /api/admin/audit-sessions/[id]/rollback. */
+  rolledBack      Boolean  @default(false)
+  rolledBackAt    DateTime?
+  createdAt       DateTime @default(now())
+
+  session         ClaudeAuditSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt(sort: Desc)])
+  @@index([questionId])
+  @@index([decision])
+}

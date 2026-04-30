@@ -66,16 +66,21 @@ if (!CRON_SECRET) {
 //   cron: 'HH:MM' UTC for daily, 'every Nm' for interval, 'every Nh' for hourly
 //   mode: 'GET' (default) or 'POST'
 //   timeoutMs: how long to wait for the endpoint
+// PAUSED jobs: 2026-05-01 — Claude is doing the question audit by hand
+// (admin instruction). NIM-driven verifier+repair stays paused until that
+// completes. Re-enable by uncommenting the lines below.
 const JOBS = [
   // Daily ones — fire once per UTC day at the given hour
   { name: "ops",                   at: "02:00", path: "/api/cron/ops",                       timeoutMs: 5 * 60_000 },
   { name: "trial-expiry",          at: "02:00", path: "/api/cron/trial-expiry",              timeoutMs: 60_000 },
+  // Quality-scan is rule-based (no NIM) so we keep it running — it still
+  // catches '[object Object]', duplicate options, broken format etc. that
+  // Claude's per-question pass would miss in bulk.
   { name: "quality-scan",          at: "03:00", path: "/api/cron/quality-scan?autoArchive=1", timeoutMs: 5 * 60_000 },
   { name: "report-triage",         at: "04:00", path: "/api/cron/report-triage?limit=30&autoArchive=1", timeoutMs: 12 * 60_000 },
   { name: "error-rate-recompute",  at: "05:00", path: "/api/cron/error-rate-recompute",      timeoutMs: 8 * 60_000 },
-  // propose-repairs runs as 10 sequential 1-issue calls so it actually
-  // completes given Zeabur's 5-min per-request HTTP cap
-  { name: "propose-repairs",       at: "05:30", path: "/api/cron/propose-repairs?limit=1",   timeoutMs: 8 * 60_000, repeat: 10, repeatDelayMs: 3000 },
+  // === PAUSED: propose-repairs (verifier + repair NIM agent) ===
+  // { name: "propose-repairs",     at: "05:30", path: "/api/cron/propose-repairs?limit=1", timeoutMs: 8 * 60_000, repeat: 10, repeatDelayMs: 3000 },
   { name: "daily-health-report",   at: "09:00", path: "/api/cron/daily-health-report",       timeoutMs: 5 * 60_000 },
   { name: "marketing-daily",       at: "10:00", path: "/api/cron/marketing-daily",           timeoutMs: 5 * 60_000 },
 
