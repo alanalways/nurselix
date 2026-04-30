@@ -39,8 +39,20 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const CRON_SECRET  = process.env.CRON_SECRET;
 const APP_URL      = process.env.NURSLIX_INTERNAL_URL || process.env.APP_URL || "https://nurslix.zeabur.app";
 
-if (!DATABASE_URL) { console.error("[scheduler] Missing DATABASE_URL"); process.exit(1); }
-if (!CRON_SECRET)  { console.error("[scheduler] Missing CRON_SECRET");  process.exit(1); }
+if (!DATABASE_URL) { console.error("[scheduler] Missing DATABASE_URL — exiting"); process.exit(1); }
+if (!CRON_SECRET) {
+  // Don't exit — that would (via entrypoint) take down audit-parallel too.
+  // Instead, sleep loud-ly so the operator notices in logs and can add the
+  // env var without an explicit container restart.
+  console.error("[scheduler] CRON_SECRET not set — scheduler will idle until it appears.");
+  console.error("[scheduler] Add CRON_SECRET in Zeabur audit-worker env vars and restart container.");
+  while (true) {
+    await new Promise((r) => setTimeout(r, 60_000));
+    if (process.env.CRON_SECRET) {
+      console.log("[scheduler] CRON_SECRET appeared, but env vars are read at boot. Container restart required.");
+    }
+  }
+}
 
 // ───── jobs ───────────────────────────────────────────────────────────────
 // Each job: { name, cron, path, method, timeoutMs, mode }
