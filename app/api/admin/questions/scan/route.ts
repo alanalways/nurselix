@@ -36,19 +36,39 @@ export async function GET(req: Request) {
 
   const baseWhere = { status: "APPROVED" as const };
 
-  // Full text scan for length + mojibake
-  const allApproved = await prisma.question.findMany({
-    where: baseWhere,
-    select: { id: true, stemZh: true, explanationZh: true },
-  });
-
-  const shortExpIds = allApproved
-    .filter((q) => q.explanationZh && q.explanationZh !== "暫無解析" && q.explanationZh.length < 100)
-    .map((q) => q.id);
-
-  const garbledIds = allApproved
-    .filter((q) => isMojibake(q.stemZh) || isMojibake(q.explanationZh))
-    .map((q) => q.id);
+  // Memory note: previously this loaded every APPROVED question (id + stemZh +
+  // explanationZh) into memory at once, which OOM'd on Zeabur with 14k+ rows.
+  // We now stream in id-ordered batches and accumulate only the small id arrays
+  // needed for short_explanation / garbled_chinese filtering. The mojibake check
+  // and length comparison still run in JS because they need regex / ratio logic
+  // that's awkward to express in a Prisma where clause.
+  const SCAN_BATCH_SIZE = 1000;
+  const shortExpIds: string[] = [];
+  const garbledIds: string[] = [];
+  {
+    let cursorId: string | undefined = undefined;
+    while (true) {
+      const batch: Array<{ id: string; stemZh: string | null; explanationZh: string }> =
+        await prisma.question.findMany({
+          where: baseWhere,
+          select: { id: true, stemZh: true, explanationZh: true },
+          orderBy: { id: "asc" },
+          take: SCAN_BATCH_SIZE,
+          ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+        });
+      if (batch.length === 0) break;
+      for (const q of batch) {
+        if (q.explanationZh && q.explanationZh !== "暫無解析" && q.explanationZh.length < 100) {
+          shortExpIds.push(q.id);
+        }
+        if (isMojibake(q.stemZh) || isMojibake(q.explanationZh)) {
+          garbledIds.push(q.id);
+        }
+      }
+      if (batch.length < SCAN_BATCH_SIZE) break;
+      cursorId = batch[batch.length - 1].id;
+    }
+  }
 
   const issueFilters: Record<string, any> = {
     missing_explanation: {
