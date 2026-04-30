@@ -35,8 +35,14 @@ export async function runAgentLoop(opts: {
   systemPrompt: string;
   userPrompt: string;
   maxSteps?: number;
+  // Hard wall-clock budget (ms). When exceeded, the loop returns the latest
+  // assistant content even if more tool calls were requested. Defaults to
+  // 90s — enough for 4-5 tool rounds at 60s/call avg, fits inside the 5-min
+  // Zeabur HTTP budget when 4 agents run sequentially in cron-ops.
+  budgetMs?: number;
 }): Promise<AgentLoopResult> {
-  const { llm, tools, systemPrompt, userPrompt, maxSteps = 8 } = opts;
+  const { llm, tools, systemPrompt, userPrompt, maxSteps = 6, budgetMs = 90_000 } = opts;
+  const deadline = Date.now() + budgetMs;
   const toolsTyped = tools as unknown as ToolLike[];
   if (typeof llm.bindTools !== "function") {
     throw new Error("This chat model does not support tool binding.");
@@ -52,6 +58,10 @@ export async function runAgentLoop(opts: {
   let response = (await llmWithTools.invoke(messages)) as AIMessage;
 
   for (let step = 0; step < maxSteps; step++) {
+    if (Date.now() > deadline) {
+      console.log(`[agentLoop] budget ${budgetMs}ms exceeded at step ${step}, stopping early`);
+      break;
+    }
     const calls = response.tool_calls;
     if (!calls || calls.length === 0) break;
 

@@ -47,6 +47,11 @@ export function pickGeminiKey(): string {
 export function createOpsLLM(opts?: { temperature?: number }): BaseChatModel {
   const temperature = opts?.temperature ?? 0.3;
 
+  // 60s timeout per LLM call, 1 retry. Rationale: ops cron has a 5min Zeabur
+  // budget per request and CTO+PM+COO+CEO each may make 4-6 tool-call rounds
+  // (LLM → tool → LLM). With the old maxRetries=2 + no explicit timeout, a
+  // single hung call could eat 3min and starve the next agent. 60s × (1+1)
+  // = 120s worst case per LLM call, leaving ~3min for the rest of the chain.
   if (OPS_PROVIDER === "nvidia") {
     const apiKey = process.env.NVIDIA_NIM_API_KEY;
     if (!apiKey) throw new Error("NVIDIA_NIM_API_KEY is required when OPS_PROVIDER=nvidia");
@@ -55,7 +60,8 @@ export function createOpsLLM(opts?: { temperature?: number }): BaseChatModel {
       apiKey,
       configuration: { baseURL: "https://integrate.api.nvidia.com/v1" },
       temperature,
-      maxRetries: 2,
+      maxRetries: 1,
+      timeout: 60_000,
     });
   }
 
@@ -63,6 +69,6 @@ export function createOpsLLM(opts?: { temperature?: number }): BaseChatModel {
     model: OPS_MODEL,
     apiKey: pickGeminiKey(),
     temperature,
-    maxRetries: 2,
+    maxRetries: 1,
   });
 }
