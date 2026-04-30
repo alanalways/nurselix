@@ -236,13 +236,14 @@ async function audit(q) {
   // Track the most recent error from each provider so "All models failed" is informative.
   const failures = [];
 
-  // Try DeepSeek with up to 5 retries on 429/502 (exponential back-off: 10s, 20s, 40s, 60s, 60s)
-  // 5xx and 429 are transient — worth retrying. Other errors fail fast.
+  // User standardised everything on deepseek-v4-flash 2026-04-30.
+  // Retry 5× on transient errors (429/5xx/timeout) with exponential back-off.
+  // No more kimi-k2.5 fallback — it's been EOL'd from NIM (returns 410 Gone).
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const text = await callNIM("deepseek-ai/deepseek-v4-pro", messages);
+      const text = await callNIM("deepseek-ai/deepseek-v4-flash", messages);
       const data = parseJSON(text);
-      if (data) return { ...data, _modelUsed: "deepseek-v4-pro", _attempts: attempt + 1 };
+      if (data) return { ...data, _modelUsed: "deepseek-v4-flash", _attempts: attempt + 1 };
       failures.push(`deepseek(attempt ${attempt + 1}): parse failed`);
     } catch (e) {
       const msg = e?.message || String(e);
@@ -253,26 +254,7 @@ async function audit(q) {
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
-      if (!isTransient) break; // non-retryable error → fall through to Kimi
-    }
-  }
-
-  // Fallback Kimi (also with retries on transient errors)
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const text = await callNIM("moonshotai/kimi-k2.5", messages);
-      const data = parseJSON(text);
-      if (data) return { ...data, _modelUsed: "kimi-k2.5", _attempts: attempt + 1 };
-      failures.push(`kimi(attempt ${attempt + 1}): parse failed`);
-    } catch (e) {
-      const msg = e?.message || String(e);
-      failures.push(`kimi(attempt ${attempt + 1}): ${msg}`);
-      const isTransient = msg === "HTTP_429" || msg.startsWith("HTTP_5") || msg === "TIMEOUT" || msg.includes("aborted");
-      if (isTransient && attempt < 2) {
-        await new Promise(r => setTimeout(r, 10_000 * (attempt + 1)));
-        continue;
-      }
-      if (!isTransient) break;
+      if (!isTransient) break; // non-retryable error → fall through to Gemini
     }
   }
 

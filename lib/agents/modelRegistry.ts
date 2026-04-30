@@ -48,36 +48,25 @@ export interface AgentModelConfig {
   fallbacks: ModelOption[];
 }
 
-// ---------- Verified working NIM models (benchmark 2026-04-30) ----------
+// ---------- NIM models (benchmark 2026-04-30) ----------
+//
+// User decision 2026-04-30: standardise EVERYTHING on deepseek-v4-flash.
+// Benchmark showed 4/4 pass, total 18.1s. Trades minor zh-json speed
+// (7.5s vs v3.1-terminus 3.2s) for one model to maintain.
+//
+// Other tested models (kept here for historical reference, NOT used as
+// fallback to keep behaviour predictable):
+//   v3.1-terminus 4/4 14.6s (faster zh-json but slower simple)
+//   minimax-m2.5  4/4 12.4s (fastest but emits <think> reasoning prefix)
+//   v4-pro        2/4       (HTTP 429 on later calls — audit-worker only)
+//   v3.2          0/4       (every workload 60s timeout)
 
 const NIM = {
-  // ⭐ Best all-rounder for quality + ops: 4/4 pass, no 429s, balanced 2-5s/call
-  v31Terminus: {
-    provider: "nvidia" as const,
-    modelId: "deepseek-ai/deepseek-v3.1-terminus",
-    avgLatencyMs: 3650,
-    notes: "Bench 2026-04-30: 4/4 pass, total 14.6s, zh-json 3.2s, tools 4.7s, no rate-limits.",
-  },
-  // ⭐ Fastest all-rounder, but content has <think> prefix (need to strip in caller)
-  minimaxM25: {
-    provider: "nvidia" as const,
-    modelId: "minimaxai/minimax-m2.5",
-    avgLatencyMs: 3100,
-    notes: "Bench 2026-04-30: 4/4 pass, total 12.4s. Note: content prefixed with <think>...</think> reasoning block — strip if you need clean output.",
-  },
-  // Backup all-rounder, slightly slower on zh-json
   v4Flash: {
     provider: "nvidia" as const,
     modelId: "deepseek-ai/deepseek-v4-flash",
     avgLatencyMs: 4500,
-    notes: "Bench 2026-04-30: 4/4 pass, total 18.1s, zh-json 7.5s.",
-  },
-  // For audit-worker only — strongest reasoning when latency is OK
-  v4Pro: {
-    provider: "nvidia" as const,
-    modelId: "deepseek-ai/deepseek-v4-pro",
-    avgLatencyMs: 5800,
-    notes: "Bench 2026-04-30: passed simple+tools but hit HTTP 429 on later calls. Use ONLY in audit-worker (which has retry+back-off). Do NOT use for HTTP cron.",
+    notes: "Bench 2026-04-30: 4/4 pass, total 18.1s, zh-json 7.5s. Single source of truth for every NIM-backed agent.",
   },
 };
 
@@ -101,47 +90,18 @@ const GEMINI = {
 //     <think> prefix needs stripping (caller responsibility).
 //   - health-report is summarisation — v3.1-terminus is plenty.
 
+// All tasks use the same NIM primary (deepseek-v4-flash) per user
+// decision. Gemini fallbacks remain for free-tier resilience when NIM
+// is rate-limited or down.
 export const AGENT_MODELS: Record<AgentTask, AgentModelConfig> = {
-  "quality.verify": {
-    task: "quality.verify",
-    primary: NIM.v31Terminus,
-    fallbacks: [NIM.v4Flash, GEMINI.flash3Preview, GEMINI.flashLite31Preview],
-  },
-  "quality.repair": {
-    task: "quality.repair",
-    primary: NIM.v31Terminus,
-    fallbacks: [NIM.v4Flash, GEMINI.flash3Preview, GEMINI.flashLite31Preview],
-  },
-  "quality.health-report": {
-    task: "quality.health-report",
-    primary: NIM.v31Terminus,
-    fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25],
-  },
-  "report.triage": {
-    task: "report.triage",
-    primary: NIM.v31Terminus,
-    fallbacks: [NIM.v4Flash, GEMINI.flash3Preview, GEMINI.flashLite31Preview],
-  },
-  "marketing.seo": {
-    task: "marketing.seo",
-    primary: NIM.minimaxM25,
-    fallbacks: [NIM.v31Terminus, GEMINI.flashLite31Preview],
-  },
-  "marketing.social": {
-    task: "marketing.social",
-    primary: NIM.minimaxM25,
-    fallbacks: [NIM.v31Terminus, GEMINI.flashLite31Preview, GEMINI.flash25],
-  },
-  "marketing.email": {
-    task: "marketing.email",
-    primary: NIM.minimaxM25,
-    fallbacks: [NIM.v31Terminus, GEMINI.flashLite31Preview, GEMINI.flash25],
-  },
-  "marketing.analytics": {
-    task: "marketing.analytics",
-    primary: NIM.v31Terminus,
-    fallbacks: [NIM.v4Flash, GEMINI.flash3Preview],
-  },
+  "quality.verify":         { task: "quality.verify",         primary: NIM.v4Flash, fallbacks: [GEMINI.flash3Preview, GEMINI.flashLite31Preview] },
+  "quality.repair":         { task: "quality.repair",         primary: NIM.v4Flash, fallbacks: [GEMINI.flash3Preview, GEMINI.flashLite31Preview] },
+  "quality.health-report":  { task: "quality.health-report",  primary: NIM.v4Flash, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25] },
+  "report.triage":          { task: "report.triage",          primary: NIM.v4Flash, fallbacks: [GEMINI.flash3Preview, GEMINI.flashLite31Preview] },
+  "marketing.seo":          { task: "marketing.seo",          primary: NIM.v4Flash, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash3Preview] },
+  "marketing.social":       { task: "marketing.social",       primary: NIM.v4Flash, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25] },
+  "marketing.email":        { task: "marketing.email",        primary: NIM.v4Flash, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25] },
+  "marketing.analytics":    { task: "marketing.analytics",    primary: NIM.v4Flash, fallbacks: [GEMINI.flash3Preview, GEMINI.flashLite31Preview] },
 };
 
 export function getAgentConfig(task: AgentTask): AgentModelConfig {

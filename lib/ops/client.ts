@@ -22,18 +22,12 @@ export type OpsProvider = "nvidia" | "gemini";
 
 export const OPS_PROVIDER: OpsProvider = process.env.NVIDIA_NIM_API_KEY ? "nvidia" : "gemini";
 
-// Benchmarked live on NIM 2026-04-30 (4 workloads × 7 models):
-//   ✓ deepseek-v3.1-terminus  4/4 14.6s  ← chosen for ops (most consistent)
-//   ✓ minimax-m2.5            4/4 12.4s  (faster but emits <think> reasoning)
-//   ✓ deepseek-v4-flash       4/4 18.1s
-//   ⚠ deepseek-v4-pro         2/4 (HTTP 429 rate-limit on later calls)
-//   ⚠ minimax-m2.7            2/4 (empty content on simple+strict-json)
-//   ✗ deepseek-v3.2           0/4 (every workload 60s timeout)
-//   ✗ deepseek-coder-6.7b     0/4 (404 — chat completions not supported)
-// Ops Team needs reliable multi-round tool-calling more than raw speed,
-// so we pick the most consistent model rather than the fastest.
+// User decision 2026-04-30: standardise every NIM agent on
+// deepseek-v4-flash. Bench passed 4/4 (simple/tools/zh-json/json-strict)
+// in 18.1s total. Single model across ops + quality + marketing means
+// fewer surprises and one knob to tune.
 const DEFAULT_MODELS: Record<OpsProvider, string> = {
-  nvidia: "deepseek-ai/deepseek-v3.1-terminus",
+  nvidia: "deepseek-ai/deepseek-v4-flash",
   gemini: "gemini-2.5-flash",
 };
 

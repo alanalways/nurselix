@@ -885,3 +885,61 @@ model OpsReport {
 
   @@index([periodType, createdAt(sort: Desc)])
 }
+
+// ===== Agent self-learning memory =====
+//
+// Every agent run (ops, quality, marketing, etc) writes one AgentMemory row.
+// Subsequent runs of the same agent type read recent rows as few-shot
+// context: "last week you did X with result Y, admin rated Z stars".
+// This is the foundation for actual self-improvement — the agent sees its
+// own past performance instead of starting from a blank slate every time.
+model AgentMemory {
+  id           String   @id @default(uuid())
+  /** Agent identity. Examples: "ops.cto", "quality.verify", "marketing.seo".
+   *  Free-form so new agents can register without a schema change. */
+  agentType    String
+  /** Human-readable slug for the unit of work, e.g. session id, report id,
+   *  or "daily-2026-04-30". Lets us link memory back to source rows. */
+  taskKey      String?
+  /** Compact summary of the input the agent saw (≤ 500 chars). */
+  inputSummary String   @db.Text
+  /** Compact summary of what the agent produced (≤ 1000 chars). */
+  outputSummary String  @db.Text
+  /** Full raw output if available (JSON or text) — used for replay/debug. */
+  rawOutput    Json?
+  /** Model id used for this run, e.g. "deepseek-ai/deepseek-v4-flash". */
+  modelUsed    String?
+  /** End-to-end ms from agent invocation to result. */
+  durationMs   Int      @default(0)
+  /** Whether the run completed without throwing. */
+  ok           Boolean  @default(true)
+  error        String?
+  createdAt    DateTime @default(now())
+
+  evaluations  AgentEvaluation[]
+
+  @@index([agentType, createdAt(sort: Desc)])
+  @@index([taskKey])
+}
+
+// ===== Admin feedback on agent output =====
+//
+// Admin can give thumbs-up / thumbs-down + optional note on any AgentMemory
+// row. The next run of that agent reads recent positive examples as "do
+// more of this" and negative examples as "avoid this pattern".
+model AgentEvaluation {
+  id          String   @id @default(uuid())
+  memoryId    String
+  /** -1 (bad), 0 (neutral), 1 (good). */
+  rating      Int
+  /** Optional admin note on what was wrong/right. */
+  note        String?  @db.Text
+  /** Admin user id who rated this. */
+  ratedBy     String
+  createdAt   DateTime @default(now())
+
+  memory      AgentMemory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+
+  @@index([memoryId])
+  @@index([rating, createdAt(sort: Desc)])
+}
