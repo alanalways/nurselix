@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Loader2, BarChart2 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from "recharts";
 import { cn } from "@/lib/utils/cn";
 import { SectionLabel, MetaText, Pill, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
 
@@ -23,10 +23,31 @@ interface AnalyticsData {
   };
 }
 
+interface DauPoint { date: string; dau: number }
+
 export default function AnalyticsTab() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dau, setDau] = useState<DauPoint[] | null>(null);
+  const [dauLoading, setDauLoading] = useState(true);
+  const [dauError, setDauError] = useState<string | null>(null);
+
+  const loadDau = useCallback(async () => {
+    setDauLoading(true);
+    setDauError(null);
+    try {
+      const r = await fetch("/api/admin/dau", { cache: "no-store" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      setDau(j.series ?? []);
+    } catch (e: any) {
+      setDauError(e?.message ?? "載入失敗");
+    } finally {
+      setDauLoading(false);
+    }
+  }, []);
+  useEffect(() => { loadDau(); }, [loadDau]);
 
   useEffect(() => {
     (async () => {
@@ -43,13 +64,65 @@ export default function AnalyticsTab() {
     })();
   }, []);
 
+  const dauChart = (dau ?? []).map(d => ({
+    ...d,
+    dateLabel: new Date(d.date).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" }),
+  }));
+  const dauSection = (
+    <div>
+      <SectionLabel className="mb-3">Activity · 過去 14 天每日活躍使用者</SectionLabel>
+      <div className="border border-[var(--j-line)] bg-[var(--j-bg-card)] p-5">
+        {dauLoading ? (
+          <div className="h-[240px] flex items-center justify-center gap-2 text-[var(--j-ink-dim)] italic" style={FONT_DISPLAY}>
+            <Loader2 className="animate-spin text-[var(--j-phosphor)]" size={18} /> Counting today's readers…
+          </div>
+        ) : dauError ? (
+          <div className="h-[240px] flex flex-col items-center justify-center gap-2 text-[var(--j-red)] italic" style={FONT_DISPLAY}>
+            <span>載入失敗 · {dauError}</span>
+            <button onClick={loadDau} className="text-xs underline text-[var(--j-ink-dim)] hover:text-[var(--j-phosphor)]" style={FONT_DISPLAY}>retry</button>
+          </div>
+        ) : !dauChart.length || dauChart.every(d => d.dau === 0) ? (
+          <div className="h-[240px] flex items-center justify-center gap-2 text-[var(--j-ink-muted)]">
+            <BarChart2 size={32} className="opacity-30" />
+            <span className="text-sm italic" style={FONT_DISPLAY}>Awaiting traffic.</span>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={dauChart}>
+              <defs>
+                <linearGradient id="dauPhosphor" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--j-phosphor)" stopOpacity={0.45} />
+                  <stop offset="100%" stopColor="var(--j-phosphor)" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--j-line)" />
+              <XAxis dataKey="dateLabel" tick={{ fill: "var(--j-ink-dim)", fontSize: 10, fontFamily: "var(--font-mono)" }} />
+              <YAxis allowDecimals={false} tick={{ fill: "var(--j-ink-dim)", fontSize: 11, fontFamily: "var(--font-mono)" }} />
+              <Tooltip
+                contentStyle={{ background: "var(--j-bg-card)", border: "1px solid var(--j-line-strong)", borderRadius: 0, fontFamily: "var(--font-mono)", fontSize: 11 }}
+                labelStyle={{ color: "var(--j-ink)" }} />
+              <Area type="monotone" dataKey="dau" stroke="var(--j-phosphor)" strokeWidth={2}
+                fill="url(#dauPhosphor)" fillOpacity={0.3} name="DAU" />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) return (
-    <div className="flex items-center gap-2 text-[var(--j-ink-dim)] py-6 italic" style={FONT_DISPLAY}>
-      <Loader2 className="animate-spin text-[var(--j-phosphor)]" size={18} /> Reading the numbers…
+    <div className="space-y-8">
+      {dauSection}
+      <div className="flex items-center gap-2 text-[var(--j-ink-dim)] py-6 italic" style={FONT_DISPLAY}>
+        <Loader2 className="animate-spin text-[var(--j-phosphor)]" size={18} /> Reading the numbers…
+      </div>
     </div>
   );
   if (error || !data) return (
-    <div className="text-[var(--j-red)] py-6 italic" style={FONT_DISPLAY}>{error ?? "無資料"}</div>
+    <div className="space-y-8">
+      {dauSection}
+      <div className="text-[var(--j-red)] py-6 italic" style={FONT_DISPLAY}>{error ?? "無資料"}</div>
+    </div>
   );
 
   const mauChart = data.mauDaily.map(d => ({
@@ -59,6 +132,7 @@ export default function AnalyticsTab() {
 
   return (
     <div className="space-y-8">
+      {dauSection}
       {/* Domain error rates */}
       <div>
         <SectionLabel className="mb-3">Domain · 各 domain 錯誤率</SectionLabel>

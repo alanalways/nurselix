@@ -1,8 +1,18 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, RefreshCw, Check, X, Send, FileText, MessageSquare, Mail, BarChart3, Megaphone } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils/cn";
 import { SectionLabel, MetaText, JournalCta, Pill, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
+
+interface DraftPoint {
+  date: string;
+  SOCIAL_POST: number;
+  SEO_ARTICLE: number;
+  EMAIL: number;
+  AD_COPY: number;
+  LANDING_COPY: number;
+}
 
 interface Item {
   id: string;
@@ -33,6 +43,25 @@ export default function MarketingTab() {
   const [statusFilter, setStatusFilter] = useState<string>("draft");
   const [running, setRunning] = useState<string | null>(null);
   const [openItem, setOpenItem] = useState<Item | null>(null);
+  const [draftSeries, setDraftSeries] = useState<DraftPoint[] | null>(null);
+  const [draftLoading, setDraftLoading] = useState(true);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  const loadDrafts = useCallback(async () => {
+    setDraftLoading(true);
+    setDraftError(null);
+    try {
+      const r = await fetch("/api/admin/marketing-drafts?days=7", { cache: "no-store" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      setDraftSeries(j.series ?? []);
+    } catch (e: any) {
+      setDraftError(e?.message ?? "載入失敗");
+    } finally {
+      setDraftLoading(false);
+    }
+  }, []);
+  useEffect(() => { loadDrafts(); }, [loadDrafts]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,8 +99,51 @@ export default function MarketingTab() {
     await load();
   };
 
+  const chartData = (draftSeries ?? []).map(p => ({
+    ...p,
+    dateLabel: new Date(p.date).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" }),
+  }));
+
   return (
     <div className="space-y-6">
+      {/* Drafts produced (last 7 days) */}
+      <div>
+        <SectionLabel className="mb-3 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--j-phosphor)]" /> Output · 過去 7 天每日產出
+        </SectionLabel>
+        <div className="border border-[var(--j-line)] bg-[var(--j-bg-card)] p-5">
+          {draftLoading ? (
+            <div className="h-[200px] flex items-center justify-center gap-2 text-[var(--j-ink-dim)] italic" style={FONT_DISPLAY}>
+              <Loader2 className="animate-spin text-[var(--j-phosphor)]" size={18} /> Counting today's print run…
+            </div>
+          ) : draftError ? (
+            <div className="h-[200px] flex flex-col items-center justify-center gap-2 text-[var(--j-red)] italic" style={FONT_DISPLAY}>
+              <span>載入失敗 · {draftError}</span>
+              <button onClick={loadDrafts} className="text-xs underline text-[var(--j-ink-dim)] hover:text-[var(--j-phosphor)]" style={FONT_DISPLAY}>retry</button>
+            </div>
+          ) : !chartData.length || chartData.every(d => d.SOCIAL_POST + d.SEO_ARTICLE + d.EMAIL + d.AD_COPY + d.LANDING_COPY === 0) ? (
+            <div className="h-[200px] flex items-center justify-center text-sm italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+              — No drafts pressed in the last 7 days.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--j-line)" />
+                <XAxis dataKey="dateLabel" tick={{ fill: "var(--j-ink-dim)", fontSize: 10, fontFamily: "var(--font-mono)" }} />
+                <YAxis allowDecimals={false} tick={{ fill: "var(--j-ink-dim)", fontSize: 11, fontFamily: "var(--font-mono)" }} />
+                <Tooltip
+                  contentStyle={{ background: "var(--j-bg-card)", border: "1px solid var(--j-line-strong)", borderRadius: 0, fontFamily: "var(--font-mono)", fontSize: 11 }}
+                  labelStyle={{ color: "var(--j-ink)" }} />
+                <Legend wrapperStyle={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--j-ink-dim)" }} />
+                <Bar dataKey="SOCIAL_POST" stackId="a" fill="var(--j-phosphor)" name="SOCIAL_POST" />
+                <Bar dataKey="SEO_ARTICLE" stackId="a" fill="var(--j-ink)" name="SEO_ARTICLE" />
+                <Bar dataKey="EMAIL" stackId="a" fill="#c77a28" name="EMAIL" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
       {/* Generation row */}
       <div className="border-y border-[var(--j-line)] py-4">
         <SectionLabel className="mb-3 flex items-center gap-2">

@@ -10,6 +10,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { TAB_LABELS, TAB_DESCRIPTIONS, type TabKey } from "./tabs/types";
 import OverviewTab from "./tabs/OverviewTab";
+import AuditSessionsTab from "./tabs/AuditSessionsTab";
 import QualityTab from "./tabs/QualityTab";
 import RepairsTab from "./tabs/RepairsTab";
 import ReportsTab from "./tabs/ReportsTab";
@@ -24,24 +25,35 @@ import AnalyticsTab from "./tabs/AnalyticsTab";
 import { MastheadRule, MetaText } from "./tabs/journal-ui";
 import { cn } from "@/lib/utils/cn";
 
+// Group A 營運 | Group B 內容 | Group C 商業 | Group D 系統
 const TAB_ORDER: TabKey[] = [
-  "overview", "quality", "repairs", "reports", "spot-check", "audit", "marketing", "agents",
-  "users", "toeic", "vocab", "analytics",
+  // A. Operations
+  "overview", "audit-sessions", "quality", "repairs",
+  // B. Content
+  "reports", "spot-check", "audit", "toeic", "vocab",
+  // C. Business
+  "marketing", "users", "analytics",
+  // D. System
+  "agents",
 ];
+
+// 在這些 tab 前面 render 一個 ‖ 分隔符（即每個 group 起點，第一個除外）
+const GROUP_SEPARATORS = new Set<TabKey>(["audit-sessions", "reports", "marketing", "agents"]);
 
 const TAB_KICKER: Record<TabKey, string> = {
   overview: "I",
-  quality: "II",
-  repairs: "III",
-  reports: "IV",
-  "spot-check": "V",
-  audit: "VI",
-  marketing: "VII",
-  agents: "VIII",
-  users: "IX",
-  toeic: "X",
-  vocab: "XI",
+  "audit-sessions": "II",
+  quality: "III",
+  repairs: "IV",
+  reports: "V",
+  "spot-check": "VI",
+  audit: "VII",
+  toeic: "VIII",
+  vocab: "IX",
+  marketing: "X",
+  users: "XI",
   analytics: "XII",
+  agents: "XIII",
 };
 
 function CommandCenterInner() {
@@ -109,29 +121,40 @@ function CommandCenterInner() {
             {TAB_ORDER.map((k, i) => {
               const active = tab === k;
               const count = counts[k];
+              const showSep = i > 0 && GROUP_SEPARATORS.has(k);
               return (
-                <button
-                  key={k}
-                  onClick={() => switchTab(k)}
-                  className={cn(
-                    "group flex items-baseline gap-2 text-sm transition-colors whitespace-nowrap py-1",
-                    "border-b-2",
-                    active
-                      ? "border-[var(--j-phosphor)] text-[var(--j-phosphor)]"
-                      : "border-transparent text-[var(--j-ink-dim)] hover:text-[var(--j-ink)]"
-                  )}
-                  style={{ fontFamily: "var(--font-display)" }}
-                >
-                  <span className="text-[9px] tracking-[0.2em] uppercase opacity-70" style={{ fontFamily: "var(--font-mono)" }}>
-                    {TAB_KICKER[k]}
-                  </span>
-                  <span className={cn(active && "italic")}>{TAB_LABELS[k]}</span>
-                  {count !== undefined && count > 0 && (
-                    <span className="text-[9px] tracking-[0.1em] px-1.5 py-px ml-1 border border-current opacity-80" style={{ fontFamily: "var(--font-mono)" }}>
-                      {count}
+                <span key={k} className="flex items-baseline gap-6">
+                  {showSep && (
+                    <span
+                      aria-hidden
+                      className="text-[var(--j-phosphor)] opacity-30 select-none text-base leading-none self-center"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      ‖
                     </span>
                   )}
-                </button>
+                  <button
+                    onClick={() => switchTab(k)}
+                    className={cn(
+                      "group flex items-baseline gap-2 text-sm transition-colors whitespace-nowrap py-1",
+                      "border-b-2",
+                      active
+                        ? "border-[var(--j-phosphor)] text-[var(--j-phosphor)]"
+                        : "border-transparent text-[var(--j-ink-dim)] hover:text-[var(--j-ink)]"
+                    )}
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    <span className="text-[9px] tracking-[0.2em] uppercase opacity-70" style={{ fontFamily: "var(--font-mono)" }}>
+                      {TAB_KICKER[k]}
+                    </span>
+                    <span className={cn(active && "italic")}>{TAB_LABELS[k]}</span>
+                    {count !== undefined && count > 0 && (
+                      <span className="text-[9px] tracking-[0.1em] px-1.5 py-px ml-1 border border-current opacity-80" style={{ fontFamily: "var(--font-mono)" }}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                </span>
               );
             })}
           </div>
@@ -140,6 +163,7 @@ function CommandCenterInner() {
         {/* Content */}
         <div>
           {tab === "overview" && <OverviewTab onJump={switchTab} />}
+          {tab === "audit-sessions" && <AuditSessionsTab />}
           {tab === "quality" && <QualityTab />}
           {tab === "repairs" && <RepairsTab />}
           {tab === "reports" && <ReportsTab />}
@@ -159,6 +183,7 @@ function CommandCenterInner() {
 
 const TAB_HEADLINES: Record<TabKey, string> = {
   overview: "Today's edition.",
+  "audit-sessions": "Setting the type.",
   quality: "Where the cracks are.",
   repairs: "The mending desk.",
   reports: "Letters from readers.",

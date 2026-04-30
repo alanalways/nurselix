@@ -2,9 +2,23 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Loader2, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils/cn";
 import { SectionLabel, DisplayTitle, MetaText, PaperCard, JournalRow, JournalCta, Pill, StatNumber, FONT_DISPLAY, FONT_ZH, FONT_MONO } from "./journal-ui";
 import type { TabKey } from "./types";
+
+interface AuditSession {
+  id: string;
+  label: string;
+  status: string;
+  targetTotal: number;
+  processedCount: number;
+  changedCount: number;
+  unchangedCount: number;
+  flaggedCount: number;
+  startedAt: string;
+  finishedAt: string | null;
+}
 
 interface DashboardData {
   timestamp: string;
@@ -48,6 +62,7 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeAudit, setActiveAudit] = useState<AuditSession | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,6 +75,18 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); const t = setInterval(load, 30_000); return () => clearInterval(t); }, [load]);
+
+  const loadAudit = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/audit-sessions", { cache: "no-store" });
+      if (!r.ok) return;
+      const j = await r.json();
+      const sessions: AuditSession[] = j?.sessions ?? [];
+      const active = sessions.find(s => s.status === "ACTIVE") ?? null;
+      setActiveAudit(active);
+    } catch { /* silent — KPI optional */ }
+  }, []);
+  useEffect(() => { loadAudit(); const t = setInterval(loadAudit, 30_000); return () => clearInterval(t); }, [loadAudit]);
 
   if (loading && !data) return (
     <div className="flex items-center gap-2 text-[var(--j-ink-dim)] py-6 italic" style={FONT_DISPLAY}>
@@ -343,6 +370,62 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
             );
           })()}
 
+          {/* Claude Manual Audit — active session progress */}
+          <div className="border border-[var(--j-line-strong)] p-4 mb-5 bg-[var(--j-bg-card)]">
+            <SectionLabel className="!mt-0 mb-3">● 人工審題 · Claude</SectionLabel>
+            {activeAudit ? (() => {
+              const target = Math.max(1, activeAudit.targetTotal);
+              const pct = Math.min(100, Math.round((activeAudit.processedCount / target) * 100));
+              return (
+                <>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="italic tracking-tight text-[var(--j-ink)] leading-none"
+                      style={{ fontFamily: "var(--font-display)", fontSize: "2.4rem", letterSpacing: "-0.03em" }}>
+                      {activeAudit.processedCount.toLocaleString()}
+                    </span>
+                    <span className="text-xs text-[var(--j-ink-dim)]" style={FONT_MONO}>
+                      / {activeAudit.targetTotal.toLocaleString()}
+                    </span>
+                    <span className="ml-auto text-[11px] italic text-[var(--j-phosphor)]" style={FONT_DISPLAY}>
+                      {pct}%
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-[var(--j-ink-dim)] mb-3 tracking-wider uppercase truncate" style={FONT_MONO}>
+                    {activeAudit.label}
+                  </div>
+                  <div className="h-1.5 bg-[var(--j-line)] mb-3 overflow-hidden">
+                    <div className="h-full bg-[var(--j-phosphor)] transition-all"
+                      style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[11px] border-t border-[var(--j-line)] pt-3" style={FONT_MONO}>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--j-ink-dim)]">edited</span>
+                      <span className="text-[var(--j-ink)] italic" style={FONT_DISPLAY}>
+                        {activeAudit.changedCount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--j-ink-dim)]">unchanged</span>
+                      <span className="text-[var(--j-ink)] italic" style={FONT_DISPLAY}>
+                        {activeAudit.unchangedCount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--j-red)]">flagged</span>
+                      <span className="text-[var(--j-ink)] italic" style={FONT_DISPLAY}>
+                        {activeAudit.flaggedCount.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              );
+            })() : (
+              <div className="py-2 text-[12px] italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+                — 暫無進行中審題
+              </div>
+            )}
+          </div>
+
           {/* Agent teams — recent hermes jobs */}
           <div className="border border-[var(--j-line-strong)] p-4 mb-5 bg-[var(--j-bg-card)]">
             <SectionLabel className="!mt-0 mb-3">● Agent teams · 工人們</SectionLabel>
@@ -422,24 +505,49 @@ function TrendChart({ data }: { data: any[] }) {
   );
   const sorted = data.slice().reverse();
   return (
-    <div className="grid grid-cols-7 gap-1.5">
-      {sorted.map((d, i) => {
-        const h = Math.max(8, (d.healthScore / 100) * 60);
-        const isLast = i === sorted.length - 1;
-        return (
-          <div key={d.period} className="flex flex-col items-center gap-1">
-            <div className="w-full h-[60px] flex items-end">
-              <div className={cn(
-                "w-full transition-all",
-                isLast ? "bg-[var(--j-phosphor)]" : "bg-[var(--j-ink)] opacity-75"
-              )} style={{ height: `${h}px` }} />
-            </div>
-            <div className="text-[9px] text-[var(--j-ink-dim)]" style={{ fontFamily: "var(--font-mono)" }}>
-              {d.period.slice(8, 10)}
-            </div>
-          </div>
-        );
-      })}
+    <div style={{ width: "100%", height: 80 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={sorted} margin={{ top: 6, right: 6, bottom: 0, left: -20 }}>
+          <XAxis
+            dataKey="period"
+            tickFormatter={(p: string) => (typeof p === "string" ? p.slice(5) : "")}
+            tick={{ fontSize: 9, fill: "var(--j-ink-dim)", fontFamily: "var(--font-mono)" }}
+            axisLine={{ stroke: "var(--j-line)" }}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 100]}
+            hide
+          />
+          <Tooltip
+            cursor={{ stroke: "var(--j-line-strong)", strokeDasharray: "2 2" }}
+            contentStyle={{
+              background: "var(--j-ink, #111)",
+              border: "none",
+              borderRadius: 0,
+              padding: "6px 10px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+            }}
+            labelStyle={{ display: "none" }}
+            itemStyle={{ color: "var(--j-bg, #f3efe4)" }}
+            formatter={(value: any, _name: any, item: any) => {
+              const period = item?.payload?.period ?? "";
+              return [`score: ${value} · ${period}`, ""];
+            }}
+            separator=""
+          />
+          <Line
+            type="monotone"
+            dataKey="healthScore"
+            stroke="var(--j-phosphor, #1a8b56)"
+            strokeWidth={2}
+            dot={{ r: 2, fill: "var(--j-phosphor, #1a8b56)", strokeWidth: 0 }}
+            activeDot={{ r: 3.5, fill: "var(--j-phosphor, #1a8b56)", strokeWidth: 0 }}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 /** Shared types for command-center tabs */
 export type TabKey =
   | "overview"
+  | "audit-sessions"
   | "quality"
   | "repairs"
   | "reports"
@@ -15,6 +16,7 @@ export type TabKey =
 
 export const TAB_LABELS: Record<TabKey, string> = {
   overview: "總覽",
+  "audit-sessions": "審題進度",
   quality: "品質",
   repairs: "修復",
   reports: "回報",
@@ -30,6 +32,7 @@ export const TAB_LABELS: Record<TabKey, string> = {
 
 export const TAB_DESCRIPTIONS: Record<TabKey, string> = {
   overview: "健康度儀表板與重要數據",
+  "audit-sessions": "Claude 親自審題的 session 進度與 rollback",
   quality: "QuestionQualityIssue 待處理項目",
   repairs: "Agent 自動修復建議 — 一鍵套用或拒絕",
   reports: "使用者回報與 SLA 追蹤",

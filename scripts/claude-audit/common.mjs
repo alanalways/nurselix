@@ -13,6 +13,7 @@
  *     FLAGGED_FOR_REVIEW (and the question goes to status='DRAFT').
  */
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import pg from "pg";
 
 export const ALLOWED_EDIT_FIELDS = new Set([
@@ -55,10 +56,10 @@ export async function getOrCreateActiveSession(client, opts = {}) {
   const targetTotal = total.rows[0].n;
 
   const created = await client.query(
-    `INSERT INTO "ClaudeAuditSession" (label, status, "targetTotal", notes)
-     VALUES ($1, 'ACTIVE', $2, $3)
+    `INSERT INTO "ClaudeAuditSession" (id, label, status, "targetTotal", notes)
+     VALUES ($1, $2, 'ACTIVE', $3, $4)
      RETURNING *`,
-    [label, targetTotal, opts.notes || null]
+    [randomUUID(), label, targetTotal, opts.notes || null]
   );
   return created.rows[0];
 }
@@ -134,9 +135,10 @@ export async function commitDecision(client, sessionId, decision) {
 
       // Audit trail in QuestionVersion
       await client.query(
-        `INSERT INTO "QuestionVersion" ("questionId", snapshot, "changedBy", reason, "agentInitiated", "createdAt")
-         VALUES ($1, $2::jsonb, 'claude-direct-audit', $3, false, (NOW() AT TIME ZONE 'UTC'))`,
+        `INSERT INTO "QuestionVersion" (id, "questionId", snapshot, "changedBy", reason, "agentInitiated", "createdAt")
+         VALUES ($1, $2, $3::jsonb, 'claude-direct-audit', $4, false, (NOW() AT TIME ZONE 'UTC'))`,
         [
+          randomUUID(),
           questionId,
           JSON.stringify({
             sessionId,
@@ -150,14 +152,18 @@ export async function commitDecision(client, sessionId, decision) {
       );
     }
 
-    // Decision row (also for UNCHANGED so we know it was reviewed)
+    // Decision row (also for UNCHANGED so we know it was reviewed).
+    // NOTE: Postgres `gen_random_uuid()` needs the pgcrypto extension which
+    // isn't always installed; passing the UUID from Node side avoids that.
+    const decisionId = randomUUID();
     const decRow = await client.query(
       `INSERT INTO "ClaudeAuditDecision"
-         ("sessionId", "questionId", decision, "changeSummary", "beforeSnapshot",
+         (id, "sessionId", "questionId", decision, "changeSummary", "beforeSnapshot",
           "afterSnapshot", reasoning, confidence, "createdAt")
-       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7, $8, (NOW() AT TIME ZONE 'UTC'))
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, $9, (NOW() AT TIME ZONE 'UTC'))
        RETURNING id`,
       [
+        decisionId,
         sessionId,
         questionId,
         type,
