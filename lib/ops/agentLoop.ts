@@ -37,11 +37,13 @@ export async function runAgentLoop(opts: {
   maxSteps?: number;
   // Hard wall-clock budget (ms). When exceeded, the loop returns the latest
   // assistant content even if more tool calls were requested. Defaults to
-  // 90s — enough for 4-5 tool rounds at 60s/call avg, fits inside the 5-min
-  // Zeabur HTTP budget when 4 agents run sequentially in cron-ops.
+  // 50s — endpoint HTTP cap is 240s, divided across 4 sub-agents = 60s each
+  // with a small buffer. DeepSeek V4 Pro typically responds in 5-30s for
+  // small responses, longer for big tool-call chains; 50s + 1 retry of
+  // failed step is realistic.
   budgetMs?: number;
 }): Promise<AgentLoopResult> {
-  const { llm, tools, systemPrompt, userPrompt, maxSteps = 6, budgetMs = 90_000 } = opts;
+  const { llm, tools, systemPrompt, userPrompt, maxSteps = 4, budgetMs = 50_000 } = opts;
   const deadline = Date.now() + budgetMs;
   const toolsTyped = tools as unknown as ToolLike[];
   if (typeof llm.bindTools !== "function") {
@@ -55,7 +57,26 @@ export async function runAgentLoop(opts: {
   ];
 
   const toolResults: Record<string, unknown[]> = {};
-  let response = (await llmWithTools.invoke(messages)) as AIMessage;
+
+  // Race every LLM call against the wall-clock deadline. LangChain's
+  // `timeout` option is unreliable across versions — sometimes not
+  // propagated to fetch, leaving us hanging until Zeabur kills the
+  // request. Promise.race guarantees we exit cleanly.
+  async function invokeWithBudget(msgs: BaseMessage[]): Promise<AIMessage> {
+    const remaining = Math.max(1000, deadline - Date.now());
+    const timeout = new Promise<AIMessage>((_, reject) => {
+      setTimeout(() => reject(new Error(`agentLoop budget exceeded (${budgetMs}ms)`)), remaining);
+    });
+    return Promise.race([llmWithTools.invoke(msgs) as Promise<AIMessage>, timeout]);
+  }
+
+  let response: AIMessage;
+  try {
+    response = await invokeWithBudget(messages);
+  } catch (e) {
+    console.log(`[agentLoop] initial invoke failed: ${(e as Error).message}`);
+    return { summary: `(LLM unreachable: ${(e as Error).message})`, toolResults };
+  }
 
   for (let step = 0; step < maxSteps; step++) {
     if (Date.now() > deadline) {
@@ -91,7 +112,12 @@ export async function runAgentLoop(opts: {
       );
     }
 
-    response = (await llmWithTools.invoke(messages)) as AIMessage;
+    try {
+      response = await invokeWithBudget(messages);
+    } catch (e) {
+      console.log(`[agentLoop] step ${step + 1} invoke failed: ${(e as Error).message}`);
+      break;
+    }
   }
 
   return {

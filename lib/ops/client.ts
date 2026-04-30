@@ -2,16 +2,16 @@
  * Ops Agent LLM client — supports two providers with env-var auto-detection:
  *
  *   1. NVIDIA NIM (OpenAI-compatible) — preferred when NVIDIA_NIM_API_KEY is set.
- *      Default model: zai-org/glm-4.5-air (GLM 4.5 Air, supports function calling).
- *      Override via OPS_MODEL env var, e.g. "zai-org/glm-4.6", "deepseek-ai/deepseek-v3",
- *      "meta/llama-3.3-70b-instruct", etc.
+ *      Default model: meta/llama-3.3-70b-instruct (~0.76s/call, supports
+ *      function calling). Verified live on NIM catalog 2026-04-30.
  *
  *   2. Google Gemini (via @langchain/google-genai) — fallback when NVIDIA key is
  *      not present. Reuses the existing GEMINI_API_KEY_1..10 rotation.
  *      Default model: gemini-2.5-flash.
  *
  * To switch providers, just set/unset NVIDIA_NIM_API_KEY in env.
- * To pin a specific model, set OPS_MODEL.
+ * To pin a specific model, set OPS_MODEL (must exist on NIM catalog —
+ * z-ai/glm-5.1 was 19s/call so was retired).
  */
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatOpenAI } from "@langchain/openai";
@@ -22,8 +22,15 @@ export type OpsProvider = "nvidia" | "gemini";
 
 export const OPS_PROVIDER: OpsProvider = process.env.NVIDIA_NIM_API_KEY ? "nvidia" : "gemini";
 
+// Verified live on NIM 2026-04-30 (no GLM, per user preference):
+//   ✓ deepseek-ai/deepseek-v4-flash       0.25s  ← chosen (fast + DeepSeek)
+//   ✓ meta/llama-3.3-70b-instruct          0.18s  (alternative)
+//   ✓ openai/gpt-oss-120b                  0.25s  (alternative, returns reasoning)
+//   ✗ deepseek-ai/deepseek-v4              404 (not in catalog)
+//   ✗ deepseek-ai/deepseek-v4-pro          >30s  (audit-worker uses with 180s timeout but unfit for HTTP cron)
+//   ✗ minimax/*                            404 (not in catalog)
 const DEFAULT_MODELS: Record<OpsProvider, string> = {
-  nvidia: "z-ai/glm-5.1",
+  nvidia: "deepseek-ai/deepseek-v4-flash",
   gemini: "gemini-2.5-flash",
 };
 
@@ -47,11 +54,10 @@ export function pickGeminiKey(): string {
 export function createOpsLLM(opts?: { temperature?: number }): BaseChatModel {
   const temperature = opts?.temperature ?? 0.3;
 
-  // 60s timeout per LLM call, 1 retry. Rationale: ops cron has a 5min Zeabur
-  // budget per request and CTO+PM+COO+CEO each may make 4-6 tool-call rounds
-  // (LLM → tool → LLM). With the old maxRetries=2 + no explicit timeout, a
-  // single hung call could eat 3min and starve the next agent. 60s × (1+1)
-  // = 120s worst case per LLM call, leaving ~3min for the rest of the chain.
+  // 180s per LLM call (matching audit-worker's NIM timeout — DeepSeek V4 Pro
+  // can take 30-60s on cold starts, occasionally more). maxRetries=0 because
+  // agentLoop already wraps every invoke in Promise.race with the wall-clock
+  // budget; retries here would just stack against that budget.
   if (OPS_PROVIDER === "nvidia") {
     const apiKey = process.env.NVIDIA_NIM_API_KEY;
     if (!apiKey) throw new Error("NVIDIA_NIM_API_KEY is required when OPS_PROVIDER=nvidia");
@@ -60,8 +66,8 @@ export function createOpsLLM(opts?: { temperature?: number }): BaseChatModel {
       apiKey,
       configuration: { baseURL: "https://integrate.api.nvidia.com/v1" },
       temperature,
-      maxRetries: 1,
-      timeout: 60_000,
+      maxRetries: 0,
+      timeout: 180_000,
     });
   }
 
