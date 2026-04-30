@@ -8,10 +8,17 @@ on:
 jobs:
   propose:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     steps:
-      - name: Trigger repair proposal generation
+      # We call the endpoint multiple times with small batches.
+      # Each call processes 3 CRITICAL issues (~90s) — well within Zeabur's
+      # 5-min request timeout. Looping lets us chew through more per cron run.
+      - name: Trigger repair proposal generation (batch loop)
         run: |
-          curl -fsSL --max-time 720 \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/cron/propose-repairs?limit=10"
+          for i in 1 2 3 4 5 6; do
+            echo "=== batch $i ==="
+            curl -fsSL --max-time 240 \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              "${{ secrets.APP_URL }}/api/cron/propose-repairs?limit=3" || echo "batch $i failed, continuing"
+            sleep 5
+          done

@@ -82,8 +82,14 @@ export async function processReportTriageBatch(opts?: { limit?: number; autoArch
  *
  * Caller decides whether to apply via /api/admin/quality-issues/[id]/apply.
  */
-export async function proposeRepairsForCritical(opts?: { limit?: number }) {
-  const limit = opts?.limit ?? 10;
+export async function proposeRepairsForCritical(opts?: { limit?: number; deadlineMs?: number }) {
+  const limit = opts?.limit ?? 3;
+  // Hard ceiling so a slow LLM batch can't overflow Zeabur's request budget.
+  // Default 4 minutes — keep < HTTP timeout (Zeabur ~5min, Vercel 5min).
+  const deadlineMs = opts?.deadlineMs ?? 4 * 60_000;
+  const startedAt = Date.now();
+  const overBudget = () => Date.now() - startedAt > deadlineMs;
+
   const issues = await prisma.questionQualityIssue.findMany({
     where: { status: "OPEN", severity: "CRITICAL" },
     include: { question: true },
@@ -93,6 +99,10 @@ export async function proposeRepairsForCritical(opts?: { limit?: number }) {
 
   const results: any[] = [];
   for (const issue of issues) {
+    if (overBudget()) {
+      results.push({ issueId: issue.id, ok: false, error: "deadline_reached_before_processing" });
+      continue;
+    }
     try {
       const q = issue.question as unknown as QuestionShape;
       const verdict = await verifyQuestion(q);
