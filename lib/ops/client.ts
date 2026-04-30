@@ -22,15 +22,18 @@ export type OpsProvider = "nvidia" | "gemini";
 
 export const OPS_PROVIDER: OpsProvider = process.env.NVIDIA_NIM_API_KEY ? "nvidia" : "gemini";
 
-// Verified live on NIM 2026-04-30 (no GLM, per user preference):
-//   ✓ deepseek-ai/deepseek-v4-flash       0.25s  ← chosen (fast + DeepSeek)
-//   ✓ meta/llama-3.3-70b-instruct          0.18s  (alternative)
-//   ✓ openai/gpt-oss-120b                  0.25s  (alternative, returns reasoning)
-//   ✗ deepseek-ai/deepseek-v4              404 (not in catalog)
-//   ✗ deepseek-ai/deepseek-v4-pro          >30s  (audit-worker uses with 180s timeout but unfit for HTTP cron)
-//   ✗ minimax/*                            404 (not in catalog)
+// Benchmarked live on NIM 2026-04-30 (4 workloads × 7 models):
+//   ✓ deepseek-v3.1-terminus  4/4 14.6s  ← chosen for ops (most consistent)
+//   ✓ minimax-m2.5            4/4 12.4s  (faster but emits <think> reasoning)
+//   ✓ deepseek-v4-flash       4/4 18.1s
+//   ⚠ deepseek-v4-pro         2/4 (HTTP 429 rate-limit on later calls)
+//   ⚠ minimax-m2.7            2/4 (empty content on simple+strict-json)
+//   ✗ deepseek-v3.2           0/4 (every workload 60s timeout)
+//   ✗ deepseek-coder-6.7b     0/4 (404 — chat completions not supported)
+// Ops Team needs reliable multi-round tool-calling more than raw speed,
+// so we pick the most consistent model rather than the fastest.
 const DEFAULT_MODELS: Record<OpsProvider, string> = {
-  nvidia: "deepseek-ai/deepseek-v4-flash",
+  nvidia: "deepseek-ai/deepseek-v3.1-terminus",
   gemini: "gemini-2.5-flash",
 };
 

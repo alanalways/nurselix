@@ -1,14 +1,19 @@
 /**
  * Model Registry — central definition of which model each agent task uses,
- * with fallback chain. Tested 2026-04-27 against actual NIM availability.
+ * with fallback chain. Re-tested 2026-04-30 against actual NIM availability
+ * via scripts/bench-nim-models.mjs (4 workloads × 7 candidates).
  *
- * Fallback strategy: try main → fallback1 → fallback2 → throw
+ * Fallback strategy: try primary → fallback1 → fallback2 → throw
  *
- * Why these models:
- * - DeepSeek-V4-Pro: fastest tested (5.8s), 1M context, best for quality reasoning
- * - Kimi-K2.5: multimodal (can read screenshots in reports), 256K context
- * - MiniMax-M2.7: cheap & fast for content generation
- * - Gemini 3.x: free tier fallback (anthropic NOT used here — kept for Hermes only)
+ * 2026-04-30 benchmark results (all 4 workloads = simple/tools/zh-json/strict-json):
+ *   ✓ deepseek-v3.1-terminus  4/4 14.6s  ← most consistent, no rate-limits
+ *   ✓ minimax-m2.5            4/4 12.4s  (fastest but emits <think> reasoning)
+ *   ✓ deepseek-v4-flash       4/4 18.1s  (zh-json slower at 7.5s)
+ *   ⚠ deepseek-v4-pro         2/4       (HTTP 429 rate-limit on later calls)
+ *   ⚠ minimax-m2.7            2/4       (empty content on simple+strict-json)
+ *   ✗ deepseek-v3.2           0/4       (every workload hit 60s timeout)
+ *   ✗ deepseek-coder-6.7b     0/4       (404 — chat completions unsupported)
+ *   ✗ moonshotai/kimi-k2.5    410 Gone  (EOL'd late April)
  *
  * Free tier daily caps (with 10 keys rotation):
  * - gemini-3-flash-preview: ~200-1000/day total
@@ -31,7 +36,7 @@ export interface ModelOption {
   provider: ProviderId;
   /** Exact model ID for the provider's API. */
   modelId: string;
-  /** Avg latency seen in 2026-04-27 test (ms). null = untested. */
+  /** Avg latency observed in last bench (ms). null = untested. */
   avgLatencyMs?: number | null;
   /** Notes for ops staff. */
   notes?: string;
@@ -43,15 +48,37 @@ export interface AgentModelConfig {
   fallbacks: ModelOption[];
 }
 
-// ---------- Verified working models on NIM (2026-04-27 test) ----------
+// ---------- Verified working NIM models (benchmark 2026-04-30) ----------
 
 const NIM = {
-  deepseekV4Pro: { provider: "nvidia" as const, modelId: "deepseek-ai/deepseek-v4-pro", avgLatencyMs: 5800,
-    notes: "Tested OK: 5.8s, 1M ctx. Best reasoning available." },
-  kimiK25: { provider: "nvidia" as const, modelId: "moonshotai/kimi-k2.5", avgLatencyMs: 17600,
-    notes: "Tested OK: 17.6s, 256K ctx, multimodal." },
-  minimaxM27: { provider: "nvidia" as const, modelId: "minimaxai/minimax-m2.7", avgLatencyMs: 27600,
-    notes: "Tested OK: 27.6s, 200K ctx. Cheap; slower than expected." },
+  // ⭐ Best all-rounder for quality + ops: 4/4 pass, no 429s, balanced 2-5s/call
+  v31Terminus: {
+    provider: "nvidia" as const,
+    modelId: "deepseek-ai/deepseek-v3.1-terminus",
+    avgLatencyMs: 3650,
+    notes: "Bench 2026-04-30: 4/4 pass, total 14.6s, zh-json 3.2s, tools 4.7s, no rate-limits.",
+  },
+  // ⭐ Fastest all-rounder, but content has <think> prefix (need to strip in caller)
+  minimaxM25: {
+    provider: "nvidia" as const,
+    modelId: "minimaxai/minimax-m2.5",
+    avgLatencyMs: 3100,
+    notes: "Bench 2026-04-30: 4/4 pass, total 12.4s. Note: content prefixed with <think>...</think> reasoning block — strip if you need clean output.",
+  },
+  // Backup all-rounder, slightly slower on zh-json
+  v4Flash: {
+    provider: "nvidia" as const,
+    modelId: "deepseek-ai/deepseek-v4-flash",
+    avgLatencyMs: 4500,
+    notes: "Bench 2026-04-30: 4/4 pass, total 18.1s, zh-json 7.5s.",
+  },
+  // For audit-worker only — strongest reasoning when latency is OK
+  v4Pro: {
+    provider: "nvidia" as const,
+    modelId: "deepseek-ai/deepseek-v4-pro",
+    avgLatencyMs: 5800,
+    notes: "Bench 2026-04-30: passed simple+tools but hit HTTP 429 on later calls. Use ONLY in audit-worker (which has retry+back-off). Do NOT use for HTTP cron.",
+  },
 };
 
 const GEMINI = {
@@ -63,48 +90,57 @@ const GEMINI = {
     notes: "Stable fallback. ~250/day per key." },
 };
 
-// ---------- Agent configurations ----------
+// ---------- Agent configurations (informed by 2026-04-30 bench) ----------
+//
+// Strategy:
+//   - quality.verify (the strictest reasoning task) gets v3.1-terminus primary
+//     because its 4/4 with no rate-limits. v4-flash as fallback.
+//   - quality.repair / triage need similar reasoning — same chain.
+//   - marketing tasks generate Chinese long-form content — minimax-m2.5 is the
+//     fastest 4/4 in our test and has good Asian-language quality, but its
+//     <think> prefix needs stripping (caller responsibility).
+//   - health-report is summarisation — v3.1-terminus is plenty.
 
 export const AGENT_MODELS: Record<AgentTask, AgentModelConfig> = {
   "quality.verify": {
     task: "quality.verify",
-    primary: NIM.deepseekV4Pro,
-    fallbacks: [NIM.kimiK25, GEMINI.flash3Preview, GEMINI.flashLite31Preview],
+    primary: NIM.v31Terminus,
+    fallbacks: [NIM.v4Flash, GEMINI.flash3Preview, GEMINI.flashLite31Preview],
   },
   "quality.repair": {
     task: "quality.repair",
-    primary: NIM.deepseekV4Pro,
-    fallbacks: [GEMINI.flash3Preview, GEMINI.flashLite31Preview],
+    primary: NIM.v31Terminus,
+    fallbacks: [NIM.v4Flash, GEMINI.flash3Preview, GEMINI.flashLite31Preview],
   },
   "quality.health-report": {
     task: "quality.health-report",
-    primary: NIM.minimaxM27,
+    primary: NIM.v31Terminus,
     fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25],
   },
   "report.triage": {
     task: "report.triage",
-    primary: NIM.kimiK25,
-    fallbacks: [NIM.deepseekV4Pro, GEMINI.flash3Preview, GEMINI.flashLite31Preview],
+    primary: NIM.v31Terminus,
+    fallbacks: [NIM.v4Flash, GEMINI.flash3Preview, GEMINI.flashLite31Preview],
   },
   "marketing.seo": {
     task: "marketing.seo",
-    primary: NIM.minimaxM27,
-    fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash3Preview],
+    primary: NIM.minimaxM25,
+    fallbacks: [NIM.v31Terminus, GEMINI.flashLite31Preview],
   },
   "marketing.social": {
     task: "marketing.social",
-    primary: NIM.minimaxM27,
-    fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25],
+    primary: NIM.minimaxM25,
+    fallbacks: [NIM.v31Terminus, GEMINI.flashLite31Preview, GEMINI.flash25],
   },
   "marketing.email": {
     task: "marketing.email",
-    primary: NIM.minimaxM27,
-    fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25],
+    primary: NIM.minimaxM25,
+    fallbacks: [NIM.v31Terminus, GEMINI.flashLite31Preview, GEMINI.flash25],
   },
   "marketing.analytics": {
     task: "marketing.analytics",
-    primary: NIM.deepseekV4Pro,
-    fallbacks: [NIM.minimaxM27, GEMINI.flash3Preview],
+    primary: NIM.v31Terminus,
+    fallbacks: [NIM.v4Flash, GEMINI.flash3Preview],
   },
 };
 
