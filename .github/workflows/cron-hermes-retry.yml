@@ -1,9 +1,11 @@
+# MIGRATED 2026-05-01: scheduling moved to audit-worker/internal-scheduler.mjs
+# Schedule below is commented out. Manual workflow_dispatch retained for emergency.
 name: Hermes failed-job retry cron
 
 on:
-  schedule:
+  # schedule:
     # Runs every 2 hours
-    - cron: "0 */2 * * *"
+    # - cron: "0 */2 * * *"
   workflow_dispatch:
 
 jobs:

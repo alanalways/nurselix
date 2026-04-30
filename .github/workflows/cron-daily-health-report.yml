@@ -1,8 +1,10 @@
+# MIGRATED 2026-05-01: scheduling moved to audit-worker/internal-scheduler.mjs
+# Schedule below is commented out. Manual workflow_dispatch retained for emergency.
 name: Daily Health Report
 on:
-  schedule:
+  # schedule:
     # Daily 09:00 UTC (台灣 17:00)
-    - cron: "0 9 * * *"
+    # - cron: "0 9 * * *"
   workflow_dispatch: {}
 
 jobs:

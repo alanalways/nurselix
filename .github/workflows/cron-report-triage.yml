@@ -1,8 +1,10 @@
+# MIGRATED 2026-05-01: scheduling moved to audit-worker/internal-scheduler.mjs
+# Schedule below is commented out. Manual workflow_dispatch retained for emergency.
 name: Report Triage
 on:
-  schedule:
+  # schedule:
     # Daily 04:00 UTC (台灣 12:00)
-    - cron: "0 4 * * *"
+    # - cron: "0 4 * * *"
   workflow_dispatch: {}
 
 jobs:

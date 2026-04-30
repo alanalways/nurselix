@@ -1,8 +1,10 @@
+# MIGRATED 2026-05-01: scheduling moved to audit-worker/internal-scheduler.mjs
+# Schedule below is commented out. Manual workflow_dispatch retained for emergency.
 name: Quality Deep Scan
 on:
-  schedule:
+  # schedule:
     # Daily 03:00 UTC (台灣 11:00)
-    - cron: "0 3 * * *"
+    # - cron: "0 3 * * *"
   workflow_dispatch: {}
 
 jobs:

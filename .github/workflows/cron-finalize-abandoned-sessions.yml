@@ -1,9 +1,11 @@
+# MIGRATED 2026-05-01: scheduling moved to audit-worker/internal-scheduler.mjs
+# Schedule below is commented out. Manual workflow_dispatch retained for emergency.
 name: Hourly finalize-abandoned-sessions cron
 
 on:
-  schedule:
+  # schedule:
     # Runs every hour at minute 15
-    - cron: "15 * * * *"
+    # - cron: "15 * * * *"
   workflow_dispatch: # Allow manual trigger from GitHub Actions UI
 
 jobs:

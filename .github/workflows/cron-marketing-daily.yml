@@ -1,8 +1,10 @@
+# MIGRATED 2026-05-01: scheduling moved to audit-worker/internal-scheduler.mjs
+# Schedule below is commented out. Manual workflow_dispatch retained for emergency.
 name: Marketing Daily
 on:
-  schedule:
+  # schedule:
     # Daily 10:00 UTC (台灣 18:00)
-    - cron: "0 10 * * *"
+    # - cron: "0 10 * * *"
   workflow_dispatch: {}
 
 jobs:
