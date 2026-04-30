@@ -37,7 +37,14 @@ if (fs.existsSync(envFile)) {
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const CRON_SECRET  = process.env.CRON_SECRET;
-const APP_URL      = process.env.NURSLIX_INTERNAL_URL || process.env.APP_URL || "https://nurslix.zeabur.app";
+const PUBLIC_URL   = process.env.APP_URL || "https://nurslix.zeabur.app";
+
+// Try the internal URL first (faster, doesn't traverse the public internet),
+// but fall back to the public URL automatically if the internal one is
+// unreachable. Zeabur internal hostnames are project-specific so we can't
+// hardcode a default that always works — the public URL is the safe default.
+let APP_URL = process.env.NURSLIX_INTERNAL_URL || PUBLIC_URL;
+let usingPublicFallback = APP_URL === PUBLIC_URL;
 
 if (!DATABASE_URL) { console.error("[scheduler] Missing DATABASE_URL — exiting"); process.exit(1); }
 if (!CRON_SECRET) {
@@ -97,10 +104,10 @@ async function writeState(jobName, payload) {
 }
 
 // ───── HTTP fire ──────────────────────────────────────────────────────────
-async function fireOnce(job) {
+async function fireOnceTo(baseUrl, job) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), job.timeoutMs);
-  const url = APP_URL.replace(/\/$/, "") + job.path;
+  const url = baseUrl.replace(/\/$/, "") + job.path;
   const startedAt = Date.now();
   try {
     const res = await fetch(url, {
@@ -117,6 +124,22 @@ async function fireOnce(job) {
   }
 }
 
+async function fireOnce(job) {
+  // Try the configured base URL first.
+  let r = await fireOnceTo(APP_URL, job);
+
+  // status=0 means fetch threw before getting an HTTP response — usually
+  // DNS resolution / connection refused. If we're still on the internal
+  // URL, switch to the public one for this and future calls.
+  if (!r.ok && r.status === 0 && !usingPublicFallback && APP_URL !== PUBLIC_URL) {
+    console.log(`[scheduler] internal URL ${APP_URL} unreachable (${r.body.slice(0, 80)}), switching to public ${PUBLIC_URL}`);
+    APP_URL = PUBLIC_URL;
+    usingPublicFallback = true;
+    r = await fireOnceTo(APP_URL, job);
+  }
+  return r;
+}
+
 async function runJob(job) {
   const reps = job.repeat ?? 1;
   const results = [];
@@ -128,9 +151,29 @@ async function runJob(job) {
     if (!r.ok && reps === 1) break;
   }
   const okCount = results.filter((r) => r.ok).length;
+  const allFailed = okCount === 0;
+
+  // Persist state. If everything failed (e.g. internal URL not reachable),
+  // back off rather than mark "today is done" — next isDue() check runs
+  // the job again after the back-off window so we self-heal once the
+  // operator fixes the env.
+  const prevState = await readState(job.name);
+  const failureCount = allFailed ? ((prevState?.failureCount ?? 0) + 1) : 0;
+  const backoffMin = Math.min(60, 5 * failureCount); // 5,10,15…cap at 60min
+
+  // When all failed, lastRunAt becomes "next retry no earlier than now+backoff"
+  // — the daily isDue() rule will see lastRunAt before today's trigger and
+  // re-fire. We use a sentinel field instead of lying about lastRunAt.
   await writeState(job.name, {
-    lastRunAt: new Date().toISOString(),
+    lastRunAt: allFailed
+      ? (prevState?.lastRunAt ?? null)               // don't advance lastRunAt on full failure
+      : new Date().toISOString(),
+    lastAttemptAt: new Date().toISOString(),
+    nextRetryAt: allFailed
+      ? new Date(Date.now() + backoffMin * 60_000).toISOString()
+      : null,
     lastStatus: okCount === results.length ? "ok" : (okCount > 0 ? "partial" : "fail"),
+    failureCount,
     lastDurationMs: results.reduce((s, r) => s + r.durationMs, 0),
     lastResults: results.map((r) => ({ ok: r.ok, status: r.status })),
     lastBody: results[results.length - 1]?.body?.slice(0, 200),
@@ -143,7 +186,13 @@ function nowUTC() { return new Date(); }
 async function isDue(job) {
   const state = await readState(job.name);
   const lastRun = state?.lastRunAt ? new Date(state.lastRunAt) : null;
+  const nextRetry = state?.nextRetryAt ? new Date(state.nextRetryAt) : null;
   const now = nowUTC();
+
+  // If we backed off after a failure, respect the retry window for all
+  // job types — even a daily job that already missed today's trigger
+  // shouldn't hammer the endpoint every 60s.
+  if (nextRetry && now < nextRetry) return false;
 
   if (job.at) {
     // Daily at HH:MM UTC
