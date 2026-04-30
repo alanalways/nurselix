@@ -30,6 +30,13 @@ export async function GET(req: NextRequest) {
 
   // 2) Find suspicious questions to auto-flag.
   //    errorRate >= 80 AND attemptCount >= 30 AND status = 'APPROVED' AND difficulty != 'HARD'
+  //
+  // Memory note: this route only needs the contentHash inputs (stem, options A-F,
+  // correctAnswer, explanationZh) plus the stat fields used to build issue.detail.
+  // The previous select also pulled stemZh / explanationEn / optionRationales /
+  // correctAnswers / module / questionType / difficulty / status — none of which
+  // are read below, but they include large text columns that bloat memory on
+  // Zeabur. Trimmed to the minimum that contentHash() and the issue payload need.
   const suspicious = await prisma.question.findMany({
     where: {
       errorRate: { gte: 80 },
@@ -38,10 +45,12 @@ export async function GET(req: NextRequest) {
       difficulty: { not: "HARD" },
     },
     select: {
-      id: true, module: true, questionType: true, difficulty: true, status: true,
-      stem: true, stemZh: true, optionA: true, optionB: true, optionC: true, optionD: true,
-      optionE: true, optionF: true, correctAnswer: true, correctAnswers: true,
-      explanationZh: true, explanationEn: true, optionRationales: true,
+      id: true,
+      stem: true,
+      optionA: true, optionB: true, optionC: true, optionD: true,
+      optionE: true, optionF: true,
+      correctAnswer: true,
+      explanationZh: true,
       attemptCount: true, correctCount: true, errorRate: true,
     },
   });

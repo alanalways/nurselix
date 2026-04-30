@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runOpsAgentTeam } from "@/lib/ops/orchestrator";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 min — agent team takes 1–3 min
+
 /**
  * GET /api/cron/ops
  *
@@ -34,10 +37,14 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Fire-and-forget — respond immediately; agent team runs in background (1–3 min)
-  runOpsAgentTeam({ periodType: "daily", triggeredBy: "cron" }).catch((err) => {
+  // Synchronous run — Zeabur serverless kills the function after the response,
+  // so fire-and-forget would not actually finish the agent team. With
+  // maxDuration=300 we have enough budget to await it.
+  try {
+    const result = await runOpsAgentTeam({ periodType: "daily", triggeredBy: "cron" });
+    return NextResponse.json({ ok: true, message: `Daily ops report for ${today} done.`, result });
+  } catch (err: any) {
     console.error("[cron/ops] agent team failed:", err?.message);
-  });
-
-  return NextResponse.json({ ok: true, message: `Daily ops report for ${today} started.` });
+    return NextResponse.json({ ok: false, error: err?.message ?? "agent team failed" }, { status: 500 });
+  }
 }

@@ -12,9 +12,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Retry failed Hermes jobs
+        # --max-time aligned with Zeabur HTTP timeout (5 min) and the
+        # 4-min deadline guard inside the route. 290s gives a small buffer
+        # for the response to flush before curl gives up.
         run: |
           STATUS=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
-            --max-time 480 \
+            --max-time 290 \
             -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \

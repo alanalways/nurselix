@@ -4,6 +4,10 @@
  * POST { scope?: "reported"|"all"|"approved", model?: string } → start job, returns { jobId }
  * GET                                                           → poll job status + results
  * DELETE                                                        → clear finished job
+ *
+ * Job state is persisted to AppSetting (key: 'admin.contentAudit.job') so it
+ * survives serverless cold-starts on Zeabur. Without this, the process
+ * `global` resets and the UI sees a stale "running" job forever.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -24,13 +28,34 @@ export interface AuditJob {
   message: string;
 }
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __contentAuditJob: AuditJob | undefined;
+const JOB_KEY = "admin.contentAudit.job";
+
+async function readJob(): Promise<AuditJob | null> {
+  const row = await prisma.appSetting.findUnique({ where: { key: JOB_KEY } });
+  if (!row) return null;
+  try {
+    return JSON.parse(row.value) as AuditJob;
+  } catch {
+    return null;
+  }
+}
+
+async function writeJob(job: AuditJob): Promise<void> {
+  const value = JSON.stringify(job);
+  await prisma.appSetting.upsert({
+    where: { key: JOB_KEY },
+    create: { key: JOB_KEY, value },
+    update: { value },
+  });
+}
+
+async function clearJob(): Promise<void> {
+  await prisma.appSetting.delete({ where: { key: JOB_KEY } }).catch(() => {});
 }
 
 async function runAudit(jobId: string, scope: string) {
-  const job = global.__contentAuditJob!;
+  let job = await readJob();
+  if (!job || job.id !== jobId) return;
 
   try {
     let where: Record<string, unknown> = { status: "APPROVED" };
@@ -47,6 +72,7 @@ async function runAudit(jobId: string, scope: string) {
         job.status = "done";
         job.message = "目前沒有待審回報的題目";
         job.finishedAt = new Date().toISOString();
+        await writeJob(job);
         return;
       }
       where = { id: { in: ids } };
@@ -67,10 +93,13 @@ async function runAudit(jobId: string, scope: string) {
     });
 
     job.total = questions.length;
+    await writeJob(job);
 
     // Process in batches
     for (let i = 0; i < questions.length; i += AUDIT_BATCH) {
-      if (global.__contentAuditJob?.id !== jobId) return; // cancelled
+      const chk = await readJob();
+      if (!chk || chk.id !== jobId) return; // cancelled
+      job = chk;
 
       const batch = questions.slice(i, i + AUDIT_BATCH);
       try {
@@ -82,6 +111,7 @@ async function runAudit(jobId: string, scope: string) {
       }
       job.done = Math.min(i + AUDIT_BATCH, questions.length);
       job.message = `已審核 ${job.done} / ${job.total} 題…`;
+      await writeJob(job);
     }
 
     job.status = "done";
@@ -90,10 +120,15 @@ async function runAudit(jobId: string, scope: string) {
     const reviewCount = job.results.filter((r) => r.verdict === "NEEDS_REVIEW").length;
     job.message = `審核完成：${job.total} 題 | ❌ 錯誤 ${errorCount} 題 | ⚠️ 待複審 ${reviewCount} 題`;
     job.finishedAt = new Date().toISOString();
+    await writeJob(job);
   } catch (err) {
-    job.status = "failed";
-    job.message = err instanceof Error ? err.message : "未知錯誤";
-    job.finishedAt = new Date().toISOString();
+    const cur = await readJob();
+    if (cur && cur.id === jobId) {
+      cur.status = "failed";
+      cur.message = err instanceof Error ? err.message : "未知錯誤";
+      cur.finishedAt = new Date().toISOString();
+      await writeJob(cur);
+    }
   }
 }
 
@@ -101,7 +136,7 @@ export async function GET() {
   const guard = await requireAdmin();
   if (guard instanceof NextResponse) return guard;
 
-  const job = global.__contentAuditJob;
+  const job = await readJob();
   if (!job) return NextResponse.json({ job: null });
   return NextResponse.json({ job });
 }
@@ -110,7 +145,8 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (guard instanceof NextResponse) return guard;
 
-  if (global.__contentAuditJob?.status === "running") {
+  const existing = await readJob();
+  if (existing?.status === "running") {
     return NextResponse.json({ error: "審核正在執行中，請稍候" }, { status: 409 });
   }
 
@@ -129,14 +165,16 @@ export async function POST(req: NextRequest) {
     startedAt: new Date().toISOString(),
     message: "初始化中…",
   };
-  global.__contentAuditJob = job;
+  await writeJob(job);
 
   // Fire and forget
-  runAudit(jobId, scope).catch((err) => {
+  runAudit(jobId, scope).catch(async (err) => {
     console.error("[content-audit] job failed:", err);
-    if (global.__contentAuditJob?.id === jobId) {
-      global.__contentAuditJob.status = "failed";
-      global.__contentAuditJob.message = String(err?.message ?? err);
+    const cur = await readJob();
+    if (cur && cur.id === jobId) {
+      cur.status = "failed";
+      cur.message = String(err?.message ?? err);
+      await writeJob(cur);
     }
   });
 
@@ -147,9 +185,10 @@ export async function DELETE() {
   const guard = await requireAdmin();
   if (guard instanceof NextResponse) return guard;
 
-  if (global.__contentAuditJob?.status === "running") {
+  const existing = await readJob();
+  if (existing?.status === "running") {
     return NextResponse.json({ error: "無法刪除執行中的工作" }, { status: 409 });
   }
-  global.__contentAuditJob = undefined;
+  await clearJob();
   return NextResponse.json({ ok: true });
 }

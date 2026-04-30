@@ -7,44 +7,63 @@ export async function GET() {
   if (guard instanceof NextResponse) return guard;
 
   // Domain error rates (only APPROVED questions with >0 attempts)
-  const questions = await prisma.question.findMany({
+  //
+  // Memory note: the previous version pulled every APPROVED question with
+  // attempts > 0 into memory just to sum/group by domain and slice top-10
+  // hardest. With 14k+ rows that OOM'd on Zeabur. We now use SQL groupBy for
+  // the domain aggregates and a narrow findMany (orderBy errorRate desc, take 10)
+  // for the weakest list, so the heavy work stays in Postgres.
+  const grouped = await prisma.question.groupBy({
+    by: ["domain"],
     where: { status: "APPROVED", attemptCount: { gt: 0 } },
-    select: { id: true, domain: true, stem: true, attemptCount: true, correctCount: true, difficulty: true },
+    _sum: { attemptCount: true, correctCount: true },
+    _count: { _all: true },
   });
 
-  const domainStats: Record<string, { attempts: number; correct: number; items: number }> = {};
-  for (const q of questions) {
-    const key = q.domain ?? "未分類";
-    if (!domainStats[key]) domainStats[key] = { attempts: 0, correct: 0, items: 0 };
-    domainStats[key].attempts += q.attemptCount;
-    domainStats[key].correct += q.correctCount;
-    domainStats[key].items += 1;
-  }
+  type GroupRow = {
+    domain: string | null;
+    _sum: { attemptCount: number | null; correctCount: number | null };
+    _count: { _all: number };
+  };
 
-  const domainBreakdown = Object.entries(domainStats)
-    .map(([domain, v]) => ({
-      domain,
-      attempts: v.attempts,
-      correct: v.correct,
-      items: v.items,
-      errorRate: v.attempts > 0 ? Math.round(((v.attempts - v.correct) / v.attempts) * 100) : 0,
-    }))
-    .sort((a, b) => b.errorRate - a.errorRate);
+  const domainBreakdown = (grouped as unknown as GroupRow[])
+    .map((g) => {
+      const attempts = g._sum.attemptCount ?? 0;
+      const correct = g._sum.correctCount ?? 0;
+      const items = g._count._all ?? 0;
+      return {
+        domain: g.domain ?? "未分類",
+        attempts,
+        correct,
+        items,
+        errorRate: attempts > 0 ? Math.round(((attempts - correct) / attempts) * 100) : 0,
+      };
+    })
+    .sort((a: { errorRate: number }, b: { errorRate: number }) => b.errorRate - a.errorRate);
 
-  // Top 10 hardest questions (highest error rate, minimum 5 attempts)
-  const weakestQuestions = questions
-    .filter((q) => q.attemptCount >= 5)
-    .map((q) => ({
-      id: q.id,
-      stem: q.stem.substring(0, 120),
-      domain: q.domain,
-      difficulty: q.difficulty,
-      attempts: q.attemptCount,
-      correct: q.correctCount,
-      errorRate: Math.round(((q.attemptCount - q.correctCount) / q.attemptCount) * 100),
-    }))
-    .sort((a, b) => b.errorRate - a.errorRate)
-    .slice(0, 10);
+  // Top 10 hardest questions (highest error rate, minimum 5 attempts).
+  // Question.errorRate is maintained by the error-rate-recompute cron job, so
+  // we can sort on it directly in SQL and only ship 10 rows back.
+  const weakestRaw = await prisma.question.findMany({
+    where: { status: "APPROVED", attemptCount: { gte: 5 } },
+    orderBy: [{ errorRate: "desc" }, { attemptCount: "desc" }],
+    take: 10,
+    select: { id: true, stem: true, domain: true, difficulty: true, attemptCount: true, correctCount: true },
+  });
+  const weakestQuestions = weakestRaw.map((q: {
+    id: string; stem: string; domain: string | null; difficulty: string;
+    attemptCount: number; correctCount: number;
+  }) => ({
+    id: q.id,
+    stem: q.stem.substring(0, 120),
+    domain: q.domain,
+    difficulty: q.difficulty,
+    attempts: q.attemptCount,
+    correct: q.correctCount,
+    errorRate: q.attemptCount > 0
+      ? Math.round(((q.attemptCount - q.correctCount) / q.attemptCount) * 100)
+      : 0,
+  }));
 
   // MAU: last 30 days
   const thirtyDaysAgo = new Date();

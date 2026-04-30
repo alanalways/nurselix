@@ -11,10 +11,17 @@ import type { Role, Plan } from "@/types";
 /**
  * Admin emails — these users are automatically promoted to ADMIN + ELITE on
  * first sign-in and every subsequent sign-in (self-healing if role is demoted).
+ *
+ * Source of truth: ADMIN_EMAILS env var (comma-separated). Falls back to the
+ * historical hardcoded owner email so existing deployments keep working.
+ * Adding/removing admins now only requires editing the Zeabur env, not code.
  */
-const ADMIN_EMAILS = new Set([
-  "cmshj30326@gmail.com",
-]);
+const ADMIN_EMAILS = new Set(
+  (process.env.ADMIN_EMAILS ?? "cmshj30326@gmail.com")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+);
 
 async function ensureAdminRole(email: string | null | undefined) {
   if (!email) return null;

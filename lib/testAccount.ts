@@ -1,20 +1,32 @@
 /**
- * 硬編碼的藍新金流審核測試帳號。
- * 透過 AppSetting("testAccountEnabled") 控制是否可登入，預設關閉。
- * 登入成功時會自動在 DB upsert 對應的 User 記錄。
+ * 藍新金流審核測試帳號。
+ *
+ * 帳密改成從環境變數讀取（不再寫死在 code 裡）：
+ *   TEST_ACCOUNT_EMAIL — 例如 abcd@nurslix.com
+ *   TEST_ACCOUNT_PASSWORD — 任何字串
+ *   TEST_ACCOUNT_NAME — 顯示名稱（可選）
+ *
+ * 啟用條件（兩者都必須成立）：
+ *   1. 環境變數 TEST_ACCOUNT_EMAIL 與 TEST_ACCOUNT_PASSWORD 都有設
+ *   2. AppSetting("testAccountEnabled") 為 "true"
+ *
+ * 任一條件不成立 → 認證失敗。確保未設定 env 時無法被啟用，
+ * 也避免帳密外洩到 git history。
  */
 import { prisma } from "@/lib/prisma";
 
 export const TEST_ACCOUNT = {
-  email: "abcd@nurslix.com",
-  password: "abcdefghi",
-  name: "藍新審核測試帳號",
+  email: process.env.TEST_ACCOUNT_EMAIL ?? "",
+  password: process.env.TEST_ACCOUNT_PASSWORD ?? "",
+  name: process.env.TEST_ACCOUNT_NAME ?? "藍新審核測試帳號",
 } as const;
 
 const SETTING_KEY = "testAccountEnabled";
 
-/** 讀取測試帳號是否啟用（預設 false）。失敗時視為關閉。 */
+/** 讀取測試帳號是否啟用（預設 false）。失敗時視為關閉。
+ *  另外要求 env 必須有完整設定，否則無論 AppSetting 為何都返回 false。 */
 export async function isTestAccountEnabled(): Promise<boolean> {
+  if (!TEST_ACCOUNT.email || !TEST_ACCOUNT.password) return false;
   try {
     const s = await prisma.appSetting.findUnique({ where: { key: SETTING_KEY } });
     return s?.value === "true";

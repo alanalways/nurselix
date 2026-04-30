@@ -1,7 +1,10 @@
 /**
  * Admin 觸發的 DB migration 端點。
  * 執行 prisma/migrations/*.sql 中的 IF NOT EXISTS 語句，安全可重複呼叫。
- * 用於 Zeabur 上初次建表（LearnerProfile、SessionDiagnosis、HermesJob、AppSetting）。
+ *
+ * 自動列舉 prisma/migrations 下所有 .sql 檔（依檔名排序執行），
+ * 不再在 code 內維護白名單；新增 phase 只要把 .sql 放進 migrations/ 就會被執行。
+ * 所有 SQL 必須是 idempotent（CREATE TABLE IF NOT EXISTS / ALTER TABLE IF NOT EXISTS …）。
  */
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
@@ -9,16 +12,20 @@ import path from "node:path";
 import { requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 
-const MIGRATIONS = ["phase10_hermes.sql", "phase13_vocabulary.sql"];
-
 export async function POST() {
   const guard = await requireAdmin();
   if (guard instanceof NextResponse) return guard;
 
+  const migrationsDir = path.join(process.cwd(), "prisma", "migrations");
+  const allFiles = await fs.readdir(migrationsDir);
+  // Auto-discover: every .sql in prisma/migrations runs in lexicographic order
+  // (phase3 < phase7 < ... < phase17, then upgrade_requests).
+  const MIGRATIONS = allFiles.filter((f) => f.endsWith(".sql")).sort();
+
   const results: { file: string; ok: boolean; error?: string }[] = [];
 
   for (const name of MIGRATIONS) {
-    const filePath = path.join(process.cwd(), "prisma", "migrations", name);
+    const filePath = path.join(migrationsDir, name);
     try {
       const sql = await fs.readFile(filePath, "utf8");
       // 逐個 statement 執行（依 ; 切）— Prisma $executeRawUnsafe 一次只能一條

@@ -7,10 +7,26 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
+function resolveConnectionString(): string {
+  const url = process.env.DATABASE_URL;
+  if (url) return url;
+
+  // Fail-fast in production: silently connecting to localhost is worse than a
+  // clear startup error.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[prisma] DATABASE_URL is not set in production. Refusing to fall back to localhost. " +
+        "Configure DATABASE_URL in the environment before starting the server.",
+    );
+  }
+
+  // Dev / build-time fallback: let the build proceed; first query will fail
+  // with a clear connection error if Postgres is not running locally.
+  return "postgresql://localhost/nurslix";
+}
+
 function createPrismaClient() {
-  // At build time DATABASE_URL may not be set; defer connection until first query
-  const connectionString = process.env.DATABASE_URL ?? "postgresql://localhost/nurslix";
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({ connectionString: resolveConnectionString() });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,

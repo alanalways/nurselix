@@ -23,18 +23,33 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const autoArchive = url.searchParams.get("autoArchive") === "1";
 
-  const questions = await prisma.question.findMany({
-    select: {
-      id: true, module: true, questionType: true, difficulty: true, status: true,
-      stem: true, stemZh: true, optionA: true, optionB: true, optionC: true, optionD: true,
-      optionE: true, optionF: true, correctAnswer: true, correctAnswers: true,
-      explanationZh: true, explanationEn: true, optionRationales: true,
-      attemptCount: true, correctCount: true, errorRate: true,
-    },
-  });
+  // Memory note: 14k+ rows × all big text fields (stem/explanation/rationales) was
+  // OOMing on Zeabur. We now stream rows in id-cursor batches, run scanQuestion
+  // incrementally and only retain ids + small accumulators between batches.
+  const BATCH_SIZE = 500;
+
+  // The scan engine (scanQuestion + contentHash) reads stem/options/explanation/
+  // rationales/answer/stat fields, so these are still required — we just don't
+  // load them all at once anymore.
+  const QUESTION_SELECT = {
+    id: true, module: true, questionType: true, difficulty: true, status: true,
+    stem: true, stemZh: true, optionA: true, optionB: true, optionC: true, optionD: true,
+    optionE: true, optionF: true, correctAnswer: true, correctAnswers: true,
+    explanationZh: true, explanationEn: true, optionRationales: true,
+    attemptCount: true, correctCount: true, errorRate: true,
+  } as const;
+
+  // Total + status counts via aggregate so we don't need every row in memory
+  // for the health report at the bottom of this handler.
+  const [totalQuestions, approvedCount, draftCount, archivedCount] = await Promise.all([
+    prisma.question.count(),
+    prisma.question.count({ where: { status: "APPROVED" } }),
+    prisma.question.count({ where: { status: "DRAFT" } }),
+    prisma.question.count({ where: { status: "ARCHIVED" } }),
+  ]);
 
   const stats = {
-    total: questions.length,
+    total: totalQuestions,
     issuesByRule: {} as Record<string, number>,
     issuesBySeverity: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 } as Record<string, number>,
     questionsWithIssues: 0,
@@ -50,47 +65,63 @@ export async function GET(req: NextRequest) {
     where: { status: "OPEN" },
     select: { questionId: true, ruleId: true, contentHash: true },
   });
-  const existingKeys = new Set(existing.map(e => `${e.questionId}:${e.ruleId}:${e.contentHash || ""}`));
+  const existingKeys = new Set(existing.map((e: { questionId: string; ruleId: string; contentHash: string | null }) =>
+    `${e.questionId}:${e.ruleId}:${e.contentHash || ""}`));
 
-  const newIssues: any[] = [];
-  for (const q of questions) {
-    const hash = contentHash(q as QuestionShape);
-    let hasIssue = false;
-    let hasCritical = false;
-    const issues = scanQuestion(q as QuestionShape);
-    for (const issue of issues) {
-      hasIssue = true;
-      if (issue.severity === "CRITICAL") {
-        hasCritical = true;
-        const list = criticalRulesByQuestion.get(q.id) ?? [];
-        list.push(issue.ruleId);
-        criticalRulesByQuestion.set(q.id, list);
-      }
-      stats.issuesByRule[issue.ruleId] = (stats.issuesByRule[issue.ruleId] || 0) + 1;
-      stats.issuesBySeverity[issue.severity]++;
-      const key = `${q.id}:${issue.ruleId}:${hash}`;
-      if (existingKeys.has(key)) continue;
-      newIssues.push({
-        questionId: q.id,
-        ruleId: issue.ruleId,
-        severity: issue.severity,
-        detail: issue.detail,
-        meta: issue.meta || null,
-        contentHash: hash,
-      });
-    }
-    if (hasIssue) stats.questionsWithIssues++;
-    if (hasCritical) stats.criticalQuestionIds.push(q.id);
-  }
-
-  // Insert new issues (use createMany; manual chunks for big inserts)
-  for (let i = 0; i < newIssues.length; i += 500) {
-    await prisma.questionQualityIssue.createMany({
-      data: newIssues.slice(i, i + 500) as any,
-      skipDuplicates: true,
+  // Stream Question rows in id-ordered batches and insert findings per-batch
+  // so we never hold the full corpus in memory.
+  let cursorId: string | undefined = undefined;
+  while (true) {
+    const batch: Array<Record<string, any>> = await prisma.question.findMany({
+      select: QUESTION_SELECT,
+      orderBy: { id: "asc" },
+      take: BATCH_SIZE,
+      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
     });
+    if (batch.length === 0) break;
+
+    const batchIssues: any[] = [];
+    for (const q of batch) {
+      const hash = contentHash(q as QuestionShape);
+      let hasIssue = false;
+      let hasCritical = false;
+      const issues = scanQuestion(q as QuestionShape);
+      for (const issue of issues) {
+        hasIssue = true;
+        if (issue.severity === "CRITICAL") {
+          hasCritical = true;
+          const list = criticalRulesByQuestion.get(q.id) ?? [];
+          list.push(issue.ruleId);
+          criticalRulesByQuestion.set(q.id, list);
+        }
+        stats.issuesByRule[issue.ruleId] = (stats.issuesByRule[issue.ruleId] || 0) + 1;
+        stats.issuesBySeverity[issue.severity]++;
+        const key = `${q.id}:${issue.ruleId}:${hash}`;
+        if (existingKeys.has(key)) continue;
+        batchIssues.push({
+          questionId: q.id,
+          ruleId: issue.ruleId,
+          severity: issue.severity,
+          detail: issue.detail,
+          meta: issue.meta || null,
+          contentHash: hash,
+        });
+      }
+      if (hasIssue) stats.questionsWithIssues++;
+      if (hasCritical) stats.criticalQuestionIds.push(q.id);
+    }
+
+    if (batchIssues.length > 0) {
+      await prisma.questionQualityIssue.createMany({
+        data: batchIssues as any,
+        skipDuplicates: true,
+      });
+      stats.insertedNew += batchIssues.length;
+    }
+
+    if (batch.length < BATCH_SIZE) break;
+    cursorId = batch[batch.length - 1].id as string;
   }
-  stats.insertedNew = newIssues.length;
 
   // Auto-archive critical (APPROVED → DRAFT) and record a QuestionVersion
   // audit row per archived question so the change is traceable in the
@@ -135,25 +166,24 @@ export async function GET(req: NextRequest) {
 
   // Health report
   const today = new Date().toISOString().slice(0, 10);
-  const approved = questions.filter(q => q.status === "APPROVED").length;
-  const draft = questions.filter(q => q.status === "DRAFT").length;
-  const archived = questions.filter(q => q.status === "ARCHIVED").length;
   const weight = stats.issuesBySeverity.CRITICAL * 10 + stats.issuesBySeverity.HIGH * 5
                + stats.issuesBySeverity.MEDIUM * 2 + stats.issuesBySeverity.LOW * 1;
-  const healthScore = Math.max(0, Math.min(100, Math.round(100 - (weight / questions.length) * 100)));
+  const healthScore = totalQuestions === 0
+    ? 100
+    : Math.max(0, Math.min(100, Math.round(100 - (weight / totalQuestions) * 100)));
 
   await prisma.qualityHealthReport.upsert({
     where: { periodType_period: { periodType: "daily", period: today } },
     create: {
       periodType: "daily", period: today,
-      totalQuestions: questions.length,
-      approvedCount: approved, draftCount: draft, archivedCount: archived,
+      totalQuestions,
+      approvedCount, draftCount, archivedCount,
       openIssueCount: stats.questionsWithIssues, healthScore,
       summary: { byRule: stats.issuesByRule, bySeverity: stats.issuesBySeverity } as any,
     },
     update: {
-      totalQuestions: questions.length,
-      approvedCount: approved, draftCount: draft, archivedCount: archived,
+      totalQuestions,
+      approvedCount, draftCount, archivedCount,
       openIssueCount: stats.questionsWithIssues, healthScore,
       summary: { byRule: stats.issuesByRule, bySeverity: stats.issuesBySeverity } as any,
     },
