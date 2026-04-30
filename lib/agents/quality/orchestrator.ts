@@ -90,8 +90,13 @@ export async function proposeRepairsForCritical(opts?: { limit?: number; deadlin
   const startedAt = Date.now();
   const overBudget = () => Date.now() - startedAt > deadlineMs;
 
+  // Avoid racing with the audit-worker (which writes new CRITICAL issues 24/7):
+  // skip anything detected in the last hour so we don't double-process a row
+  // that the worker's verifier may still be touching. propose-repairs runs
+  // once a day at 05:00 UTC, so a 1h staleness window is safe.
+  const staleBefore = new Date(Date.now() - 60 * 60 * 1000);
   const issues = await prisma.questionQualityIssue.findMany({
-    where: { status: "OPEN", severity: "CRITICAL" },
+    where: { status: "OPEN", severity: "CRITICAL", detectedAt: { lt: staleBefore } },
     include: { question: true },
     take: limit,
     orderBy: { detectedAt: "asc" },

@@ -81,13 +81,28 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
     : score >= 70 ? "注意 · keep an eye"
     : "警示 · attention";
 
+  const auditHb = data.auditProgress?.heartbeat;
+  const auditDead = auditHb?.status === "dead";
+
   return (
     <div className="space-y-12">
       {/* Editorial grid: 2fr / 1fr */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8 lg:gap-14">
         {/* LEFT — lead story + features */}
         <div>
-          <SectionLabel className="mb-4">Today's Lead</SectionLabel>
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <SectionLabel>Today's Lead</SectionLabel>
+            {auditDead && auditHb && (
+              <button
+                onClick={() => onJump("agents")}
+                className="italic text-[var(--j-red)] border border-[var(--j-red)] bg-[var(--j-red)]/8 px-3 py-1.5 text-[12px] tracking-wide hover:bg-[var(--j-red)]/15 hover:-translate-y-px transition-all cursor-pointer"
+                style={FONT_DISPLAY}
+                title="點擊跳到 Agent 控制台"
+              >
+                ⚠ NIM 審題系統卡住超過 30 分鐘 (上次活動: {auditHb.ageMinutes}m ago)
+              </button>
+            )}
+          </div>
           <h2 className="italic tracking-tight text-[var(--j-ink)] leading-[0.92] mb-4"
             style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.5rem, 5vw, 4.5rem)", letterSpacing: "-0.025em" }}>
             {score !== null && score >= 90 ? "All in order today." : score !== null && score >= 70 ? "A few notes to attend." : "Some things to read closely."}
@@ -327,6 +342,50 @@ export default function OverviewTab({ onJump }: { onJump: (k: TabKey) => void })
             </div>
             );
           })()}
+
+          {/* Agent teams — recent hermes jobs */}
+          <div className="border border-[var(--j-line-strong)] p-4 mb-5 bg-[var(--j-bg-card)]">
+            <SectionLabel className="!mt-0 mb-3">● Agent teams · 工人們</SectionLabel>
+            {!data.agentStatus || data.agentStatus.length === 0 ? (
+              <div className="py-2 text-[12px] italic text-[var(--j-ink-dim)]" style={FONT_DISPLAY}>
+                — No agent jobs yet
+              </div>
+            ) : (
+              <div>
+                {data.agentStatus.slice(0, 5).map((job: any) => {
+                  const tone =
+                    job.status === "running" ? "phosphor"
+                    : job.status === "done" ? "muted"
+                    : job.status === "error" ? "danger"
+                    : "warning";
+                  const sid = typeof job.sessionId === "string" && job.sessionId.length >= 8
+                    ? job.sessionId.slice(-8)
+                    : (job.sessionId || "—");
+                  const errSummary = typeof job.error === "string"
+                    ? job.error.split("\n")[0].slice(0, 80)
+                    : null;
+                  return (
+                    <div key={job.id} className="py-2 border-b border-[var(--j-line)]/60 last:border-b-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <Pill tone={tone}>{job.status}</Pill>
+                        <span className="text-[var(--j-ink-dim)] text-[11px]" style={FONT_MONO}>
+                          {sid}
+                        </span>
+                        <MetaText className="ml-auto">
+                          {new Date(job.createdAt).toLocaleString("zh-TW", { hour12: false })}
+                        </MetaText>
+                      </div>
+                      {job.status === "error" && errSummary && (
+                        <div className="text-[10px] text-[var(--j-red)] mt-1 italic" style={FONT_DISPLAY}>
+                          {errSummary}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* 7-day chart */}
           <div className="border border-[var(--j-line)] p-4 mb-5">

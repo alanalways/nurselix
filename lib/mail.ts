@@ -27,6 +27,12 @@ interface SendMailParams {
 }
 
 export async function sendMail({ to, subject, html, text }: SendMailParams): Promise<boolean> {
+  const disabled = process.env.MAIL_DISABLED === "1" || process.env.MAIL_DISABLED === "true";
+  if (disabled) {
+    console.log(`[mail] DISABLED — would have sent to ${to}: ${subject}`);
+    return false;
+  }
+
   const tx = getTransporter();
   if (!tx) return false;
 

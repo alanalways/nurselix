@@ -42,6 +42,10 @@ export async function GET(req: NextRequest) {
     insertedNew: 0,
   };
 
+  // Track which CRITICAL ruleIds fired for each question so we can write a
+  // QuestionVersion audit row when auto-archiving below.
+  const criticalRulesByQuestion = new Map<string, string[]>();
+
   const existing = await prisma.questionQualityIssue.findMany({
     where: { status: "OPEN" },
     select: { questionId: true, ruleId: true, contentHash: true },
@@ -56,7 +60,12 @@ export async function GET(req: NextRequest) {
     const issues = scanQuestion(q as QuestionShape);
     for (const issue of issues) {
       hasIssue = true;
-      if (issue.severity === "CRITICAL") hasCritical = true;
+      if (issue.severity === "CRITICAL") {
+        hasCritical = true;
+        const list = criticalRulesByQuestion.get(q.id) ?? [];
+        list.push(issue.ruleId);
+        criticalRulesByQuestion.set(q.id, list);
+      }
       stats.issuesByRule[issue.ruleId] = (stats.issuesByRule[issue.ruleId] || 0) + 1;
       stats.issuesBySeverity[issue.severity]++;
       const key = `${q.id}:${issue.ruleId}:${hash}`;
@@ -83,14 +92,45 @@ export async function GET(req: NextRequest) {
   }
   stats.insertedNew = newIssues.length;
 
-  // Auto-archive critical
+  // Auto-archive critical (APPROVED → DRAFT) and record a QuestionVersion
+  // audit row per archived question so the change is traceable in the
+  // dashboard and revertable.
   let autoArchived = 0;
   if (autoArchive && stats.criticalQuestionIds.length > 0) {
-    const r = await prisma.question.updateMany({
+    // Identify which critical questions are actually still APPROVED — those
+    // are the only ones updateMany will touch, so we only audit those.
+    const archivable = await prisma.question.findMany({
       where: { id: { in: stats.criticalQuestionIds }, status: "APPROVED" },
-      data: { status: "DRAFT" },
+      select: { id: true },
     });
-    autoArchived = r.count;
+    const archivableIds: string[] = archivable.map((q: { id: string }) => q.id);
+
+    if (archivableIds.length > 0) {
+      const r = await prisma.question.updateMany({
+        where: { id: { in: archivableIds }, status: "APPROVED" },
+        data: { status: "DRAFT" },
+      });
+      autoArchived = r.count;
+
+      // One audit row per archived question; createMany for a single round-trip.
+      const versionRows = archivableIds.map((qid: string) => {
+        const ruleIds = criticalRulesByQuestion.get(qid) ?? [];
+        return {
+          questionId: qid,
+          snapshot: {
+            status: "APPROVED → DRAFT",
+            reason: "auto-archived by quality-scan",
+            criticalRuleIds: ruleIds,
+          } as any,
+          changedBy: "agent:quality-scan",
+          reason: `Auto-archived: ${ruleIds.join(", ")}`,
+          agentInitiated: true,
+        };
+      });
+      if (versionRows.length > 0) {
+        await prisma.questionVersion.createMany({ data: versionRows });
+      }
+    }
   }
 
   // Health report

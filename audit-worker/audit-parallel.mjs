@@ -44,10 +44,15 @@ const LIMIT = Number(arg("--limit", 0)) || 0;
 const RESET = args.includes("--reset");
 const DRY = args.includes("--dry-run");
 
-// progress
+// progress — persisted to DB (AppSetting) AND optionally to file (Volume)
+// DB is the source of truth. File is just an in-memory perf cache for cold start.
+// On Zeabur redeploy the container is replaced -> Volume might be empty -> we'd
+// lose progress and re-scan from scratch. Loading from DB on startup fixes this.
 const PROGRESS_DIR = process.env.PROGRESS_DIR || "scripts";
 const PROGRESS_FILE = `${PROGRESS_DIR}/audit-parallel-progress.json`;
 const FAILED_FILE = `${PROGRESS_DIR}/audit-failed.json`;
+const AUDIT_COMPLETED_KEY = "audit.completed";  // AppSetting key for completed UUIDs
+const AUDIT_FAILED_KEY    = "audit.failed";     // AppSetting key for failed records
 let progress = {
   startedAt: null,
   completed: [], // array of question IDs done (success OR permanent skip)
@@ -55,6 +60,7 @@ let progress = {
   lastSavedAt: null,
 };
 let failedRecords = []; // [{ qid, error, attempts, lastTriedAt }]
+// File cache (loaded first; DB will overwrite below if it has more data)
 if (!RESET && fs.existsSync(PROGRESS_FILE)) {
   try { progress = { ...progress, ...JSON.parse(fs.readFileSync(PROGRESS_FILE, "utf8")) }; } catch {}
 }
@@ -69,34 +75,56 @@ const failedSet = new Map(failedRecords.map(r => [r.qid, r])); // qid -> record
 const RETRY_FAILED = args.includes("--retry-failed");
 
 let saveTimer = null;
+let lastDbPersistAt = 0;
+const DB_PERSIST_INTERVAL_MS = 60_000; // flush completed/failed sets to DB once a minute
+
 function persistFailed() {
-  fs.writeFileSync(FAILED_FILE, JSON.stringify(Array.from(failedSet.values()), null, 2));
+  try { fs.writeFileSync(FAILED_FILE, JSON.stringify(Array.from(failedSet.values()), null, 2)); }
+  catch (e) { /* file system might be read-only on Zeabur if no Volume; DB still works */ }
 }
 function scheduleSave() {
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
+    try {
+      fs.writeFileSync(PROGRESS_FILE, JSON.stringify({
+        ...progress,
+        completed: Array.from(completedSet),
+        lastSavedAt: new Date().toISOString(),
+      }, null, 2));
+    } catch (e) { /* swallow file errors; DB is the truth */ }
+    persistFailed();
+    saveTimer = null;
+    // also push to DB at most once per DB_PERSIST_INTERVAL_MS — this is what
+    // survives Zeabur redeploy. File is just a tiny perf cache.
+    if (Date.now() - lastDbPersistAt > DB_PERSIST_INTERVAL_MS) {
+      lastDbPersistAt = Date.now();
+      // Fire-and-forget: don't block the worker on DB writes
+      persistToDB().catch(() => {});
+    }
+  }, 1000);
+}
+function saveSync() {
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  try {
     fs.writeFileSync(PROGRESS_FILE, JSON.stringify({
       ...progress,
       completed: Array.from(completedSet),
       lastSavedAt: new Date().toISOString(),
     }, null, 2));
-    persistFailed();
-    saveTimer = null;
-  }, 1000);
-}
-function saveSync() {
-  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-  fs.writeFileSync(PROGRESS_FILE, JSON.stringify({
-    ...progress,
-    completed: Array.from(completedSet),
-    lastSavedAt: new Date().toISOString(),
-  }, null, 2));
+  } catch (e) { /* swallow */ }
   persistFailed();
 }
 
-// graceful shutdown
-process.on("SIGINT", () => { console.log("\n[shutdown] SIGINT — saving progress"); saveSync(); process.exit(0); });
-process.on("SIGTERM", () => { console.log("\n[shutdown] SIGTERM — saving progress"); saveSync(); process.exit(0); });
+// graceful shutdown — sync to file AND flush to DB (DB survives container redeploy)
+async function shutdownAndExit(signal) {
+  console.log(`\n[shutdown] ${signal} — saving progress (file + DB)`);
+  saveSync();
+  try { await persistToDB(); } catch {}
+  try { await client.end(); } catch {}
+  process.exit(0);
+}
+process.on("SIGINT",  () => { shutdownAndExit("SIGINT"); });
+process.on("SIGTERM", () => { shutdownAndExit("SIGTERM"); });
 
 const SYSTEM_PROMPT = `你是 NCLEX-RN 考題審查員，具備臨床護理專業與測驗命題經驗。
 你的任務是審查單一題目，找出 5 類問題：
@@ -296,6 +324,62 @@ async function writeIssues(client, questionId, hash, result) {
 const client = new pg.Client({ connectionString: DATABASE_URL });
 await client.connect();
 
+// === Hydrate completed/failed sets from DB (survives container redeploy) ===
+// File-based progress is kept as a fast cache, but DB is the source of truth.
+// This ensures pushing a new commit to GitHub -> Zeabur rebuild does NOT
+// reset audit progress, even if the Volume mount is missing.
+if (!RESET) {
+  try {
+    const dbCompleted = await client.query(`SELECT value FROM "AppSetting" WHERE key = $1`, [AUDIT_COMPLETED_KEY]);
+    if (dbCompleted.rows[0]?.value) {
+      const arr = JSON.parse(dbCompleted.rows[0].value);
+      if (Array.isArray(arr)) {
+        let added = 0;
+        for (const id of arr) { if (!completedSet.has(id)) { completedSet.add(id); added++; } }
+        console.log(`[hydrate] loaded ${arr.length} completed IDs from DB (+${added} not in file cache)`);
+      }
+    }
+  } catch (e) {
+    console.log(`[hydrate] failed to read AppSetting.${AUDIT_COMPLETED_KEY}: ${e.message}`);
+  }
+  try {
+    const dbFailed = await client.query(`SELECT value FROM "AppSetting" WHERE key = $1`, [AUDIT_FAILED_KEY]);
+    if (dbFailed.rows[0]?.value) {
+      const arr = JSON.parse(dbFailed.rows[0].value);
+      if (Array.isArray(arr)) {
+        let added = 0;
+        for (const r of arr) { if (!failedSet.has(r.qid)) { failedSet.set(r.qid, r); added++; } }
+        console.log(`[hydrate] loaded ${arr.length} failed IDs from DB (+${added} not in file cache)`);
+      }
+    }
+  } catch (e) {
+    console.log(`[hydrate] failed to read AppSetting.${AUDIT_FAILED_KEY}: ${e.message}`);
+  }
+} else {
+  console.log("[hydrate] --reset flag set, skipping DB hydrate");
+}
+
+// Helper: persist completed/failed sets to DB (called periodically + on shutdown)
+async function persistToDB() {
+  try {
+    const completedJson = JSON.stringify(Array.from(completedSet));
+    await client.query(`
+      INSERT INTO "AppSetting" (key, value, "updatedAt")
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW();
+    `, [AUDIT_COMPLETED_KEY, completedJson]);
+
+    const failedJson = JSON.stringify(Array.from(failedSet.values()));
+    await client.query(`
+      INSERT INTO "AppSetting" (key, value, "updatedAt")
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW();
+    `, [AUDIT_FAILED_KEY, failedJson]);
+  } catch (e) {
+    console.log(`[persistToDB] failed: ${e.message?.slice(0, 100)}`);
+  }
+}
+
 // Load questions
 let queueRows;
 if (RETRY_FAILED) {
@@ -435,6 +519,9 @@ const workers = Array.from({ length: WORKERS }, (_, i) => worker(i + 1));
 await Promise.all(workers);
 
 saveSync();
+// Final DB flush — guarantees DB has the freshest state before exit.
+// Critical for Zeabur redeploy: this is the snapshot the next container reads.
+await persistToDB();
 const elapsed = Date.now() - start;
 
 console.log(`\n=== Done ===`);

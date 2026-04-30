@@ -1,10 +1,11 @@
+# DISABLED 2026-04-30: low user count, manual trigger only
 name: Daily trial-expiry cron
 
 on:
-  schedule:
-    # Runs daily at 02:00 UTC (= 10:00 AM Taiwan time)
-    - cron: "0 2 * * *"
-  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+  # schedule:
+  #   # Runs daily at 02:00 UTC (= 10:00 AM Taiwan time)
+  #   - cron: "0 2 * * *"
+  workflow_dispatch: {} # Allow manual trigger from GitHub Actions UI
 
 jobs:
   run-cron:
