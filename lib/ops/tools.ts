@@ -143,69 +143,68 @@ export const getSessionStats = tool(
 );
 
 // ─── CTO / Code tools ─────────────────────────────────────────────────────────
+//
+// NOTE: previous versions of this file shelled out to `npx tsc --noEmit` and
+// `npx next lint` from inside the production container. That was the root
+// cause of the daily 'Bad Gateway' on cron-ops:
+//   - hardcoded path /home/user/nurselix/ doesn't exist on Zeabur
+//   - tsc on 14k files takes 30-60s, lint similar
+//   - the LLM waits for these tool replies → CTO agent alone consumed 90s+
+//   - PM/COO queue up behind it and blow Zeabur's 4-min HTTP cap
+//
+// CI is the right place to gate type/lint health, not a daily cron. Here we
+// expose lightweight DB-only proxies so the CTO agent still has signal.
 
 export const runTypeCheck = tool(
   async () => {
-    const { execSync } = await import("child_process");
-    try {
-      execSync("npx tsc --noEmit --project /home/user/nurselix/tsconfig.json 2>&1", {
-        encoding: "utf-8",
-        timeout: 90_000,
-      });
-      return JSON.stringify({ ok: true, errors: [] });
-    } catch (err: unknown) {
-      const output = (err as { stdout?: string }).stdout ?? String(err);
-      const lines = output.split("\n").filter(Boolean).slice(0, 40);
-      return JSON.stringify({ ok: false, errors: lines });
-    }
+    // DB-only proxy: count open quality issues + critical questions; surface
+    // the same 'engineering health' signal without a 60s shell out.
+    const [openIssues, criticalIssues, recentRepairs] = await Promise.all([
+      prisma.questionQualityIssue.count({ where: { status: "OPEN" } }),
+      prisma.questionQualityIssue.count({ where: { status: "OPEN", severity: "CRITICAL" } }),
+      prisma.questionVersion.count({
+        where: { agentInitiated: true, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      }),
+    ]);
+    return JSON.stringify({
+      ok: criticalIssues === 0,
+      errors: criticalIssues > 0 ? [`${criticalIssues} CRITICAL quality issues open`] : [],
+      detail: { openIssues, criticalIssues, agentEditsLast24h: recentRepairs },
+    });
   },
   {
     name: "run_type_check",
-    description: "Run TypeScript type check on the Nurselix codebase and return any errors found.",
+    description: "Lightweight engineering health probe. Returns counts of open quality issues, critical issues, and agent-initiated edits in the last 24h.",
     schema: z.object({}),
   }
 );
 
 export const runLintCheck = tool(
   async () => {
-    const { execSync } = await import("child_process");
-    try {
-      execSync("cd /home/user/nurselix && npx next lint --format json 2>&1", {
-        encoding: "utf-8",
-        timeout: 90_000,
-      });
-      return JSON.stringify({ ok: true, issues: [] });
-    } catch (err: unknown) {
-      const output = (err as { stdout?: string }).stdout ?? String(err);
-      // Use [\s\S] instead of the `s` regex flag (which needs ES2018 target)
-      const jsonMatch = output.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        try {
-          const issues = JSON.parse(jsonMatch[0]) as Array<{
-            filePath: string;
-            messages: Array<{ ruleId: string | null; message: string; line: number }>;
-          }>;
-          const flat = issues
-            .flatMap((f) =>
-              f.messages.map((m) => ({
-                file: f.filePath.replace("/home/user/nurselix/", ""),
-                rule: m.ruleId ?? "unknown",
-                msg: m.message,
-                line: m.line,
-              }))
-            )
-            .slice(0, 30);
-          return JSON.stringify({ ok: false, issues: flat });
-        } catch {
-          /* fall through */
-        }
-      }
-      return JSON.stringify({ ok: false, issues: output.split("\n").slice(0, 30) });
+    // DB-only proxy: latest QualityHealthReport health score
+    const today = new Date().toISOString().slice(0, 10);
+    const latest = await prisma.qualityHealthReport.findUnique({
+      where: { periodType_period: { periodType: "daily", period: today } },
+    });
+    if (!latest) {
+      return JSON.stringify({ ok: false, issues: ["No QualityHealthReport for today yet — quality-scan cron may not have run."] });
     }
+    const summary = (latest.summary as { byRule?: Record<string, number> } | null) ?? null;
+    const byRule = summary?.byRule ?? {};
+    const top = Object.entries(byRule)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([rule, n]) => ({ rule, count: n }));
+    return JSON.stringify({
+      ok: latest.healthScore >= 90,
+      healthScore: latest.healthScore,
+      openIssueCount: latest.openIssueCount,
+      issues: top,
+    });
   },
   {
     name: "run_lint_check",
-    description: "Run ESLint on the Nurselix codebase and return any lint issues found.",
+    description: "Returns today's QualityHealthReport — health score and the top firing rules. Replaces a heavyweight ESLint run.",
     schema: z.object({}),
   }
 );

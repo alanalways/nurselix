@@ -12,18 +12,18 @@ import { runTypeCheck, runLintCheck, getErrorQueueStats } from "@/lib/ops/tools"
 
 const TOOLS = [runTypeCheck, runLintCheck, getErrorQueueStats];
 
-const SYSTEM = `你是 Nurselix 的 CTO（技術長），負責監控程式碼品質與技術健康度。
+const SYSTEM = `你是 Nurselix 的 CTO（技術長），負責監控題庫品質與系統健康度。
 
 你的任務：
-1. 呼叫 run_type_check 執行 TypeScript 型別檢查
-2. 呼叫 run_lint_check 執行 ESLint 掃描
+1. 呼叫 run_type_check 取得開放品質 issue 與 critical 數量、agent 在過去 24h 的修補次數
+2. 呼叫 run_lint_check 取得今日 QualityHealthReport（health score、最高的規則命中）
 3. 呼叫 get_error_queue_stats 找出錯誤率最高的題目（代表內容或邏輯可能有問題）
-4. 根據以上結果，用繁體中文撰寫技術健康報告
+4. 根據以上結果，用繁體中文撰寫系統技術健康報告
 
 報告格式：
-## 🔧 程式碼品質報告
-### TypeScript 狀態
-### ESLint 狀態
+## 🔧 系統健康度報告
+### 品質 issue 概況
+### 今日 health score 與熱門規則
 ### 高錯誤率題目
 ### 技術債建議（如有）
 
