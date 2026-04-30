@@ -205,38 +205,59 @@ async function audit(q) {
     { role: "user", content: buildUserPrompt(q) },
   ];
 
-  // Try DeepSeek with up to 3 retries on 429 (exponential back-off)
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const failures = [];
+
+  // DeepSeek: 5 retries on transient errors (429/5xx/timeout) with exponential back-off
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const text = await callNIM("deepseek-ai/deepseek-v4-pro", messages);
       const data = parseJSON(text);
       if (data) return { ...data, _modelUsed: "deepseek-v4-pro", _attempts: attempt + 1 };
+      failures.push(`deepseek(attempt ${attempt + 1}): parse failed`);
     } catch (e) {
-      if (e.message === "HTTP_429" && attempt < 2) {
-        await new Promise(r => setTimeout(r, (attempt + 1) * 5000)); // 5s, 10s
+      const msg = e?.message || String(e);
+      failures.push(`deepseek(attempt ${attempt + 1}): ${msg}`);
+      const isTransient = msg === "HTTP_429" || msg.startsWith("HTTP_5") || msg === "TIMEOUT" || msg.includes("aborted");
+      if (isTransient && attempt < 4) {
+        await new Promise(r => setTimeout(r, Math.min(60_000, 10_000 * Math.pow(2, attempt))));
         continue;
       }
-      if (attempt === 2) break;
+      if (!isTransient) break;
     }
   }
 
-  // Fallback Kimi
-  try {
-    const text = await callNIM("moonshotai/kimi-k2.5", messages);
-    const data = parseJSON(text);
-    if (data) return { ...data, _modelUsed: "kimi-k2.5" };
-  } catch {}
+  // Kimi: 3 retries
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const text = await callNIM("moonshotai/kimi-k2.5", messages);
+      const data = parseJSON(text);
+      if (data) return { ...data, _modelUsed: "kimi-k2.5", _attempts: attempt + 1 };
+      failures.push(`kimi(attempt ${attempt + 1}): parse failed`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      failures.push(`kimi(attempt ${attempt + 1}): ${msg}`);
+      const isTransient = msg === "HTTP_429" || msg.startsWith("HTTP_5") || msg === "TIMEOUT" || msg.includes("aborted");
+      if (isTransient && attempt < 2) {
+        await new Promise(r => setTimeout(r, 10_000 * (attempt + 1)));
+        continue;
+      }
+      if (!isTransient) break;
+    }
+  }
 
-  // Fallback Gemini
+  // Gemini fallback (if keys exist)
   for (const id of ["gemini-3-flash-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-flash"]) {
     try {
       const text = await callGemini(id, messages);
       const data = parseJSON(text);
       if (data) return { ...data, _modelUsed: id };
-    } catch {}
+      failures.push(`${id}: parse failed`);
+    } catch (e) {
+      failures.push(`${id}: ${e?.message || e}`);
+    }
   }
 
-  throw new Error("All models failed");
+  throw new Error(`All models failed [${failures.slice(0, 6).join(" | ")}]`);
 }
 
 const contentHash = q => crypto.createHash("sha256")
