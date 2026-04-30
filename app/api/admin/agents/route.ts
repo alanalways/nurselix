@@ -55,6 +55,6 @@ export async function GET() {
         updatedAt: j.updatedAt.toISOString(),
       })),
     },
-    githubActionsUrl: process.env.GITHUB_ACTIONS_URL ?? "https://github.com/alanalways/nurselix/actions",
+    githubActionsUrl: "https://github.com/alanalways/nurselix/actions",
   });
 }

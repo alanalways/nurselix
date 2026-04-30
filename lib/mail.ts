@@ -26,9 +26,13 @@ interface SendMailParams {
   text?: string;
 }
 
+// Hard-coded mail kill switch (low user count phase 2026-05).
+// Flip to false to resume sending. Trial-expiry downgrade still runs because
+// it skips the email block separately.
+const MAIL_DISABLED = true;
+
 export async function sendMail({ to, subject, html, text }: SendMailParams): Promise<boolean> {
-  const disabled = process.env.MAIL_DISABLED === "1" || process.env.MAIL_DISABLED === "true";
-  if (disabled) {
+  if (MAIL_DISABLED) {
     console.log(`[mail] DISABLED — would have sent to ${to}: ${subject}`);
     return false;
   }

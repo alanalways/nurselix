@@ -5,23 +5,18 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/lib/auth.config";
-import { authorizeTestAccount } from "@/lib/testAccount";
 import type { Role, Plan } from "@/types";
 
 /**
  * Admin emails — these users are automatically promoted to ADMIN + ELITE on
  * first sign-in and every subsequent sign-in (self-healing if role is demoted).
  *
- * Source of truth: ADMIN_EMAILS env var (comma-separated). Falls back to the
- * historical hardcoded owner email so existing deployments keep working.
- * Adding/removing admins now only requires editing the Zeabur env, not code.
+ * Hard-coded list (single owner today). Add an email to the array to grant
+ * admin role on next sign-in.
  */
-const ADMIN_EMAILS = new Set(
-  (process.env.ADMIN_EMAILS ?? "cmshj30326@gmail.com")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-);
+const ADMIN_EMAILS = new Set([
+  "cmshj30326@gmail.com",
+]);
 
 async function ensureAdminRole(email: string | null | undefined) {
   if (!email) return null;
@@ -65,19 +60,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-
-        // 硬編碼的藍新測試帳號（依 AppSetting 可被後台啟用/停用）
-        const testUser = await authorizeTestAccount(String(credentials.email), String(credentials.password));
-        if (testUser) {
-          return {
-            id: testUser.id,
-            email: testUser.email,
-            name: testUser.name,
-            image: null,
-            role: testUser.role as Role,
-            plan: testUser.plan as Plan,
-          };
-        }
 
         const user = await prisma.user.findUnique({
           where: { email: String(credentials.email) },

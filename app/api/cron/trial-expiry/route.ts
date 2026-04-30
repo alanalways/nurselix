@@ -17,13 +17,15 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date();
-  const mailDisabled = process.env.MAIL_DISABLED === "1" || process.env.MAIL_DISABLED === "true";
+  // Hard-coded mail kill switch — keep in sync with lib/mail.ts MAIL_DISABLED.
+  // Downgrade logic below always runs regardless.
+  const MAIL_DISABLED = true;
 
   // 1. Send warning emails — parallel per day window
   // Skip entirely if mail is disabled — downgrade logic below still runs.
   const warnDays = [1, 3];
   let warnSent = 0;
-  if (!mailDisabled) for (const days of warnDays) {
+  if (!MAIL_DISABLED) for (const days of warnDays) {
     const windowStart = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
     const windowEnd = new Date(windowStart.getTime() + 24 * 60 * 60 * 1000);
     const users = await prisma.user.findMany({
