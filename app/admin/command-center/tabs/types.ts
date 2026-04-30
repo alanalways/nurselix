@@ -2,6 +2,7 @@
 export type TabKey =
   | "overview"
   | "quality"
+  | "repairs"
   | "reports"
   | "spot-check"
   | "audit"
@@ -15,6 +16,7 @@ export type TabKey =
 export const TAB_LABELS: Record<TabKey, string> = {
   overview: "總覽",
   quality: "品質",
+  repairs: "修復",
   reports: "回報",
   "spot-check": "抽查",
   audit: "審核",
@@ -29,6 +31,7 @@ export const TAB_LABELS: Record<TabKey, string> = {
 export const TAB_DESCRIPTIONS: Record<TabKey, string> = {
   overview: "健康度儀表板與重要數據",
   quality: "QuestionQualityIssue 待處理項目",
+  repairs: "Agent 自動修復建議 — 一鍵套用或拒絕",
   reports: "使用者回報與 SLA 追蹤",
   "spot-check": "隨機題目人工抽查",
   audit: "AI 內容審核佇列",

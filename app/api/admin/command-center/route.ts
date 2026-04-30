@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest) {
     marketingDrafts,
     nclexTotal, agentIssuesTotal, agentIssuesBySeverityRaw,
     auditedQuestionCount, manualResolvedCount,
-    last24hAgentIssues, heartbeatRow,
+    last24hAgentIssues, heartbeatRow, repairProposalRows,
   ] = await Promise.all([
     prisma.qualityHealthReport.findUnique({ where: { periodType_period: { periodType: "daily", period: today } } }),
     prisma.qualityHealthReport.findMany({
@@ -97,6 +97,14 @@ export async function GET(_req: NextRequest) {
     // Audit-worker heartbeat (written after every question, OK or not).
     // The presence + freshness of this row is the source of truth for "alive".
     prisma.appSetting.findUnique({ where: { key: "audit.heartbeat" } }),
+    // Un-applied repair proposals (snapshot.applied=false on agent:repair versions).
+    // Used by the Repairs tab counter.
+    prisma.questionVersion.findMany({
+      where: { changedBy: "agent:repair" },
+      select: { id: true, snapshot: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    }),
   ]);
 
   const statusMap = Object.fromEntries(questionStats.map(s => [s.status, s._count]));
@@ -174,6 +182,19 @@ export async function GET(_req: NextRequest) {
     marketing: {
       drafts: marketingDrafts,
     },
+    repairProposals: (() => {
+      const proposals = (repairProposalRows || []).map(r => r.snapshot as any).filter(Boolean);
+      const unapplied = proposals.filter(p => p?.applied === false);
+      const high = unapplied.filter(p => (p?.confidence ?? 0) >= 90).length;
+      const med  = unapplied.filter(p => (p?.confidence ?? 0) >= 70 && (p?.confidence ?? 0) < 90).length;
+      const low  = unapplied.filter(p => (p?.confidence ?? 0) < 70).length;
+      return {
+        unappliedCount: unapplied.length,
+        highConfidence: high,
+        mediumConfidence: med,
+        lowConfidence: low,
+      };
+    })(),
     // NEW: live audit progress block consumed by Overview tab.
     auditProgress: {
       nclexTotal,

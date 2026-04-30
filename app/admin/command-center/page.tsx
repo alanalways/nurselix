@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react";
 import { TAB_LABELS, TAB_DESCRIPTIONS, type TabKey } from "./tabs/types";
 import OverviewTab from "./tabs/OverviewTab";
 import QualityTab from "./tabs/QualityTab";
+import RepairsTab from "./tabs/RepairsTab";
 import ReportsTab from "./tabs/ReportsTab";
 import SpotCheckTab from "./tabs/SpotCheckTab";
 import AuditTab from "./tabs/AuditTab";
@@ -24,22 +25,23 @@ import { MastheadRule, MetaText } from "./tabs/journal-ui";
 import { cn } from "@/lib/utils/cn";
 
 const TAB_ORDER: TabKey[] = [
-  "overview", "quality", "reports", "spot-check", "audit", "marketing", "agents",
+  "overview", "quality", "repairs", "reports", "spot-check", "audit", "marketing", "agents",
   "users", "toeic", "vocab", "analytics",
 ];
 
 const TAB_KICKER: Record<TabKey, string> = {
   overview: "I",
   quality: "II",
-  reports: "III",
-  "spot-check": "IV",
-  audit: "V",
-  marketing: "VI",
-  agents: "VII",
-  users: "VIII",
-  toeic: "IX",
-  vocab: "X",
-  analytics: "XI",
+  repairs: "III",
+  reports: "IV",
+  "spot-check": "V",
+  audit: "VI",
+  marketing: "VII",
+  agents: "VIII",
+  users: "IX",
+  toeic: "X",
+  vocab: "XI",
+  analytics: "XII",
 };
 
 function CommandCenterInner() {
@@ -55,6 +57,7 @@ function CommandCenterInner() {
       const j = await r.json();
       setCounts({
         quality: j.issues?.openCount,
+        repairs: j.repairProposals?.unappliedCount,
         reports: j.reports?.pendingCount,
         marketing: j.marketing?.drafts?.length,
       });
@@ -138,6 +141,7 @@ function CommandCenterInner() {
         <div>
           {tab === "overview" && <OverviewTab onJump={switchTab} />}
           {tab === "quality" && <QualityTab />}
+          {tab === "repairs" && <RepairsTab />}
           {tab === "reports" && <ReportsTab />}
           {tab === "spot-check" && <SpotCheckTab />}
           {tab === "audit" && <AuditTab />}
@@ -156,6 +160,7 @@ function CommandCenterInner() {
 const TAB_HEADLINES: Record<TabKey, string> = {
   overview: "Today's edition.",
   quality: "Where the cracks are.",
+  repairs: "The mending desk.",
   reports: "Letters from readers.",
   "spot-check": "Read one. Then another.",
   audit: "What the editor flagged.",
