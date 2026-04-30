@@ -61,9 +61,10 @@ export async function GET(_req: NextRequest) {
       orderBy: { createdAt: "desc" },
       select: { id: true, sessionId: true, status: true, attempts: true, createdAt: true, error: true },
     }),
+    // Show ALL drafts (not capped at 10) so the dashboard counter is accurate.
     prisma.marketingContent.findMany({
       where: { status: "draft" },
-      take: 10,
+      take: 100,
       orderBy: { generatedAt: "desc" },
     }),
     // === NIM Audit Progress ===
