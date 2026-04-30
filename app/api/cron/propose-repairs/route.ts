@@ -20,7 +20,9 @@ export async function GET(req: NextRequest) {
   if (auth !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
-  const limit = parseInt(url.searchParams.get("limit") || "10", 10);
+  // Default limit=1: NIM latency from Zeabur is high (~2-3 min per issue
+  // including verifier+repair). Larger batches blow the HTTP timeout.
+  const limit = parseInt(url.searchParams.get("limit") || "1", 10);
 
   const start = Date.now();
   try {

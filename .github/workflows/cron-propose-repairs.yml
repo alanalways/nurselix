@@ -8,17 +8,18 @@ on:
 jobs:
   propose:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 30
     steps:
-      # We call the endpoint multiple times with small batches.
-      # Each call processes 3 CRITICAL issues (~90s) — well within Zeabur's
-      # 5-min request timeout. Looping lets us chew through more per cron run.
-      - name: Trigger repair proposal generation (batch loop)
+      # NIM call latency from Zeabur is high — verifier alone can take 90s,
+      # add repair and a single issue easily takes 2-3 min. Use limit=1 per
+      # call so individual HTTP requests stay under the 5-min Zeabur timeout,
+      # and loop more times so we still process meaningful volume.
+      - name: Trigger repair proposal generation (single-issue batches)
         run: |
-          for i in 1 2 3 4 5 6; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
             echo "=== batch $i ==="
-            curl -fsSL --max-time 240 \
+            curl -fsSL --max-time 480 \
               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              "${{ secrets.APP_URL }}/api/cron/propose-repairs?limit=3" || echo "batch $i failed, continuing"
-            sleep 5
+              "${{ secrets.APP_URL }}/api/cron/propose-repairs?limit=1" || echo "batch $i failed, continuing"
+            sleep 3
           done
