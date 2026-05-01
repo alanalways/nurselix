@@ -102,6 +102,20 @@ export async function commitDecision(client, sessionId, decision) {
     throw new Error(`bad decision type: ${type}`);
   }
 
+  // Idempotency: if this (session, question) already has a decision, refuse.
+  // The DB also enforces this via UNIQUE (sessionId, questionId) but checking
+  // here gives a clean "ALREADY_DECIDED" error instead of a constraint
+  // violation that aborts the surrounding transaction.
+  const existing = await client.query(
+    `SELECT id FROM "ClaudeAuditDecision" WHERE "sessionId" = $1 AND "questionId" = $2`,
+    [sessionId, questionId]
+  );
+  if (existing.rows.length > 0) {
+    const err = new Error(`ALREADY_DECIDED: question ${questionId} already has decision ${existing.rows[0].id} in this session`);
+    err.code = "ALREADY_DECIDED";
+    throw err;
+  }
+
   // Pull current question so we can build before/after snapshots
   const cur = await client.query(`SELECT * FROM "Question" WHERE id = $1`, [questionId]);
   if (cur.rows.length === 0) throw new Error(`question ${questionId} not found`);

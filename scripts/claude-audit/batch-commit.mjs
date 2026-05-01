@@ -26,7 +26,13 @@ try {
       const id = await commitDecision(c, session.id, dec);
       results.push({ questionId: dec.questionId, ok: true, decisionId: id });
     } catch (e) {
-      results.push({ questionId: dec.questionId, ok: false, error: e.message.slice(0, 200) });
+      // ALREADY_DECIDED is idempotency, not a real failure: report it
+      // distinctly so callers can tell apart re-runs from genuine errors.
+      if (e.code === "ALREADY_DECIDED") {
+        results.push({ questionId: dec.questionId, ok: true, skipped: true, reason: "already_decided" });
+      } else {
+        results.push({ questionId: dec.questionId, ok: false, error: e.message.slice(0, 200) });
+      }
     }
   }
   process.stdout.write(JSON.stringify({ ok: true, sessionId: session.id, results }, null, 2) + "\n");

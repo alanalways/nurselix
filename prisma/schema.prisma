@@ -1003,6 +1003,7 @@ model ClaudeAuditDecision {
 
   session         ClaudeAuditSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
+  @@unique([sessionId, questionId], name: "ClaudeAuditDecision_session_question_unique")
   @@index([sessionId, createdAt(sort: Desc)])
   @@index([questionId])
   @@index([decision])

@@ -43,3 +43,17 @@ CREATE INDEX IF NOT EXISTS "ClaudeAuditDecision_questionId_idx"
 
 CREATE INDEX IF NOT EXISTS "ClaudeAuditDecision_decision_idx"
   ON "ClaudeAuditDecision" ("decision");
+
+-- Unique constraint added 2026-05-01 after a sub-agent accidentally
+-- ran batch-commit twice and produced 3x duplicates. With this in place
+-- a re-run errors at insert time instead of corrupting counters.
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'ClaudeAuditDecision_session_question_unique'
+  ) THEN
+    ALTER TABLE "ClaudeAuditDecision"
+      ADD CONSTRAINT "ClaudeAuditDecision_session_question_unique"
+      UNIQUE ("sessionId", "questionId");
+  END IF;
+END $$;
