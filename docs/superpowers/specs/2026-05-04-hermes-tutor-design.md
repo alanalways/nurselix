@@ -142,9 +142,12 @@ UI rules:
 
 1. **Receive request** — `POST /api/hermes/chat` with `{ message,
    sessionId?, questionId?, attachQuestionContext }`.
-2. **Auth + rate-limit** — verify session; per-user 20 RPM cap; FREE
-   plan capped at 5 turns/hour, BASIC at 20/hr, PRO/ELITE unlimited
-   (subject to Gemini's underlying limits).
+2. **Auth + rate-limit** — verify session; per-user **20 turns/hour
+   for every plan tier** (FREE / BASIC / PRO / ELITE all share the
+   same cap). User decision 2026-05-04: Hermes is a core experience,
+   not a paid upsell. The cap exists only as DOS protection, not
+   as a paywall. If real usage proves the cap is too tight we
+   loosen it; we never tighten it for FREE users.
 3. **Build context**:
    - If `questionId` and `attachQuestionContext`: pull the full
      Question row + last 5 ChatTurns from the same user on the same
