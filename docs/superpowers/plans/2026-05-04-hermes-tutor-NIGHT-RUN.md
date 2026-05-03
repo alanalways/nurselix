@@ -76,4 +76,30 @@
 
 ## 中斷紀錄(若有)
 
-(若中途中斷,把當下狀態寫在這裡)
+### 2026-05-04 05:30+ Taipei — Wave 0 Task 1 BLOCKED
+
+**狀態:** 整個夜間 run 在 Wave 0 第一步就停下,**沒有任何 commit、沒有改任何檔案、工作樹乾淨**。
+
+**阻擋原因:** Task 1 Step 1 的 pgvector 探測回傳 NOT AVAILABLE。
+- Zeabur 上的 Postgres 是 **PostgreSQL 18.3 (Debian, `pgdg13+1`)**
+- `pg_available_extensions` 共 46 個項目,**完全沒有 `vector` / `pgvector` / `pg_vector`**
+- 已安裝的只有 `plpgsql`
+- 連線/帳密/網路都正常,問題在 image 本身不含 pgvector binary
+
+**為什麼整個夜間 run 都停:**
+Task 2-14 全部依賴 `QuestionEmbedding` 與 `ChatTurn` 兩張表,這兩張表又依賴 pgvector。Task 1 沒成,後面 13 個 task 連 schema 都拿不到,沒辦法做有意義的測試或 commit。
+
+**不能動的原因(夜間手冊規則):**
+- 規則 #2「不能改 plan 的內容」→ 不能擅自改 Task 1 走 CTE fallback
+- 換 Postgres image 是 infra 級不可逆操作,屬於使用者層決策,agent 不可自決
+- Task 1 plan 的 Step 1 明寫:`If NOT AVAILABLE, stop and tell the user`
+
+**等使用者醒來要做的決策(三選一):**
+1. **換 image** — 在 Zeabur 把 Postgres 換成 `pgvector/pgvector:pg17` 或 Zeabur 內建的 pgvector template,完成後本檔重啟 Task 1。風險:DB 遷移可能需要 dump/restore,要評估資料量。
+2. **改 plan 走 CTE fallback** — Plan Task 1 Appendix 提到的 CTE-based cosine fallback。要重寫 Task 1 + Task 4 的 SQL,效能會差很多(沒有 HNSW index,14k 列每次掃)。
+3. **外接 vector store** — 把 embedding 移到 Pinecone / Qdrant / Supabase Vector,改寫 Task 2/3/4。最大改動,但解耦最乾淨。
+
+**建議:** 1 最省事且符合原 spec(Plan 設計就假設 Zeabur 有 pgvector)。先在 Zeabur 後台確認可不可以無痛換 image,如果 OK 就走 1。
+
+**重啟方式:** 解決 pgvector 後,從本檔 Wave 0 重新跑這個排程任務即可,前面沒留下任何不可逆改動。
+
