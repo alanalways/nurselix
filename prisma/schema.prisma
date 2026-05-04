@@ -51,6 +51,7 @@ model User {
   hermesReports    HermesReport[]
   vocabProgress    UserVocabProgress[]
   vocabSessions    VocabSession[]
+  chatSessions     ChatSession[]
 }
 
 model Account {
@@ -179,6 +180,7 @@ model Question {
   audioAssets    AudioAsset[]
   qualityIssues  QuestionQualityIssue[]
   versions       QuestionVersion[]
+  embedding      QuestionEmbedding?
 
   @@index([module, status])
   @@index([domain])
@@ -1007,4 +1009,58 @@ model ClaudeAuditDecision {
   @@index([sessionId, createdAt(sort: Desc)])
   @@index([questionId])
   @@index([decision])
+}
+
+// ===== Hermes Tutor (Phase 20) =====
+//
+// CTE-cosine fallback variant: pgvector is unavailable on the Zeabur PG image,
+// so embeddings are stored as JSONB (a 768-element float array). RAG cosine
+// similarity is computed in pure SQL inside lib/hermes-tutor/rag.ts.
+
+model QuestionEmbedding {
+  questionId String   @id
+  embedding  Json
+  model      String   @default("text-embedding-004")
+  updatedAt  DateTime @default(now()) @updatedAt
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt(sort: Desc)])
+}
+
+model ChatSession {
+  id            String     @id @default(uuid())
+  userId        String
+  startedAt     DateTime   @default(now())
+  lastMessageAt DateTime   @default(now())
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turns         ChatTurn[]
+
+  @@index([userId, lastMessageAt(sort: Desc)])
+}
+
+model ChatTurn {
+  id          String    @id @default(uuid())
+  sessionId   String
+  userId      String
+  questionId  String?
+  /// "user" | "assistant"
+  role        String
+  content     String    @db.Text
+  /// array of {url, title} from Gemini grounding
+  citedUrls   Json?
+  modelUsed   String?
+  latencyMs   Int?
+  /// -1, 0, 1 — admin rating
+  rating      Int?
+  ratingNote  String?   @db.Text
+  ratedBy     String?
+  ratedAt     DateTime?
+  createdAt   DateTime  @default(now())
+
+  session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([questionId, createdAt(sort: Desc)])
+  @@index([rating, createdAt(sort: Desc)])
 }
