@@ -7,6 +7,7 @@ import MobileNav from "@/components/layout/MobileNav";
 import OnboardingModal from "@/components/onboarding/OnboardingModal";
 import Footer from "@/components/ui/Footer";
 import PwaUpdateBanner from "@/components/ui/PwaUpdateBanner";
+import HermesBubble from "@/components/hermes/HermesBubble";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -33,6 +34,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* PWA update notification */}
       <PwaUpdateBanner />
+
+      {/* Hermes floating ask-anywhere bubble */}
+      <HermesBubble />
     </div>
   );
 }
