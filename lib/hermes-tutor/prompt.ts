@@ -71,7 +71,7 @@ export function composeMessages(args: ComposeArgs): {
         `選項:\n` +
         ["A", "B", "C", "D", "E", "F"]
           .map((L) => {
-            const v = (q as Record<string, string | null>)[`option${L}`];
+            const v = (q as unknown as Record<string, string | null>)[`option${L}`];
             return v ? ` ${L}. ${v}` : "";
           })
           .filter(Boolean)
