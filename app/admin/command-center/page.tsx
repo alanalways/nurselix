@@ -22,6 +22,7 @@ import UsersTab from "./tabs/UsersTab";
 import ToeicTab from "./tabs/ToeicTab";
 import VocabTab from "./tabs/VocabTab";
 import AnalyticsTab from "./tabs/AnalyticsTab";
+import HermesTab from "./tabs/HermesTab";
 import { MastheadRule, MetaText } from "./tabs/journal-ui";
 import { cn } from "@/lib/utils/cn";
 
@@ -34,7 +35,7 @@ const TAB_ORDER: TabKey[] = [
   // C. Business
   "marketing", "users", "analytics",
   // D. System
-  "agents",
+  "agents", "hermes",
 ];
 
 // 在這些 tab 前面 render 一個 ‖ 分隔符（即每個 group 起點，第一個除外）
@@ -54,6 +55,7 @@ const TAB_KICKER: Record<TabKey, string> = {
   users: "XI",
   analytics: "XII",
   agents: "XIII",
+  hermes: "XIV",
 };
 
 function CommandCenterInner() {
@@ -175,6 +177,7 @@ function CommandCenterInner() {
           {tab === "toeic" && <ToeicTab />}
           {tab === "vocab" && <VocabTab />}
           {tab === "analytics" && <AnalyticsTab />}
+          {tab === "hermes" && <HermesTab />}
         </div>
       </div>
     </div>
@@ -195,6 +198,7 @@ const TAB_HEADLINES: Record<TabKey, string> = {
   toeic: "The English edition.",
   vocab: "The lexicon.",
   analytics: "The numbers desk.",
+  hermes: "What students are asking.",
 };
 
 export default function CommandCenter() {

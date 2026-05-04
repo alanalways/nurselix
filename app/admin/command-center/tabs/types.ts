@@ -12,7 +12,8 @@ export type TabKey =
   | "users"
   | "toeic"
   | "vocab"
-  | "analytics";
+  | "analytics"
+  | "hermes";
 
 export const TAB_LABELS: Record<TabKey, string> = {
   overview: "總覽",
@@ -28,6 +29,7 @@ export const TAB_LABELS: Record<TabKey, string> = {
   toeic: "TOEIC",
   vocab: "詞庫",
   analytics: "數據",
+  hermes: "Hermes 對話",
 };
 
 export const TAB_DESCRIPTIONS: Record<TabKey, string> = {
@@ -44,4 +46,5 @@ export const TAB_DESCRIPTIONS: Record<TabKey, string> = {
   toeic: "TOEIC 題庫 — Part 1-7 題目與聽力 TTS",
   vocab: "單字詞庫 — 種子任務、單字 CRUD",
   analytics: "數據分析 — domain 錯誤率、活躍度、API 費用",
+  hermes: "Hermes Tutor 對話歷史 + admin 評分",
 };
