@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { BookOpen, Globe, List } from "lucide-react";
 import type { Question } from "@/types";
+import HermesButton from "@/components/hermes/HermesButton";
 
 interface ExplanationPanelProps {
   question: Question;
@@ -110,6 +111,18 @@ export default function ExplanationPanel({ question, selectedAnswer, isCorrect: 
           </div>
         </div>
       )}
+
+      {/* Hermes Tutor — ask the AI when the static explanation isn't enough */}
+      <div className="pt-2">
+        <HermesButton
+          questionId={question.id}
+          wrongAnswer={
+            !isCorrect
+              ? { selected: selectedAnswer, correct: correctAnswerDisplay }
+              : undefined
+          }
+        />
+      </div>
     </motion.div>
   );
 }
