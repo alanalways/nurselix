@@ -34,10 +34,11 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Push schema to DB (builder stage has full node_modules + Zeabur internal network access)
-# Skip silently if DATABASE_URL is not provided as a build arg
-ARG DATABASE_URL
-RUN if [ -n "$DATABASE_URL" ]; then DATABASE_URL="$DATABASE_URL" npx prisma db push --accept-data-loss; else echo "DATABASE_URL not set — skipping prisma db push"; fi
+# Schema init at runtime: scripts/init-db.js + prisma/migrations/*.sql is run
+# from CMD on every boot and is idempotent. The previous build-time
+# `prisma db push` was redundant AND broken when DATABASE_URL points at the
+# Zeabur internal hostname (builder containers cannot reach the runtime
+# overlay network). Removed.
 
 # Build Next.js — cache the compiler output so unchanged pages aren't recompiled
 ENV NEXT_TELEMETRY_DISABLED=1
