@@ -7,6 +7,7 @@ import { Home, AlertCircle, Loader2, RotateCcw, Share2, Download } from "lucide-
 import confetti from "canvas-confetti";
 import Button from "@/components/ui/Button";
 import ResultCard from "@/components/nclex/ResultCard";
+import FeedbackPrompt from "@/components/nclex/FeedbackPrompt";
 
 interface ResultResponse {
   session: {
@@ -225,6 +226,8 @@ export default function ResultsPage({ params }: { params: { sessionId: string } 
           <Download size={16} /> 下載成績卡
         </Button>
       </div>
+
+      <FeedbackPrompt sessionId={params.sessionId} />
     </motion.div>
   );
 }

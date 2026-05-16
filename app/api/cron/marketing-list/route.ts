@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
   const rows = await prisma.marketingContent.findMany({
     where,
-    orderBy: { createdAt: "desc" },
+    orderBy: { generatedAt: "desc" },
     take,
     select: {
       id: true,
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       body: true,
       modelUsed: true,
       status: true,
-      createdAt: true,
+      generatedAt: true,
     },
   });
 
