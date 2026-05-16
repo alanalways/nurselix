@@ -37,13 +37,13 @@ export async function runAgentLoop(opts: {
   maxSteps?: number;
   // Hard wall-clock budget (ms). When exceeded, the loop returns the latest
   // assistant content even if more tool calls were requested. Defaults to
-  // 50s — endpoint HTTP cap is 240s, divided across 4 sub-agents = 60s each
-  // with a small buffer. DeepSeek V4 Pro typically responds in 5-30s for
-  // small responses, longer for big tool-call chains; 50s + 1 retry of
-  // failed step is realistic.
+  // 55s — the four sub-agents run sequentially under the cron's 240s HTTP
+  // budget, so 55s × 4 = 220s leaves ~20s for DB writes and the CEO sub-step
+  // overhead. Per-LLM-call timeout in `client.ts` is 50s with one retry so a
+  // hung NIM cold start does not eat the whole sub-agent budget.
   budgetMs?: number;
 }): Promise<AgentLoopResult> {
-  const { llm, tools, systemPrompt, userPrompt, maxSteps = 4, budgetMs = 50_000 } = opts;
+  const { llm, tools, systemPrompt, userPrompt, maxSteps = 4, budgetMs = 55_000 } = opts;
   const deadline = Date.now() + budgetMs;
   const toolsTyped = tools as unknown as ToolLike[];
   if (typeof llm.bindTools !== "function") {

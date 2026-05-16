@@ -51,10 +51,10 @@ export function pickGeminiKey(): string {
 export function createOpsLLM(opts?: { temperature?: number }): BaseChatModel {
   const temperature = opts?.temperature ?? 0.3;
 
-  // 180s per LLM call (matching audit-worker's NIM timeout — DeepSeek V4 Pro
-  // can take 30-60s on cold starts, occasionally more). maxRetries=0 because
-  // agentLoop already wraps every invoke in Promise.race with the wall-clock
-  // budget; retries here would just stack against that budget.
+  // 50s per LLM call — matches agentLoop's per-step budget. Previously 180s
+  // would let a single hung call burn the entire sub-agent budget and leave
+  // no room for tool execution. NIM cold starts >50s are treated as a miss
+  // and retried once (cheap; the second call usually hits a warm replica).
   if (OPS_PROVIDER === "nvidia") {
     const apiKey = process.env.NVIDIA_NIM_API_KEY;
     if (!apiKey) throw new Error("NVIDIA_NIM_API_KEY is required when OPS_PROVIDER=nvidia");
@@ -63,8 +63,8 @@ export function createOpsLLM(opts?: { temperature?: number }): BaseChatModel {
       apiKey,
       configuration: { baseURL: "https://integrate.api.nvidia.com/v1" },
       temperature,
-      maxRetries: 0,
-      timeout: 180_000,
+      maxRetries: 1,
+      timeout: 50_000,
     });
   }
 
