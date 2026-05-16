@@ -71,12 +71,16 @@ const NIM = {
 };
 
 const GEMINI = {
+  // Verified 2026-05-16 via models.list against the actual Google AI Studio
+  // API. All three exist on the free tier today. Daily quotas are NOT public
+  // (Google directs users to AI Studio dashboard), so don't assume specific
+  // RPD numbers — let `runAgent` fallback chain handle quota exhaustion.
   flash3Preview: { provider: "gemini" as const, modelId: "gemini-3-flash-preview", avgLatencyMs: null,
-    notes: "Free tier ~20-100/day per key. With 10 keys: ~200-1000/day." },
+    notes: "Verified live 2026-05-16. Has thinking tokens — counts against quota faster." },
   flashLite31Preview: { provider: "gemini" as const, modelId: "gemini-3.1-flash-lite-preview", avgLatencyMs: null,
-    notes: "Free tier ~1000/day per key. With 10 keys: ~10,000/day." },
+    notes: "Verified live 2026-05-16. Lighter than flash3-preview, higher quota." },
   flash25: { provider: "gemini" as const, modelId: "gemini-2.5-flash", avgLatencyMs: null,
-    notes: "Stable fallback. ~250/day per key." },
+    notes: "Verified live 2026-05-16. Stable, no-thinking fallback when previews are rate-limited." },
 };
 
 // ---------- Agent configurations (informed by 2026-04-30 bench) ----------
@@ -99,7 +103,9 @@ export const AGENT_MODELS: Record<AgentTask, AgentModelConfig> = {
   "quality.health-report":  { task: "quality.health-report",  primary: NIM.v4Flash, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25] },
   "report.triage":          { task: "report.triage",          primary: NIM.v4Flash, fallbacks: [GEMINI.flash3Preview, GEMINI.flashLite31Preview] },
   "marketing.seo":          { task: "marketing.seo",          primary: NIM.v4Flash, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash3Preview] },
-  "marketing.social":       { task: "marketing.social",       primary: NIM.v4Flash, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25] },
+  // Social posts need natural human-feeling Chinese — Gemini reads less robotic
+  // than DeepSeek for casual short-form. User decision 2026-05-16.
+  "marketing.social":       { task: "marketing.social",       primary: GEMINI.flash3Preview, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25, NIM.v4Flash] },
   "marketing.email":        { task: "marketing.email",        primary: NIM.v4Flash, fallbacks: [GEMINI.flashLite31Preview, GEMINI.flash25] },
   "marketing.analytics":    { task: "marketing.analytics",    primary: NIM.v4Flash, fallbacks: [GEMINI.flash3Preview, GEMINI.flashLite31Preview] },
 };

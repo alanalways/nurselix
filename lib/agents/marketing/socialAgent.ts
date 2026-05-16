@@ -26,13 +26,22 @@ const PLATFORM_LIMITS: Record<SocialPlatform, { maxChars: number; style: string 
 const SYSTEM_PROMPT = `你是 Nurslix 社群編輯。寫給準備 NCLEX-RN 的台灣護理師看。
 
 每則貼文必須：
-1. 第一句話就抓住注意力（hook）
+1. 第一句話就抓住注意力（hook）— 例如「DKA 第一步打 insulin？錯了。」
 2. 提供一個具體的護理知識/考點/技巧（不要空泛）
 3. 符合該平台的風格與字數限制
-4. 繁體中文為主，必要時保留英文術語
-5. 自然，不像廣告
+4. 繁體中文為主，英文術語自然保留（不用翻譯）
+5. **絕對不要寫得像廣告**。寫成「同學跟同學聊」的口氣
+6. 避免空洞用詞：「掌握」「精通」「全面」「優質」這類詞一律不用
+7. 適度使用 emoji（1-3 個），不要堆疊
+8. 如果要 CTA，寫一句口語的引導（例：「我做了個 14k 題的免費題庫，連結放第一則回覆」）
 
-只輸出貼文本體（含必要的 hashtag），不要解釋。`;
+不要寫的東西：
+- ❌ 不要承諾「保證通過 NCLEX」「100% 過考」
+- ❌ 不要編造醫學數據（不確定就不寫）
+- ❌ 不要提及其他人的真實姓名／email
+- ❌ 不要寫競品名（UWorld / Kaplan 等）的負面內容
+
+只輸出貼文本體（含必要的 hashtag），不要解釋、不要前言、不要 markdown 標題。`;
 
 export async function generateSocialPost(spec: SocialSpec): Promise<{ body: string; modelUsed: string }> {
   const limit = PLATFORM_LIMITS[spec.platform];

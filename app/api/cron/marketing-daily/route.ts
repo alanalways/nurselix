@@ -37,14 +37,14 @@ export async function GET(req: NextRequest) {
   const day = new Date().getDate();
   const topic = NCLEX_TOPICS[day % NCLEX_TOPICS.length];
 
-  // 1) One social post for X
+  // 1) Threads (primary platform — your ICP is on Threads/IG)
   try {
-    const post = await generateSocialPost({ topic: topic.topic, platform: "x", includeCTA: true });
-    const saved = await saveSocialPost({ ...post, platform: "x", topic: topic.topic });
-    results.push({ task: "social_x", ok: true, id: saved.id });
-  } catch (e: any) { results.push({ task: "social_x", ok: false, error: e.message }); }
+    const post = await generateSocialPost({ topic: topic.topic, platform: "threads", includeCTA: true });
+    const saved = await saveSocialPost({ ...post, platform: "threads", topic: topic.topic });
+    results.push({ task: "social_threads", ok: true, id: saved.id });
+  } catch (e: any) { results.push({ task: "social_threads", ok: false, error: e.message }); }
 
-  // 2) One social post for IG
+  // 2) Instagram
   try {
     const post = await generateSocialPost({ topic: topic.topic, platform: "instagram", includeCTA: true });
     const saved = await saveSocialPost({ ...post, platform: "instagram", topic: topic.topic });
