@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendMail, examReminderMail } from "@/lib/mail";
+import { ipRateLimit, getClientIp } from "@/lib/utils/rateLimit";
 
 function verifyAdminSecret(req: NextRequest): boolean {
   const auth = req.headers.get("authorization") ?? "";
@@ -31,6 +32,11 @@ function daysBetween(from: Date, to: Date): number {
 }
 
 export async function POST(req: NextRequest) {
+  // Defence-in-depth: rate-limit by IP before auth check so a leaked secret
+  // can't be brute-fired to drain mail quota.
+  const rl = await ipRateLimit(getClientIp(req), { limit: 30, windowSec: 3600 });
+  if (!rl.success) return NextResponse.json({ error: "rate limited" }, { status: 429 });
+
   if (!verifyAdminSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

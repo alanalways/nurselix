@@ -19,6 +19,21 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["@prisma/client", "prisma"],
   },
+  // Baseline defence-in-depth headers. Conservative so we don't break
+  // Sentry, NextAuth OAuth redirects, or the PWA. CSP intentionally NOT
+  // added — Next.js inline runtime + Sentry inline scripts make a strict
+  // CSP non-trivial; revisit when traffic warrants.
+  async headers() {
+    return [{
+      source: "/(.*)",
+      headers: [
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+      ],
+    }];
+  },
   /**
    * Explicitly wire up the "@/" path alias in webpack so it resolves
    * correctly in ALL build environments (Zeabur Nixpacks, Docker, Vercel,

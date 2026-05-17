@@ -4,6 +4,7 @@
  * 直接代為觸發 /api/cron/weekly-report。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { ipRateLimit, getClientIp } from "@/lib/utils/rateLimit";
 
 function verifyAdminSecret(req: NextRequest): boolean {
   const auth = req.headers.get("authorization") ?? "";
@@ -15,6 +16,9 @@ function verifyAdminSecret(req: NextRequest): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = await ipRateLimit(getClientIp(req), { limit: 30, windowSec: 3600 });
+  if (!rl.success) return NextResponse.json({ error: "rate limited" }, { status: 429 });
+
   if (!verifyAdminSecret(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";

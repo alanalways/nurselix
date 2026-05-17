@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runHermesForSession } from "@/lib/hermes/orchestrator";
+import { ipRateLimit, getClientIp } from "@/lib/utils/rateLimit";
 
 export const maxDuration = 300;
 
@@ -29,6 +30,9 @@ function verifyAdminSecret(req: NextRequest): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = await ipRateLimit(getClientIp(req), { limit: 30, windowSec: 3600 });
+  if (!rl.success) return NextResponse.json({ error: "rate limited" }, { status: 429 });
+
   if (!verifyAdminSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -81,6 +85,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = await ipRateLimit(getClientIp(req), { limit: 60, windowSec: 3600 });
+  if (!rl.success) return NextResponse.json({ error: "rate limited" }, { status: 429 });
+
   if (!verifyAdminSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
