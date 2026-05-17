@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Languages } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import AudioPlayer from "@/components/audio/AudioPlayer";
+import BilingualToggle from "@/components/nclex/BilingualToggle";
+import { useBilingualMode, shouldShowEn, shouldShowZh } from "@/components/nclex/useBilingualMode";
 import type { Question } from "@/types";
 
 const TOEIC_LISTENING_PARTS = new Set(["Part 1", "Part 2", "Part 3", "Part 4"]);
@@ -23,7 +23,10 @@ const difficultyMap = {
 
 export default function QuestionCard({ question, questionNumber, totalQuestions }: QuestionCardProps) {
   const diff = difficultyMap[question.difficulty];
-  const [showZh, setShowZh] = useState(false);
+  const [mode, setMode] = useBilingualMode();
+  const showEn = shouldShowEn(mode);
+  const showZh = shouldShowZh(mode);
+  const hasZh = Boolean(question.stemZh);
 
   return (
     <motion.div
@@ -49,15 +52,7 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
         <div className="flex items-center gap-2">
           <Badge variant={diff.variant}>{diff.label}</Badge>
           <Badge variant="muted">{question.questionType}</Badge>
-          {question.stemZh && (
-            <button
-              onClick={() => setShowZh((v) => !v)}
-              title={showZh ? "顯示英文題幹" : "顯示中文翻譯"}
-              className={`p-1 rounded transition-colors ${showZh ? "text-[var(--gold)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-            >
-              <Languages size={14} />
-            </button>
-          )}
+          {hasZh && <BilingualToggle mode={mode} onChange={setMode} />}
         </div>
       </div>
 
@@ -76,7 +71,7 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
       )}
 
       {/* Stem — for TOEIC listening parts the stem text is hidden until answered (it's the script).
-          For everything else it's just the question text. */}
+          For everything else it's the question text, respecting bilingual mode. */}
       {(() => {
         const isToeicListening =
           question.module === "TOEIC"
@@ -92,24 +87,58 @@ export default function QuestionCard({ question, questionNumber, totalQuestions 
             </p>
           );
         }
+        // For non-listening: show EN stem if mode allows; otherwise only Chinese.
+        // If user picked "zh" but no stemZh exists, fall back to EN so we never
+        // leave the question empty.
+        const enabledEn = showEn || !hasZh;
         return (
-          <p
-            className="text-[var(--text-primary)] leading-relaxed font-sora"
-            style={{ fontSize: "calc(1rem * var(--font-scale))" }}
-          >
-            {question.stem}
-          </p>
+          <>
+            {enabledEn && (
+              <p
+                className="text-[var(--text-primary)] leading-relaxed font-sora"
+                style={{ fontSize: "calc(1rem * var(--font-scale))" }}
+              >
+                {question.stem}
+              </p>
+            )}
+            {showZh && question.stemZh && (
+              <p
+                className={`text-[var(--text-secondary)] leading-relaxed font-noto-sans ${enabledEn ? "mt-3 border-t border-[var(--border-subtle)] pt-3" : ""}`}
+                style={{ fontSize: "calc(0.95rem * var(--font-scale))" }}
+              >
+                {question.stemZh}
+              </p>
+            )}
+          </>
         );
       })()}
 
-      {/* Chinese stem (toggled) */}
-      {showZh && question.stemZh && (
-        <p
-          className="mt-3 text-[var(--text-secondary)] leading-relaxed font-noto-sans border-t border-[var(--border-subtle)] pt-3"
-          style={{ fontSize: "calc(0.9rem * var(--font-scale))" }}
-        >
-          {question.stemZh}
-        </p>
+      {/* Scenario (clinical case background) if present, also bilingual-aware */}
+      {(question.scenarioEn || question.scenarioZh) && (
+        <div className="mt-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg p-3 space-y-2">
+          <div
+            className="text-[var(--text-muted)] font-semibold"
+            style={{ fontSize: "calc(0.75rem * var(--font-scale))" }}
+          >
+            臨床情境
+          </div>
+          {(showEn || !question.scenarioZh) && question.scenarioEn && (
+            <p
+              className="text-[var(--text-primary)] leading-relaxed font-sora"
+              style={{ fontSize: "calc(0.9rem * var(--font-scale))" }}
+            >
+              {question.scenarioEn}
+            </p>
+          )}
+          {showZh && question.scenarioZh && (
+            <p
+              className="text-[var(--text-secondary)] leading-relaxed font-noto-sans"
+              style={{ fontSize: "calc(0.85rem * var(--font-scale))" }}
+            >
+              {question.scenarioZh}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Tags */}

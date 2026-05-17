@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import { BookOpen, Globe, List } from "lucide-react";
+import BilingualToggle from "@/components/nclex/BilingualToggle";
+import { useBilingualMode, shouldShowEn, shouldShowZh } from "@/components/nclex/useBilingualMode";
 import type { Question } from "@/types";
 
 interface ExplanationPanelProps {
@@ -11,6 +13,12 @@ interface ExplanationPanelProps {
 }
 
 export default function ExplanationPanel({ question, selectedAnswer, isCorrect: isCorrectProp }: ExplanationPanelProps) {
+  const [mode, setMode] = useBilingualMode();
+  const showEn = shouldShowEn(mode);
+  const showZh = shouldShowZh(mode);
+  const hasAnyZh = Boolean(
+    question.stemZh || question.explanationZh || question.scenarioZh,
+  );
   // Use API-returned value when available (handles SATA ordering differences).
   // Fallback to local comparison for MCQ only.
   const isCorrect = isCorrectProp !== undefined
@@ -54,15 +62,37 @@ export default function ExplanationPanel({ question, selectedAnswer, isCorrect: 
         </div>
       </div>
 
-      {/* Chinese Explanation */}
-      <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <BookOpen size={16} className="text-[var(--gold)]" />
-          <h3 className="font-semibold text-[var(--text-primary)] font-noto-serif">中文解析</h3>
+      {/* Bilingual toggle */}
+      {hasAnyZh && (
+        <div className="flex justify-end">
+          <BilingualToggle mode={mode} onChange={setMode} />
         </div>
-        <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-noto-sans">
-          {question.explanationZh}
-        </p>
+      )}
+
+      {/* Explanation — EN / ZH / both */}
+      <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <BookOpen size={16} className="text-[var(--gold)]" />
+          <h3 className="font-semibold text-[var(--text-primary)] font-noto-serif">
+            解析
+          </h3>
+        </div>
+        {showEn && question.explanationEn && (
+          <p className="text-sm text-[var(--text-primary)] leading-relaxed font-sora">
+            {question.explanationEn}
+          </p>
+        )}
+        {showZh && question.explanationZh && (
+          <p className={`text-sm text-[var(--text-secondary)] leading-relaxed font-noto-sans ${showEn && question.explanationEn ? "border-t border-[var(--border-subtle)] pt-3" : ""}`}>
+            {question.explanationZh}
+          </p>
+        )}
+        {/* Safety fallback: if mode hides both but data only has one, show what we have */}
+        {!((showEn && question.explanationEn) || (showZh && question.explanationZh)) && (
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-noto-sans">
+            {question.explanationZh || question.explanationEn}
+          </p>
+        )}
       </div>
 
       {/* Per-option rationales */}
@@ -77,6 +107,11 @@ export default function ExplanationPanel({ question, selectedAnswer, isCorrect: 
               const r = rationales[k];
               if (!r?.zh && !r?.en) return null;
               const isCorrectOpt = correctAnswers.includes(k);
+              // Respect mode but never render an empty row.
+              const en = showEn ? r.en : null;
+              const zh = showZh ? r.zh : null;
+              const renderEn = en ?? (!zh ? (r.en ?? null) : null);
+              const renderZh = zh ?? (!en ? (r.zh ?? null) : null);
               return (
                 <div key={k} className="flex gap-3">
                   <span className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -84,9 +119,14 @@ export default function ExplanationPanel({ question, selectedAnswer, isCorrect: 
                       ? "bg-[rgba(46,204,113,0.18)] text-[var(--success)]"
                       : "bg-[var(--bg-base)] text-[var(--text-muted)]"
                   }`}>{k}</span>
-                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-noto-sans">
-                    {r.zh ?? r.en}
-                  </p>
+                  <div className="flex-1 space-y-1">
+                    {renderEn && (
+                      <p className="text-sm text-[var(--text-primary)] leading-relaxed font-sora">{renderEn}</p>
+                    )}
+                    {renderZh && (
+                      <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-noto-sans">{renderZh}</p>
+                    )}
+                  </div>
                 </div>
               );
             })}
